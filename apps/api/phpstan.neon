@@ -10,13 +10,3 @@ parameters:
 
     excludePaths:
         - app/Providers/*
-
-    ignoreErrors: []
-
-    checkMissingIterableValueType: false
-
-    # Worker subprocess spawning is unreliable in some sandboxed CI/dev
-    # shells; force single-process analysis for a reliably non-empty
-    # result instead of a silent crash.
-    parallel:
-        maximumNumberOfProcesses: 1

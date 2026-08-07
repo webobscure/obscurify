@@ -1,4 +1,7 @@
-.PHONY: up down install test migrate fresh horizon admin storefront api-shell logs
+.PHONY: up down install test migrate fresh horizon admin storefront api-shell logs dev
+
+dev:
+	./scripts/dev.sh
 
 up:
 	docker compose up -d

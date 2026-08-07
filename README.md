@@ -19,7 +19,13 @@ payments, or themes yet.
 
 ## Quickstart: run locally and verify it works
 
-Zero to a working app, end to end.
+One command does all of the below and boots API + admin:
+
+```bash
+./scripts/dev.sh   # or: make dev
+```
+
+Or step by step, for more control:
 
 ```bash
 # 1. env files
