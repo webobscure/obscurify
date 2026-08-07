@@ -17,6 +17,62 @@ payments, or themes yet.
 - Docker / Docker Compose
 - PostgreSQL and Redis (via Docker, or your own local instances)
 
+## Quickstart: run locally and verify it works
+
+Zero to a working app, end to end.
+
+```bash
+# 1. env files
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+
+# 2. infra: postgres, redis, minio, mailpit (api/horizon/nginx stay off for this path —
+#    faster to run Laravel/Nuxt directly on the host while developing)
+docker compose up -d postgres redis minio mailpit
+
+# 3. backend
+cd apps/api
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan serve            # http://localhost:8000
+
+# 4. admin, in a second terminal
+cd apps/admin
+pnpm install                 # or `pnpm install` once at repo root for all workspaces
+pnpm dev                     # http://localhost:3000
+```
+
+**Verify the backend** (third terminal):
+
+```bash
+curl http://localhost:8000/api/v1/health
+# {"status":"ok"}
+
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Test","email":"test@example.com","password":"password123","password_confirmation":"password123"}'
+# {"data":{"id":"...","name":"Test",...},"token":"1|..."}
+```
+
+If both return data instead of an error, the API, Postgres, and the auth
+flow all work.
+
+**Verify the admin app**: open `http://localhost:3000` in a browser →
+you're redirected to `/login` → follow "Need an account? Register" → fill
+the form → you land on `/stores` → create a store → click "Activate" →
+go to Products → create a product → it appears in the list. That's the
+full golden path (register → create store → activate → create product)
+exercising tenant isolation end to end.
+
+To also check the Docker-only path (nginx → php-fpm → Postgres, no host
+PHP involved):
+
+```bash
+docker compose up -d --build   # adds api, horizon, nginx to the services above
+curl http://localhost:8080/api/v1/health
+```
+
 ## Installation
 
 ```bash
