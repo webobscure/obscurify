@@ -1,0 +1,12 @@
+{
+  "name": "@obscurify/ui",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Shared component library. Placeholder — no shared UI exists yet; admin and storefront intentionally stay decoupled in Foundation.",
+  "scripts": {
+    "lint": "echo '@obscurify/ui: not implemented yet' && exit 0",
+    "typecheck": "echo '@obscurify/ui: not implemented yet' && exit 0",
+    "test": "echo '@obscurify/ui: not implemented yet' && exit 0",
+    "build": "echo '@obscurify/ui: not implemented yet' && exit 0"
+  }
+}

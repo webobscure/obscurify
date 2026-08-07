@@ -1,0 +1,12 @@
+{
+  "name": "platform-admin",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Internal platform administration. Placeholder for a future milestone — not implemented in Foundation.",
+  "scripts": {
+    "lint": "echo 'platform-admin: not implemented yet' && exit 0",
+    "typecheck": "echo 'platform-admin: not implemented yet' && exit 0",
+    "test": "echo 'platform-admin: not implemented yet' && exit 0",
+    "build": "echo 'platform-admin: not implemented yet' && exit 0"
+  }
+}

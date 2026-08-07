@@ -1,0 +1,26 @@
+.omc
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+
+# Nuxt
+.nuxt/
+.output/
+.data/
+
+# Env
+.env
+.env.*
+!.env.example
+!apps/api/.env.example
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Laravel storage cache used by tooling
+apps/api/storage/phpstan/

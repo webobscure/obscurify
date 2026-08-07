@@ -1,0 +1,22 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    tmpDir: storage/phpstan
+    paths:
+        - app
+
+    level: 5
+
+    excludePaths:
+        - app/Providers/*
+
+    ignoreErrors: []
+
+    checkMissingIterableValueType: false
+
+    # Worker subprocess spawning is unreliable in some sandboxed CI/dev
+    # shells; force single-process analysis for a reliably non-empty
+    # result instead of a silent crash.
+    parallel:
+        maximumNumberOfProcesses: 1
