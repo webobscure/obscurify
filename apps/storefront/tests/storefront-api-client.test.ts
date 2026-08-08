@@ -106,6 +106,35 @@ describe('StorefrontApiClient', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('http://store-a.localhost:8000/api/v1/storefront/orders/order-1', expect.anything())
   })
+
+  it('sends the Idempotency-Key header and provider body on payment creation', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { id: 'payment-1', status: 'processing' } }, 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = new StorefrontApiClient({ baseUrl: 'http://store-a.localhost:8000' })
+    await client.payments.create('order-1', 'fake', 'idem-key-1')
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://store-a.localhost:8000/api/v1/storefront/orders/order-1/payments')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(JSON.stringify({ provider: 'fake' }))
+    expect(new Headers(init.headers).get('Idempotency-Key')).toBe('idem-key-1')
+  })
+
+  it('fetches fake payment info and posts an outcome', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { payment_id: 'payment-1', order_number: 1001, amount: 1000, currency: 'RUB', status: 'processing' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = new StorefrontApiClient({ baseUrl: 'http://store-a.localhost:8000' })
+    await client.fakePayments.get('fake_abc')
+    await client.fakePayments.outcome('fake_abc', 'success')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://store-a.localhost:8000/api/v1/fake-payments/fake_abc', expect.anything())
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://store-a.localhost:8000/api/v1/fake-payments/fake_abc/outcome', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ outcome: 'success' }),
+    }))
+  })
 })
 
 describe('ApiClientError', () => {

@@ -392,6 +392,91 @@ export interface Order {
   updated_at: string
 }
 
+export type PaymentStatus =
+  | 'pending'
+  | 'processing'
+  | 'authorized'
+  | 'paid'
+  | 'failed'
+  | 'cancelled'
+  | 'expired'
+  | 'partially_refunded'
+  | 'refunded'
+
+/**
+ * The storefront-visible payment representation — what
+ * POST /storefront/orders/{order}/payments returns. No store_id/order
+ * internals beyond what the visitor needs to complete or check their own
+ * payment.
+ */
+export interface StorefrontPayment {
+  id: string
+  provider: string
+  status: PaymentStatus
+  amount: number
+  currency: string
+  redirect_url: string | null
+}
+
+/**
+ * Dev/test-only fake payment page display data
+ * (GET /fake-payments/{externalPaymentId}).
+ */
+export interface FakePaymentInfo {
+  payment_id: string
+  order_number: number | null
+  amount: number
+  currency: string
+  status: PaymentStatus
+}
+
+export type PaymentTransactionType = 'authorization' | 'capture' | 'payment' | 'cancel' | 'refund' | 'webhook'
+export type PaymentTransactionStatus = 'pending' | 'succeeded' | 'failed'
+export type PaymentAttemptStatus = 'pending' | 'succeeded' | 'failed'
+
+export interface PaymentTransaction {
+  id: string
+  type: PaymentTransactionType
+  status: PaymentTransactionStatus
+  amount: number
+  currency: string
+  external_transaction_id: string | null
+  created_at: string
+}
+
+export interface PaymentAttempt {
+  id: string
+  status: PaymentAttemptStatus
+  external_attempt_id: string | null
+  error_code: string | null
+  error_message: string | null
+  created_at: string
+}
+
+/**
+ * Admin-facing payment representation (GET /payments, GET
+ * /payments/{payment}). Read-only this milestone — no cancel/refund
+ * action fields.
+ */
+export interface Payment {
+  id: string
+  store_id: string
+  order_id: string
+  order_number?: number
+  provider: string
+  status: PaymentStatus
+  currency: string
+  amount: number
+  authorized_amount: number
+  captured_amount: number
+  refunded_amount: number
+  external_payment_id: string | null
+  attempts?: PaymentAttempt[]
+  transactions?: PaymentTransaction[]
+  created_at: string
+  updated_at: string
+}
+
 export interface ApiResource<T> {
   data: T
 }

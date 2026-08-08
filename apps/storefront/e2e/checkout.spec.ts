@@ -63,6 +63,11 @@ test('places an order through checkout, shows the confirmation, and the merchant
   await expect(page).toHaveURL(`${ADMIN_BASE}/stores`)
 
   const storeRow = page.getByRole('row', { name: /E2E Store/ })
+  // isVisible() is a point-in-time check, not an auto-waiting assertion —
+  // without first waiting for the row itself, a still-loading stores list
+  // makes this false negative (button "not visible" because it isn't
+  // rendered *yet*), silently skipping activation.
+  await expect(storeRow).toBeVisible()
   const activateButton = storeRow.getByRole('button', { name: 'Activate' })
   if (await activateButton.isVisible()) {
     await activateButton.click()
@@ -71,6 +76,7 @@ test('places an order through checkout, shows the confirmation, and the merchant
 
   await page.getByRole('link', { name: 'Orders' }).click()
   await expect(page).toHaveURL(`${ADMIN_BASE}/orders`)
+  await page.waitForLoadState('networkidle')
   await expect(page.getByText(`#${orderNumber}`)).toBeVisible()
 
   await page.getByRole('row', { name: new RegExp(`#${orderNumber}`) }).getByRole('link', { name: 'View' }).click()

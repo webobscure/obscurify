@@ -14,6 +14,8 @@
 <script setup lang="ts">
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'auth' })
+
 const email = ref('')
 const password = ref('')
 const loading = ref(false)

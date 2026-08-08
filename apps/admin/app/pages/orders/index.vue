@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>Orders</h1>
+    <PageHeader title="Orders" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

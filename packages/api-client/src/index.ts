@@ -10,6 +10,7 @@ import type {
   Location,
   Media,
   Order,
+  Payment,
   Product,
   ProductOption,
   ProductOptionValue,
@@ -260,13 +261,24 @@ export class ApiClient {
   }
 
   /**
-   * Read-only this milestone — no payment/refund/fulfillment endpoints
-   * exist yet (no PaymentGateway, no shipping provider).
+   * Read-only this milestone — no shipping/fulfillment endpoints exist
+   * yet. Payment state is now visible (see `payments` below), but only
+   * ever changes through a verified provider webhook, never an admin
+   * action here.
    */
   readonly orders = {
     list: (page?: number) => this.request<ApiCollection<Order>>(`/api/v1/orders${page ? `?page=${page}` : ''}`),
 
     get: (orderId: string) => this.request<ApiResource<Order>>(`/api/v1/orders/${orderId}`),
+  }
+
+  /**
+   * Read-only this milestone — no cancel/refund endpoints exist yet.
+   */
+  readonly payments = {
+    list: (page?: number) => this.request<ApiCollection<Payment>>(`/api/v1/payments${page ? `?page=${page}` : ''}`),
+
+    get: (paymentId: string) => this.request<ApiResource<Payment>>(`/api/v1/payments/${paymentId}`),
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')

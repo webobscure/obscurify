@@ -3,10 +3,12 @@ import type {
   ApiErrorBody,
   ApiResource,
   Cart,
+  FakePaymentInfo,
   StorefrontCategory,
   StorefrontCheckout,
   StorefrontCollection,
   StorefrontOrderConfirmation,
+  StorefrontPayment,
   StorefrontProduct,
   StorefrontStore,
 } from '@obscurify/types'
@@ -156,5 +158,35 @@ export class StorefrontApiClient {
   readonly orders = {
     get: (orderId: string) =>
       this.request<ApiResource<StorefrontOrderConfirmation>>(`/api/v1/storefront/orders/${orderId}`),
+  }
+
+  readonly payments = {
+    /**
+     * `idempotencyKey` should be generated once per payment attempt and
+     * reused across retries of the *same* attempt — see
+     * StorefrontApiClient.checkout.complete() for the identical pattern.
+     */
+    create: (orderId: string, provider: string, idempotencyKey: string) =>
+      this.request<ApiResource<StorefrontPayment>>(`/api/v1/storefront/orders/${orderId}/payments`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ provider }),
+      }),
+  }
+
+  /**
+   * Dev/test-only — backs the fake payment page. Never available in a
+   * production API (see config/payments.php on the backend); calling
+   * these against a production API 404s.
+   */
+  readonly fakePayments = {
+    get: (externalPaymentId: string) =>
+      this.request<ApiResource<FakePaymentInfo>>(`/api/v1/fake-payments/${externalPaymentId}`),
+
+    outcome: (externalPaymentId: string, outcome: 'success' | 'failure' | 'cancelled' | 'pending' | 'delayed_success') =>
+      this.request<ApiResource<{ processed?: boolean; dispatched?: boolean; delay_seconds?: number }>>(
+        `/api/v1/fake-payments/${externalPaymentId}/outcome`,
+        { method: 'POST', body: JSON.stringify({ outcome }) },
+      ),
   }
 }

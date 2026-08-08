@@ -1,125 +1,142 @@
 <template>
-  <div class="shell">
-    <header v-if="auth.isAuthenticated.value" class="topbar">
-      <strong>Obscurify Admin</strong>
-      <nav>
-        <NuxtLink to="/stores">Stores</NuxtLink>
-        <NuxtLink to="/products">Products</NuxtLink>
-        <NuxtLink to="/collections">Collections</NuxtLink>
-        <NuxtLink to="/locations">Locations</NuxtLink>
-        <NuxtLink to="/inventory">Inventory</NuxtLink>
-        <NuxtLink to="/orders">Orders</NuxtLink>
-      </nav>
-      <div class="spacer" />
-      <span v-if="activeStore.store.value">{{ activeStore.store.value.name }}</span>
-      <button @click="handleLogout">Log out</button>
-    </header>
-    <main>
-      <NuxtPage />
-    </main>
-  </div>
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
 </template>
 
-<script setup lang="ts">
-const auth = useAuth()
-const activeStore = useActiveStore()
-const router = useRouter()
-
-async function handleLogout() {
-  await auth.logout()
-  activeStore.clear()
-  router.push('/login')
-}
-</script>
-
 <style>
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  color: #1a1a1a;
-  background: #fafafa;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
-.shell {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+h1,
+h2,
+h3 {
+  font-weight: var(--font-weight-semibold);
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #1a1a1a;
-  color: white;
-}
-
-.topbar a {
-  color: #cfcfcf;
-  text-decoration: none;
-}
-
-.topbar a.router-link-active {
-  color: white;
-  font-weight: 600;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.topbar button {
-  background: transparent;
-  border: 1px solid #555;
-  color: white;
-  padding: 0.35rem 0.75rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-main {
-  padding: 1.5rem;
-  max-width: 720px;
-  width: 100%;
-  margin: 0 auto;
+h2 {
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-3);
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   max-width: 360px;
 }
 
-input {
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+input,
+select,
+textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+button {
+  font-family: inherit;
 }
 
 button[type='submit'] {
-  padding: 0.5rem 1rem;
-  background: #1a1a1a;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-text);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
 }
 
+button[type='submit']:hover {
+  background: var(--color-accent);
+}
+
+button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .error {
-  color: #b00020;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--text-base);
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+th {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--text-sm);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+/*
+ * Shared across every detail page's own template (Products/Orders/
+ * Payments) — previously copy-pasted identically into each page's
+ * scoped <style> block; consolidated here once (spec section 17: fix
+ * component/style duplication before finishing).
+ */
+section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+section h2 {
+  margin-top: 0;
+}
+
+.kv th {
+  text-align: left;
+  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  width: 1%;
+  white-space: nowrap;
+}
+
+.kv td {
+  padding: var(--space-2) 0;
+  border-bottom: none;
 }
 </style>

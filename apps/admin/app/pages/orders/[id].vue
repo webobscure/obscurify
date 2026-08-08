@@ -1,7 +1,9 @@
 <template>
   <div v-if="order">
-    <p><NuxtLink to="/orders">&larr; Orders</NuxtLink></p>
-    <h1>Order #{{ order.number }}</h1>
+    <PageHeader
+      :title="`Order #${order.number}`"
+      :breadcrumbs="[{ label: 'Orders', to: '/orders' }, { label: `#${order.number}` }]"
+    />
     <p v-if="error" class="error">{{ error }}</p>
 
     <!--
@@ -121,25 +123,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-section {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.kv th {
-  text-align: left;
-  padding: 0.35rem 1rem 0.35rem 0;
-  color: #666;
-  font-weight: 400;
-  width: 1%;
-  white-space: nowrap;
-}
-
-.kv td {
-  padding: 0.35rem 0;
-}
-
 .addresses {
   display: flex;
   gap: 3rem;

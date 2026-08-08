@@ -15,11 +15,15 @@ use App\Domain\Media\Http\Controllers\MediaController;
 use App\Domain\Media\Http\Controllers\ProductMediaController;
 use App\Domain\Media\Http\Controllers\ProductVariantMediaController;
 use App\Domain\Orders\Http\Controllers\OrderController;
+use App\Domain\Payments\Http\Controllers\FakePaymentOutcomeController;
+use App\Domain\Payments\Http\Controllers\PaymentController;
+use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCartController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCategoryController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCheckoutController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCollectionController;
 use App\Domain\Storefront\Http\Controllers\StorefrontOrderController;
+use App\Domain\Storefront\Http\Controllers\StorefrontPaymentController;
 use App\Domain\Storefront\Http\Controllers\StorefrontProductController;
 use App\Domain\Storefront\Http\Controllers\StorefrontStoreController;
 use App\Domain\Stores\Http\Controllers\StoreController;
@@ -86,8 +90,27 @@ Route::prefix('v1')->group(function () {
 
             Route::get('orders', [OrderController::class, 'index']);
             Route::get('orders/{order}', [OrderController::class, 'show']);
+
+            Route::get('payments', [PaymentController::class, 'index']);
+            Route::get('payments/{payment}', [PaymentController::class, 'show']);
         });
     });
+
+    // Provider-neutral: no auth, no tenant middleware — a webhook arrives
+    // from outside the platform entirely. See PaymentWebhookController
+    // and ProcessPaymentWebhook for how tenant/authorization is resolved
+    // safely from the payload instead.
+    Route::post('payments/webhooks/{provider}', [PaymentWebhookController::class, 'handle']);
+
+    // Dev/test-only fake payment page backend (spec sections 9-12) —
+    // registered only when the fake provider itself is enabled (see
+    // config/payments.php); the controller re-checks the same flag as a
+    // second, independent guard. Never available in production by
+    // default.
+    if (config('payments.fake.enabled')) {
+        Route::get('fake-payments/{externalPaymentId}', [FakePaymentOutcomeController::class, 'show']);
+        Route::post('fake-payments/{externalPaymentId}/outcome', [FakePaymentOutcomeController::class, 'outcome']);
+    }
 
     // Public storefront API: tenant is resolved from the request hostname
     // (see EnsureStorefrontTenantContext), never from a header or payload.
@@ -115,5 +138,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/checkout/complete', [StorefrontCheckoutController::class, 'complete']);
 
         Route::get('/orders/{order}', [StorefrontOrderController::class, 'show']);
+        Route::post('/orders/{order}/payments', [StorefrontPaymentController::class, 'store']);
     });
 });

@@ -2,7 +2,17 @@
   <div>
     <template v-if="order">
       <h1>Thank you for your order!</h1>
-      <p>Order #{{ order.number }} has been placed and is awaiting payment.</p>
+
+      <p v-if="order.financial_status === 'paid'" class="payment-success">
+        Payment successful — Order #{{ order.number }}, {{ formatMoney({ amount: order.total_amount, currency: order.currency }) }}
+      </p>
+      <template v-else>
+        <p>Order #{{ order.number }} has been placed and is awaiting payment.</p>
+        <button type="button" :disabled="payment.loading.value" @click="handlePay">
+          {{ payment.loading.value ? 'Starting payment…' : 'Pay with Fake Payment' }}
+        </button>
+        <p v-if="payment.error.value" class="error">{{ payment.error.value }}</p>
+      </template>
 
       <table>
         <tbody>
@@ -36,6 +46,8 @@
 </template>
 
 <script setup lang="ts">
+import { ApiClientError } from '@obscurify/api-client'
+
 const route = useRoute()
 const orderId = route.params.id as string
 
@@ -45,6 +57,19 @@ const orderId = route.params.id as string
 const { data, pending } = await useAsyncData(`order-confirmation-${orderId}`, () => useStorefrontApi().orders.get(orderId))
 
 const order = computed(() => data.value?.data ?? null)
+const payment = usePayment()
+
+// Only "fake" exists this milestone (spec section 27) — a real provider
+// choice would replace this hardcoded call, not add a second code path
+// alongside it.
+async function handlePay() {
+  try {
+    const created = await payment.create(orderId, 'fake')
+    if (created.redirect_url) await navigateTo(created.redirect_url)
+  } catch (e) {
+    if (!(e instanceof ApiClientError)) throw e
+  }
+}
 
 useSeoMeta({
   title: () => order.value ? `Order #${order.value.number}` : 'Order confirmation',
@@ -71,5 +96,27 @@ td {
 
 section {
   margin-top: 1.5rem;
+}
+
+.payment-success {
+  padding: 0.75rem 1rem;
+  background: #e6f4ea;
+  color: #1e4620;
+  border-radius: 4px;
+}
+
+button {
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  background: #1a1a1a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 </style>

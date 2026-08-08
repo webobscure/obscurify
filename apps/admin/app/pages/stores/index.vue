@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>Stores</h1>
+    <PageHeader title="Stores" />
 
     <table v-if="stores.length">
       <thead>

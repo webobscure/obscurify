@@ -1,7 +1,9 @@
 <template>
   <div v-if="product">
-    <p><NuxtLink to="/products">&larr; Products</NuxtLink></p>
-    <h1>{{ product.title }}</h1>
+    <PageHeader
+      :title="product.title"
+      :breadcrumbs="[{ label: 'Products', to: '/products' }, { label: product.title }]"
+    />
     <p v-if="error" class="error">{{ error }}</p>
 
     <section>
@@ -380,12 +382,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-section {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
 .grid {
   display: grid;
   gap: 0.75rem;
@@ -400,7 +396,7 @@ section {
 }
 
 .card {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.75rem;

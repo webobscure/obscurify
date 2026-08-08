@@ -7,6 +7,7 @@ use App\Domain\Customers\Models\Customer;
 use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Enums\FulfillmentStatus;
 use App\Domain\Orders\Enums\OrderStatus;
+use App\Domain\Payments\Models\Payment;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Enums\AddressType;
 use App\Shared\Tenancy\Concerns\BelongsToTenant;
@@ -136,5 +137,13 @@ class Order extends Model
     public function billingAddress(): HasOne
     {
         return $this->hasOne(OrderAddress::class)->where('type', AddressType::Billing);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
     }
 }
