@@ -1,5 +1,6 @@
 <?php
 
+use App\Shared\Tenancy\Http\Middleware\EnsureStorefrontTenantContext;
 use App\Shared\Tenancy\Http\Middleware\EnsureTenantContext;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -27,12 +28,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant' => EnsureTenantContext::class,
+            'storefront.tenant' => EnsureStorefrontTenantContext::class,
         ]);
 
-        // EnsureTenantContext must run after authentication but before
-        // route model binding, so tenant-scoped models never resolve a
-        // binding query before TenantContext is populated. Laravel only
-        // guarantees relative order for middleware listed here.
+        // EnsureTenantContext/EnsureStorefrontTenantContext must run after
+        // authentication but before route model binding, so tenant-scoped
+        // models never resolve a binding query before TenantContext is
+        // populated. Laravel only guarantees relative order for middleware
+        // listed here.
         $middleware->priority([
             HandlePrecognitiveRequests::class,
             EncryptCookies::class,
@@ -44,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ThrottleRequestsWithRedis::class,
             AuthenticatesSessions::class,
             EnsureTenantContext::class,
+            EnsureStorefrontTenantContext::class,
             SubstituteBindings::class,
             Authorize::class,
         ]);

@@ -12,14 +12,18 @@
           <tr>
             <th>Title</th>
             <th>Slug</th>
+            <th>Vendor</th>
             <th>Status</th>
+            <th/>
           </tr>
         </thead>
         <tbody>
           <tr v-for="product in products" :key="product.id">
             <td>{{ product.title }}</td>
             <td>{{ product.slug }}</td>
+            <td>{{ product.vendor }}</td>
             <td>{{ product.status }}</td>
+            <td><NuxtLink :to="`/products/${product.id}`">Edit</NuxtLink></td>
           </tr>
         </tbody>
       </table>
@@ -44,6 +48,7 @@ const title = ref('')
 const creating = ref(false)
 const error = ref<string | null>(null)
 const activeStore = useActiveStore()
+const router = useRouter()
 
 async function loadProducts() {
   if (!activeStore.storeId.value) return
@@ -55,9 +60,8 @@ async function handleCreate() {
   creating.value = true
   error.value = null
   try {
-    await useApi().products.create({ title: title.value })
-    title.value = ''
-    await loadProducts()
+    const response = await useApi().products.create({ title: title.value })
+    router.push(`/products/${response.data.id}`)
   } catch (e) {
     error.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
   } finally {

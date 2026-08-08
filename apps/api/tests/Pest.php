@@ -13,6 +13,15 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 /**
+ * Concurrency tests need rows genuinely committed so a second, independent
+ * database connection can see and contend for their locks — RefreshDatabase
+ * wraps each test in an uncommitted transaction, which would make fixtures
+ * invisible to that second connection. These tests manage their own
+ * cleanup instead of relying on a rollback.
+ */
+pest()->extend(TestCase::class)->in('Concurrency');
+
+/**
  * Creates a Store owned by the given user, with an active owner membership
  * already attached — the same invariant CreateStore enforces atomically.
  */

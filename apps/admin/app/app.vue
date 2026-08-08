@@ -5,6 +5,9 @@
       <nav>
         <NuxtLink to="/stores">Stores</NuxtLink>
         <NuxtLink to="/products">Products</NuxtLink>
+        <NuxtLink to="/collections">Collections</NuxtLink>
+        <NuxtLink to="/locations">Locations</NuxtLink>
+        <NuxtLink to="/inventory">Inventory</NuxtLink>
       </nav>
       <div class="spacer" />
       <span v-if="activeStore.store.value">{{ activeStore.store.value.name }}</span>

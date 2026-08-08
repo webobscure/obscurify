@@ -39,7 +39,7 @@ final class ProductController extends Controller
      */
     public function show(Product $product): ProductResource
     {
-        return new ProductResource($product);
+        return new ProductResource($product->load(['options.values', 'variants.optionValues', 'media', 'collections']));
     }
 
     public function update(UpdateProductRequest $request, Product $product, UpdateProduct $action): ProductResource
