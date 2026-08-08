@@ -67,6 +67,45 @@ describe('StorefrontApiClient', () => {
     const client = new StorefrontApiClient({ baseUrl: 'http://store-a.localhost:8000' })
     await expect(client.cart.removeItem('item-1')).resolves.toBeUndefined()
   })
+
+  it('sends the Idempotency-Key header on checkout completion', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { id: 'order-1', number: 1001 } }, 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = new StorefrontApiClient({ baseUrl: 'http://store-a.localhost:8000' })
+    await client.checkout.complete('key-123')
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://store-a.localhost:8000/api/v1/storefront/checkout/complete')
+    expect(init.method).toBe('POST')
+    const headers = new Headers(init.headers)
+    expect(headers.get('Idempotency-Key')).toBe('key-123')
+  })
+
+  it('opens and updates a checkout', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { id: 'checkout-1', status: 'open' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = new StorefrontApiClient({ baseUrl: 'http://store-a.localhost:8000' })
+    await client.checkout.open()
+    await client.checkout.update({ email: 'buyer@example.com', shipping_address: { city: 'Testville' } })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://store-a.localhost:8000/api/v1/storefront/checkout', expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://store-a.localhost:8000/api/v1/storefront/checkout', expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ email: 'buyer@example.com', shipping_address: { city: 'Testville' } }),
+    }))
+  })
+
+  it('fetches an order confirmation by id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: { id: 'order-1', number: 1001 } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = new StorefrontApiClient({ baseUrl: 'http://store-a.localhost:8000' })
+    await client.orders.get('order-1')
+
+    expect(fetchMock).toHaveBeenCalledWith('http://store-a.localhost:8000/api/v1/storefront/orders/order-1', expect.anything())
+  })
 })
 
 describe('ApiClientError', () => {

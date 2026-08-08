@@ -6,6 +6,7 @@ use App\Domain\Stores\Models\Store;
 use App\Domain\Stores\Models\StoreUser;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -49,4 +50,91 @@ function createStoreForUser(User $user, array $overrides = [], StoreUserRole $ro
 function tenantHeader(Store $store): array
 {
     return ['X-Store-Id' => $store->id];
+}
+
+/**
+ * Runs each of the given callables in its own forked OS process, released
+ * from a shared starting gate at nearly the same instant, so they
+ * genuinely race for the same Postgres row locks — a single PHP process
+ * is strictly single-threaded and cannot produce real concurrency, so
+ * this is the only way to observe what actually happens when two
+ * independent backend connections contend for the same lock, as opposed
+ * to simulating it sequentially.
+ *
+ * Every fixture row the callables depend on must already be committed
+ * before calling this (see tests/Concurrency's Pest.php registration:
+ * no RefreshDatabase there, since a forked child needs its own database
+ * connection and must see genuinely committed rows). Each child purges
+ * any inherited connection and reconnects fresh — sharing a live
+ * Postgres socket across processes corrupts the protocol stream.
+ *
+ * @param  array<callable(): mixed>  $callables
+ * @return array<int, array{ok: bool, value?: mixed, error?: string}> one result per callable, in input order
+ */
+function runConcurrently(array $callables): array
+{
+    DB::purge();
+
+    $children = [];
+
+    foreach ($callables as $index => $callable) {
+        $startPair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        $resultPair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+
+        if ($startPair === false || $resultPair === false) {
+            throw new RuntimeException('stream_socket_pair failed');
+        }
+
+        $pid = pcntl_fork();
+
+        if ($pid === -1) {
+            throw new RuntimeException('pcntl_fork failed');
+        }
+
+        if ($pid === 0) {
+            fclose($startPair[1]);
+            fclose($resultPair[0]);
+
+            DB::purge();
+
+            fread($startPair[0], 1);
+
+            try {
+                $value = $callable();
+                $payload = json_encode(['ok' => true, 'value' => $value]);
+            } catch (Throwable $e) {
+                $payload = json_encode(['ok' => false, 'error' => $e->getMessage()]);
+            }
+
+            fwrite($resultPair[1], $payload === false ? '{"ok":false,"error":"unserializable result"}' : $payload);
+            fclose($resultPair[1]);
+            fclose($startPair[0]);
+
+            exit(0);
+        }
+
+        fclose($startPair[0]);
+        fclose($resultPair[1]);
+
+        $children[$index] = ['pid' => $pid, 'start' => $startPair[1], 'result' => $resultPair[0]];
+    }
+
+    foreach ($children as $child) {
+        fwrite($child['start'], 'g');
+        fclose($child['start']);
+    }
+
+    $results = [];
+
+    foreach ($children as $index => $child) {
+        $raw = stream_get_contents($child['result']);
+        fclose($child['result']);
+        pcntl_waitpid($child['pid'], $status);
+
+        $results[$index] = json_decode($raw, true) ?? ['ok' => false, 'error' => 'no output from child process'];
+    }
+
+    ksort($results);
+
+    return $results;
 }

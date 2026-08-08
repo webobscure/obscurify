@@ -4,7 +4,9 @@ import type {
   ApiResource,
   Cart,
   StorefrontCategory,
+  StorefrontCheckout,
   StorefrontCollection,
+  StorefrontOrderConfirmation,
   StorefrontProduct,
   StorefrontStore,
 } from '@obscurify/types'
@@ -105,5 +107,54 @@ export class StorefrontApiClient {
 
     removeItem: (itemId: string) =>
       this.request<void>(`/api/v1/storefront/cart/items/${itemId}`, { method: 'DELETE' }),
+  }
+
+  readonly checkout = {
+    open: () => this.request<ApiResource<StorefrontCheckout>>('/api/v1/storefront/checkout', { method: 'POST' }),
+
+    update: (data: {
+      email?: string | null
+      phone?: string | null
+      shipping_address?: Partial<{
+        first_name: string | null
+        last_name: string | null
+        phone: string | null
+        country_code: string | null
+        region: string | null
+        city: string | null
+        postal_code: string | null
+        address_line1: string | null
+        address_line2: string | null
+      }>
+      billing_same_as_shipping?: boolean
+      billing_address?: Partial<{
+        first_name: string | null
+        last_name: string | null
+        phone: string | null
+        country_code: string | null
+        region: string | null
+        city: string | null
+        postal_code: string | null
+        address_line1: string | null
+        address_line2: string | null
+      }>
+    }) => this.request<ApiResource<StorefrontCheckout>>('/api/v1/storefront/checkout', { method: 'PATCH', body: JSON.stringify(data) }),
+
+    /**
+     * `idempotencyKey` should be generated once per checkout attempt on
+     * the client (e.g. a UUID kept in component state) and reused across
+     * retries of the *same* attempt — a fresh key means a genuinely new
+     * order. See CompleteCheckout/IdempotencyKeyStore on the backend.
+     */
+    complete: (idempotencyKey: string) =>
+      this.request<ApiResource<StorefrontOrderConfirmation>>('/api/v1/storefront/checkout/complete', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+  }
+
+  readonly orders = {
+    get: (orderId: string) =>
+      this.request<ApiResource<StorefrontOrderConfirmation>>(`/api/v1/storefront/orders/${orderId}`),
   }
 }

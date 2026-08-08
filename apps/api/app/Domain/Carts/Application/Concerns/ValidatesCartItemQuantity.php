@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
  */
 trait ValidatesCartItemQuantity
 {
-    private function assertPurchasable(Cart $cart, ProductVariant $variant, int $requestedQuantity): void
+    protected function assertPurchasable(Cart $cart, ProductVariant $variant, int $requestedQuantity): void
     {
         // Both are tenant-scoped by BelongsToTenant under the same active
         // TenantContext, so this can only fail if a caller bypasses that

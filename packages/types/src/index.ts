@@ -270,6 +270,128 @@ export interface Cart {
   currency: string
 }
 
+export type CheckoutStatus = 'open' | 'completed' | 'expired' | 'cancelled'
+export type OrderStatus = 'open' | 'cancelled' | 'closed'
+export type FinancialStatus = 'pending' | 'authorized' | 'paid' | 'partially_refunded' | 'refunded' | 'voided'
+export type FulfillmentStatus = 'unfulfilled' | 'partial' | 'fulfilled'
+
+export interface StorefrontAddress {
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  country_code: string | null
+  region: string | null
+  city: string | null
+  postal_code: string | null
+  address_line1: string | null
+  address_line2: string | null
+}
+
+export interface StorefrontCheckout {
+  id: string
+  email: string | null
+  phone: string | null
+  currency: string
+  items_subtotal_amount: number
+  shipping_amount: number
+  discount_amount: number
+  tax_amount: number
+  total_amount: number
+  status: CheckoutStatus
+  shipping_address: StorefrontAddress | null
+  billing_address: StorefrontAddress | null
+  expires_at: string | null
+}
+
+export interface StorefrontOrderItem {
+  product_title: string
+  variant_title: string | null
+  sku: string | null
+  unit_price_amount: number
+  quantity: number
+  line_total_amount: number
+  currency: string
+}
+
+/**
+ * The storefront-safe order representation returned by both checkout
+ * completion and GET /storefront/orders/{order} — no store_id,
+ * customer_id, or checkout_id. `id` doubles as the confirmation token
+ * (see OrderConfirmationResource on the backend): it's a ULID, not the
+ * sequential `number`, specifically so it can't be guessed.
+ */
+export interface StorefrontOrderConfirmation {
+  id: string
+  number: number
+  email: string | null
+  phone: string | null
+  currency: string
+  items_subtotal_amount: number
+  shipping_amount: number
+  discount_amount: number
+  tax_amount: number
+  total_amount: number
+  order_status: OrderStatus
+  financial_status: FinancialStatus
+  fulfillment_status: FulfillmentStatus
+  items: StorefrontOrderItem[]
+  shipping_address: StorefrontAddress | null
+  billing_address: StorefrontAddress | null
+  created_at: string
+}
+
+export interface OrderCustomer {
+  id: string
+  email: string | null
+  phone: string | null
+  first_name: string | null
+  last_name: string | null
+}
+
+export interface OrderItem {
+  id: string
+  product_id: string | null
+  product_variant_id: string | null
+  product_title: string
+  variant_title: string | null
+  sku: string | null
+  unit_price_amount: number
+  quantity: number
+  line_total_amount: number
+  currency: string
+}
+
+/**
+ * Admin-facing order representation (GET /orders, GET /orders/{order}).
+ * Read-only this milestone — no payment/refund/fulfillment action fields,
+ * since no PaymentGateway or shipping provider exists yet.
+ */
+export interface Order {
+  id: string
+  store_id: string
+  number: number
+  customer_id: string | null
+  checkout_id: string | null
+  email: string | null
+  phone: string | null
+  currency: string
+  items_subtotal_amount: number
+  shipping_amount: number
+  discount_amount: number
+  tax_amount: number
+  total_amount: number
+  order_status: OrderStatus
+  financial_status: FinancialStatus
+  fulfillment_status: FulfillmentStatus
+  customer?: OrderCustomer
+  items?: OrderItem[]
+  shipping_address?: StorefrontAddress | null
+  billing_address?: StorefrontAddress | null
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ApiResource<T> {
   data: T
 }

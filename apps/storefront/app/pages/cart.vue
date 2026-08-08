@@ -40,10 +40,9 @@
           <strong>Total: {{ formatMoney({ amount: cart.cart.value.total, currency: cart.cart.value.currency }) }}</strong>
         </p>
 
-        <button type="button" class="checkout-button" disabled title="Checkout is not implemented yet">
+        <NuxtLink to="/checkout" class="checkout-button">
           Proceed to checkout
-        </button>
-        <p class="note">Checkout isn't implemented yet — this milestone covers browsing and cart only.</p>
+        </NuxtLink>
       </template>
       <p v-else>Your cart is empty. <NuxtLink to="/products">Continue shopping</NuxtLink>.</p>
 
@@ -99,10 +98,5 @@ input[type='number'] {
   color: white;
   text-decoration: none;
   border-radius: 4px;
-}
-
-.note {
-  color: #777;
-  font-size: 0.85rem;
 }
 </style>

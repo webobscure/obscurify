@@ -14,9 +14,12 @@ use App\Domain\Locations\Http\Controllers\LocationController;
 use App\Domain\Media\Http\Controllers\MediaController;
 use App\Domain\Media\Http\Controllers\ProductMediaController;
 use App\Domain\Media\Http\Controllers\ProductVariantMediaController;
+use App\Domain\Orders\Http\Controllers\OrderController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCartController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCategoryController;
+use App\Domain\Storefront\Http\Controllers\StorefrontCheckoutController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCollectionController;
+use App\Domain\Storefront\Http\Controllers\StorefrontOrderController;
 use App\Domain\Storefront\Http\Controllers\StorefrontProductController;
 use App\Domain\Storefront\Http\Controllers\StorefrontStoreController;
 use App\Domain\Stores\Http\Controllers\StoreController;
@@ -80,6 +83,9 @@ Route::prefix('v1')->group(function () {
 
             Route::get('inventory', [InventoryController::class, 'index']);
             Route::post('inventory/{item}/adjust', [InventoryController::class, 'adjust']);
+
+            Route::get('orders', [OrderController::class, 'index']);
+            Route::get('orders/{order}', [OrderController::class, 'show']);
         });
     });
 
@@ -103,5 +109,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/cart/items', [StorefrontCartController::class, 'addItem']);
         Route::patch('/cart/items/{item}', [StorefrontCartController::class, 'updateItem']);
         Route::delete('/cart/items/{item}', [StorefrontCartController::class, 'removeItem']);
+
+        Route::post('/checkout', [StorefrontCheckoutController::class, 'store']);
+        Route::patch('/checkout', [StorefrontCheckoutController::class, 'update']);
+        Route::post('/checkout/complete', [StorefrontCheckoutController::class, 'complete']);
+
+        Route::get('/orders/{order}', [StorefrontOrderController::class, 'show']);
     });
 });

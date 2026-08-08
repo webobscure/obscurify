@@ -8,6 +8,7 @@
         <NuxtLink to="/collections">Collections</NuxtLink>
         <NuxtLink to="/locations">Locations</NuxtLink>
         <NuxtLink to="/inventory">Inventory</NuxtLink>
+        <NuxtLink to="/orders">Orders</NuxtLink>
       </nav>
       <div class="spacer" />
       <span v-if="activeStore.store.value">{{ activeStore.store.value.name }}</span>

@@ -9,6 +9,7 @@ import type {
   InventoryLevel,
   Location,
   Media,
+  Order,
   Product,
   ProductOption,
   ProductOptionValue,
@@ -256,6 +257,16 @@ export class ApiClient {
 
     adjust: (itemId: string, data: { location_id: string; quantity_delta: number; reason: string; reference_type?: string; reference_id?: string }) =>
       this.request<ApiResource<InventoryLevel>>(`/api/v1/inventory/${itemId}/adjust`, { method: 'POST', body: JSON.stringify(data) }),
+  }
+
+  /**
+   * Read-only this milestone — no payment/refund/fulfillment endpoints
+   * exist yet (no PaymentGateway, no shipping provider).
+   */
+  readonly orders = {
+    list: (page?: number) => this.request<ApiCollection<Order>>(`/api/v1/orders${page ? `?page=${page}` : ''}`),
+
+    get: (orderId: string) => this.request<ApiResource<Order>>(`/api/v1/orders/${orderId}`),
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')
