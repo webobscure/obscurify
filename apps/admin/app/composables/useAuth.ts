@@ -37,12 +37,20 @@ export function useAuth() {
     user.value = response.data
   }
 
+  function clearSession() {
+    setToken(null)
+    user.value = null
+  }
+
   async function logout() {
     try {
       await useApi().auth.logout()
+    } catch {
+      // Token may already be stale/revoked server-side — the local
+      // sign-out below must happen regardless of whether the backend
+      // call succeeded.
     } finally {
-      setToken(null)
-      user.value = null
+      clearSession()
     }
   }
 
@@ -52,5 +60,5 @@ export function useAuth() {
     return response.data
   }
 
-  return { token, user, isAuthenticated, hydrate, register, login, logout, fetchMe }
+  return { token, user, isAuthenticated, hydrate, register, login, logout, fetchMe, clearSession }
 }

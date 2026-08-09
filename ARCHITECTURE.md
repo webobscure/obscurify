@@ -496,16 +496,24 @@ The table exists so storefront tenant resolution has a stable future boundary.
 
 ## 13. Authentication
 
-Initial merchant authentication uses Laravel Sanctum.
+Merchant authentication uses Laravel Sanctum **personal access tokens**
+(bearer, not cookie/session) — see ADR-011. The Nuxt admin sends
+`Authorization: Bearer <token>` on every request; there is no stateful
+cookie or CSRF flow for the admin.
 
 Requirements:
 
-- secure cookie/session configuration;
-- CSRF protection;
 - login throttling;
 - password hashing through Laravel defaults;
 - API authorization policies;
-- no tenant selection solely from client input.
+- no tenant selection solely from client input;
+- the frontend must verify the token against the backend (`GET /api/v1/me`)
+  at app boot rather than trusting `localStorage` presence, and must clear
+  auth + active-store state together on any `401` from any endpoint.
+
+The storefront's guest cart uses a separate `HttpOnly` cookie with
+credentialed CORS (see `config/cors.php`) — that flow is unrelated to
+merchant auth and must not be conflated with it.
 
 Customer/storefront authentication is a separate future security context and must not reuse merchant assumptions.
 

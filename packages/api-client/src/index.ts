@@ -33,6 +33,14 @@ export interface ApiClientOptions {
   baseUrl: string
   getToken?: () => string | null | undefined
   getStoreId?: () => string | null | undefined
+  /**
+   * Called whenever any request comes back 401. The bearer token is stale
+   * (revoked, expired, or from a session the backend no longer knows about)
+   * — the caller should clear local auth/tenant state in response, since
+   * the frontend must never keep showing a user as signed in once the
+   * backend has stopped agreeing.
+   */
+  onUnauthorized?: () => void
 }
 
 /**
@@ -74,6 +82,10 @@ export class ApiClient {
     const body = await response.json().catch(() => ({ message: response.statusText }))
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.options.onUnauthorized?.()
+      }
+
       throw new ApiClientError(response.status, body as ApiErrorBody)
     }
 

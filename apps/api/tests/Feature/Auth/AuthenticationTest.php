@@ -61,3 +61,38 @@ it('logs out and revokes the current token', function () {
     $response->assertNoContent();
     $this->assertDatabaseCount('personal_access_tokens', 0);
 });
+
+it('rejects /me with the token used to log out', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")->postJson('/api/v1/auth/logout')->assertNoContent();
+
+    // RequestGuard (which Sanctum's token guard is) caches its resolved
+    // user for the lifetime of the guard instance — real separate HTTP
+    // requests each get a fresh guard, but two calls within one test share
+    // the app container, so the guard must be forgotten to observe the
+    // post-logout state instead of the cached pre-logout one.
+    $this->app['auth']->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/me')
+        ->assertUnauthorized();
+});
+
+it('authenticates a second request with the same token', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/me')
+        ->assertOk()
+        ->assertJsonPath('data.id', $user->id);
+
+    $this->app['auth']->forgetGuards();
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->getJson('/api/v1/me')
+        ->assertOk()
+        ->assertJsonPath('data.id', $user->id);
+});
