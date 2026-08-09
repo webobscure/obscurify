@@ -67,15 +67,37 @@
                   <input
                     type="radio"
                     name="shipping-rate"
-                    :checked="isSelectedRate(rate)"
+                    :checked="isRateChecked(rate)"
                     :disabled="selectingRate"
-                    @change="handleSelectShippingRate(rate)"
+                    @change="handleRateChange(rate)"
                   >
                   {{ rate.name }} — {{ formatMoney({ amount: rate.price_amount, currency: rate.currency }) }}
                   <span v-if="rate.estimated_days_min || rate.estimated_days_max" class="estimate">
                     ({{ rate.estimated_days_min }}–{{ rate.estimated_days_max }} days)
                   </span>
                 </label>
+
+                <!-- Pickup point picker: only shown once a Pickup-service rate is chosen (spec sections 5/6/23) -->
+                <div v-if="rate.service_code === 'pickup' && pendingPickupRate === rate" class="pickup-points">
+                  <p v-if="!rate.pickup_points?.length" class="muted">
+                    No pickup points available for this address.
+                  </p>
+                  <ul v-else>
+                    <li v-for="point in rate.pickup_points" :key="point.id">
+                      <label>
+                        <input
+                          type="radio"
+                          name="pickup-point"
+                          :checked="selectedPickupPointId === point.id"
+                          :disabled="selectingRate"
+                          @change="handlePickupPointChange(rate, point)"
+                        >
+                        {{ point.name }} — {{ point.address }}, {{ point.city }}
+                        <span v-if="point.opening_hours" class="estimate">({{ point.opening_hours }})</span>
+                      </label>
+                    </li>
+                  </ul>
+                </div>
               </li>
             </ul>
             <p v-if="checkout.shippingError.value" class="error">{{ checkout.shippingError.value }}</p>
@@ -138,6 +160,10 @@
               Shipping ({{ checkout.checkout.value.selected_shipping_rate.name }}):
               {{ formatMoney({ amount: checkout.checkout.value.shipping_amount, currency: checkout.checkout.value.currency }) }}
             </p>
+            <p v-if="checkout.checkout.value.selected_shipping_rate?.pickup_point" class="totals-line">
+              Pickup at: {{ checkout.checkout.value.selected_shipping_rate.pickup_point.name }} —
+              {{ checkout.checkout.value.selected_shipping_rate.pickup_point.address }}, {{ checkout.checkout.value.selected_shipping_rate.pickup_point.city }}
+            </p>
             <p class="totals">
               <strong>Total: {{ formatMoney({ amount: checkout.checkout.value.total_amount, currency: checkout.checkout.value.currency }) }}</strong>
             </p>
@@ -159,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import type { StorefrontShippingRate } from '@obscurify/types'
+import type { StorefrontPickupPoint, StorefrontShippingRate } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
 const cart = useCart()
@@ -169,6 +195,15 @@ const initializing = ref(true)
 const placingOrder = ref(false)
 const loadingRates = ref(false)
 const selectingRate = ref(false)
+
+/**
+ * A Pickup-service rate is never sent to the backend on its own radio
+ * click — selection only fires once a pickup point is also chosen
+ * (spec section 6). `pendingPickupRate` tracks which rate's point-picker
+ * is expanded; it is not necessarily the confirmed selection yet.
+ */
+const pendingPickupRate = shallowRef<StorefrontShippingRate | null>(null)
+const selectedPickupPointId = ref<string | null>(null)
 
 const email = ref('')
 const phone = ref('')
@@ -221,10 +256,32 @@ function isSelectedRate(rate: StorefrontShippingRate): boolean {
   return !!selected && selected.provider === rate.provider && selected.service_code === rate.service_code
 }
 
-async function handleSelectShippingRate(rate: StorefrontShippingRate) {
+/** Radio should also read as checked while its pickup-point picker is expanded but not yet confirmed. */
+function isRateChecked(rate: StorefrontShippingRate): boolean {
+  return isSelectedRate(rate) || pendingPickupRate.value === rate
+}
+
+function handleRateChange(rate: StorefrontShippingRate) {
+  if (rate.service_code === 'pickup') {
+    pendingPickupRate.value = rate
+    selectedPickupPointId.value = isSelectedRate(rate) ? checkout.checkout.value?.selected_shipping_rate?.pickup_point?.id ?? null : null
+    return
+  }
+
+  pendingPickupRate.value = null
+  selectedPickupPointId.value = null
+  void handleSelectShippingRate(rate)
+}
+
+function handlePickupPointChange(rate: StorefrontShippingRate, point: StorefrontPickupPoint) {
+  selectedPickupPointId.value = point.id
+  void handleSelectShippingRate(rate, point.id)
+}
+
+async function handleSelectShippingRate(rate: StorefrontShippingRate, pickupPointId?: string | null) {
   selectingRate.value = true
   try {
-    await checkout.selectShipping(rate)
+    await checkout.selectShipping(rate, pickupPointId)
   } catch (e) {
     if (!(e instanceof ApiClientError)) throw e
   } finally {
@@ -333,6 +390,38 @@ td {
 .estimate {
   color: #777;
   font-size: 0.85em;
+}
+
+.pickup-points {
+  margin: 0.5rem 0 0.75rem 1.75rem;
+}
+
+.pickup-points ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pickup-points li {
+  margin-bottom: 0.4rem;
+}
+
+.pickup-points label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+.pickup-points label input[type='radio'] {
+  display: inline;
+  width: auto;
+}
+
+.muted {
+  color: #777;
+  font-size: 0.85rem;
 }
 
 button[type='submit'] {

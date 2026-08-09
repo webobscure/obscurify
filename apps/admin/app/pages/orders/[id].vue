@@ -90,6 +90,12 @@
             <td>
               {{ formatMoney({ amount: order.shipping_amount, currency: order.currency }) }}
               <span v-if="order.shipping_line" class="muted"> — {{ order.shipping_line.name }}</span>
+              <template v-if="order.shipping_line?.pickup_point">
+                <br>
+                <span class="muted">
+                  Pickup at: {{ order.shipping_line.pickup_point.name }} — {{ order.shipping_line.pickup_point.address }}, {{ order.shipping_line.pickup_point.city }}
+                </span>
+              </template>
             </td>
           </tr>
           <tr><th>Discount</th><td>{{ formatMoney({ amount: order.discount_amount, currency: order.currency }) }}</td></tr>

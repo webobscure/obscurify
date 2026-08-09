@@ -29,6 +29,7 @@ final class ShippingLineResource extends JsonResource
             'currency' => $this->currency,
             'estimated_days_min' => $this->estimated_days_min,
             'estimated_days_max' => $this->estimated_days_max,
+            'pickup_point' => $this->metadata['pickup_point'] ?? null,
         ];
     }
 }

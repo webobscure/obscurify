@@ -87,16 +87,37 @@ it('returns standard/express/pickup rates for a matching destination', function 
     $serviceCodes = collect($rates->json('data'))->pluck('service_code')->sort()->values()->all();
     expect($serviceCodes)->toBe(['express', 'pickup', 'standard']);
 
+    // Reference Provider Hardening: price is no longer the flat
+    // ShippingMethod.price_amount — 'standard'/'express'/'pickup' are
+    // configured service codes (commerce.shipping.fake.services), priced
+    // from base_price_amount + weight cost (0 here, the variant has no
+    // weight — see ShipmentWeightCalculator's documented policy), with a
+    // US destination triggering the international surcharge (US !=
+    // commerce.shipping.fake.domestic_country_code, 'RU'):
+    // standard 30000 * 1.5 = 45000, express 80000 * 1.5 = 120000.
+    // The full weight/international-surcharge breakdown lives in
+    // ShippingRate::$metadata, deliberately never exposed to the
+    // storefront (StorefrontShippingRateResource) — see
+    // ShippingRateAlgorithmTest for those assertions against the
+    // provider directly.
     $standard = collect($rates->json('data'))->firstWhere('service_code', 'standard');
-    expect($standard['price_amount'])->toBe(50000)
+    expect($standard['price_amount'])->toBe(45000)
         ->and($standard['currency'])->toBe('RUB')
         ->and($standard['estimated_days_min'])->toBe(3)
         ->and($standard['estimated_days_max'])->toBe(5)
         ->and($standard)->not->toHaveKey('metadata');
 
     $express = collect($rates->json('data'))->firstWhere('service_code', 'express');
-    expect($express['price_amount'])->toBe(150000)
+    expect($express['price_amount'])->toBe(120000)
         ->and($express['estimated_days_max'])->toBe(2);
+
+    $pickup = collect($rates->json('data'))->firstWhere('service_code', 'pickup');
+    // The destination is US in this test's fixture — the fake provider's
+    // static pickup network is RU-only, so no points match here (spec
+    // section 6: "matches the destination context where applicable") —
+    // the pickup *rate* still appears (ShippingMethod/zone governs that),
+    // it just has nothing to offer for this particular address.
+    expect($pickup['pickup_points'])->toBe([]);
 });
 
 it('hides an inactive method from rate results', function () {

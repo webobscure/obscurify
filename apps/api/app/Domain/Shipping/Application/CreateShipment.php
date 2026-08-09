@@ -51,13 +51,20 @@ final class CreateShipment
         private readonly CompleteFulfillment $completeFulfillment,
     ) {}
 
-    public function handle(Fulfillment $fulfillment, string $providerCode): Shipment
+    /**
+     * $simulate is a dev/test-only failure trigger (spec section 15),
+     * threaded through to Shipment.metadata so FakeShippingProvider can
+     * read it — see that class's maybeSimulateCreationFailure() docblock
+     * for why it's carried on the model rather than an extra contract
+     * parameter. A real provider never reads this key.
+     */
+    public function handle(Fulfillment $fulfillment, string $providerCode, ?string $simulate = null): Shipment
     {
         if (! $this->registry->has($providerCode)) {
             throw UnknownShippingProviderException::forCode($providerCode);
         }
 
-        return DB::transaction(function () use ($fulfillment, $providerCode) {
+        return DB::transaction(function () use ($fulfillment, $providerCode, $simulate) {
             $lockedFulfillment = Fulfillment::query()->whereKey($fulfillment->id)->lockForUpdate()->firstOrFail();
 
             if ($lockedFulfillment->status !== FulfillmentStatus::Ready) {
@@ -106,6 +113,7 @@ final class CreateShipment
                 'fulfillment_id' => $lockedFulfillment->id,
                 'provider' => $providerCode,
                 'status' => ShipmentStatus::Pending->value,
+                'metadata' => $simulate !== null ? ['simulate' => $simulate] : null,
             ]);
 
             $shipmentItems = new Collection;

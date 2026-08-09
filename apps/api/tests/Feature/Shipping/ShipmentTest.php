@@ -191,6 +191,83 @@ it('cancels a shipment, recording a cancelled tracking event', function () {
         ->and(collect($cancelled->json('data.tracking_events'))->pluck('status'))->toContain('cancelled');
 });
 
+it('shows the shipping address as destination for a courier shipment', function () {
+    ['order_id' => $orderId, 'order_item_id' => $orderItemId] = paidOrderFor('store-a.localhost', $this->variantA->id, $this->storeA);
+
+    $created = shipViaFulfillment($this->userA, $this->storeA, $orderId, [['order_item_id' => $orderItemId, 'quantity' => 1]])->assertOk();
+    $shipmentId = $created->json('data.shipments.0.id');
+
+    $show = $this->actingAs($this->userA, 'sanctum')->getJson("/api/v1/shipments/{$shipmentId}", tenantHeader($this->storeA))
+        ->assertOk();
+
+    expect($show->json('data.destination.country_code'))->not->toBeNull()
+        ->and($show->json('data.pickup_point'))->toBeNull();
+});
+
+it('shows the pickup point snapshot instead of a destination for a pickup shipment', function () {
+    $ruPickup = ruPickupSetupForStore($this->storeA);
+
+    $token = checkoutTokenWithAddress('store-a.localhost', $this->variantA->id, [
+        'first_name' => 'Ada', 'last_name' => 'Lovelace', 'country_code' => 'RU', 'city' => 'Moscow',
+    ]);
+
+    $this->withUnencryptedCookie('storefront_cart_token', $token);
+    $rates = $this->getJson(storefrontUrl('store-a.localhost', '/api/v1/storefront/checkout/shipping-rates'))->assertOk();
+    $pickup = collect($rates->json('data'))->firstWhere('service_code', 'pickup');
+    $pointId = $pickup['pickup_points'][0]['id'];
+
+    $this->withUnencryptedCookie('storefront_cart_token', $token);
+    $this->patchJson(storefrontUrl('store-a.localhost', '/api/v1/storefront/checkout/shipping'), [
+        'provider' => 'fake',
+        'service_code' => 'pickup',
+        'shipping_method_id' => $ruPickup['pickup']->id,
+        'pickup_point_id' => $pointId,
+    ])->assertOk();
+
+    $this->withUnencryptedCookie('storefront_cart_token', $token);
+    $complete = $this->postJson(
+        storefrontUrl('store-a.localhost', '/api/v1/storefront/checkout/complete'),
+        [],
+        ['Idempotency-Key' => 'pickup-shipment-key'],
+    )->assertCreated();
+    $orderId = $complete->json('data.id');
+
+    $payment = $this->postJson(
+        storefrontUrl('store-a.localhost', "/api/v1/storefront/orders/{$orderId}/payments"),
+        ['provider' => 'fake'],
+        ['Idempotency-Key' => 'pickup-shipment-pay-key'],
+    )->assertCreated();
+    $externalPaymentId = Str::after($payment->json('data.redirect_url'), '/fake-payments/');
+    $payload = [
+        'event_id' => (string) Str::ulid(),
+        'external_payment_id' => $externalPaymentId,
+        'event_type' => 'payment.updated',
+        'status' => 'succeeded',
+        'amount' => $payment->json('data.amount'),
+        'currency' => $payment->json('data.currency'),
+        'timestamp' => now()->timestamp,
+    ];
+    $raw = json_encode($payload);
+    $signature = hash_hmac('sha256', $raw, (string) config('payments.fake.secret'));
+    $this->call('POST', '/api/v1/payments/webhooks/fake', [], [], [], [
+        'HTTP_X-Fake-Signature' => $signature,
+        'CONTENT_TYPE' => 'application/json',
+    ], $raw)->assertOk();
+
+    $orderItemId = app(TenantContext::class)->scope(
+        $this->storeA,
+        fn () => OrderItem::query()->where('order_id', $orderId)->firstOrFail()->id,
+    );
+
+    $created = shipViaFulfillment($this->userA, $this->storeA, $orderId, [['order_item_id' => $orderItemId, 'quantity' => 1]])->assertOk();
+    $shipmentId = $created->json('data.shipments.0.id');
+
+    $show = $this->actingAs($this->userA, 'sanctum')->getJson("/api/v1/shipments/{$shipmentId}", tenantHeader($this->storeA))
+        ->assertOk();
+
+    expect($show->json('data.pickup_point.id'))->toBe($pointId);
+});
+
 it('rejects cancelling an already-delivered shipment', function () {
     ['order_id' => $orderId, 'order_item_id' => $orderItemId] = paidOrderFor('store-a.localhost', $this->variantA->id, $this->storeA);
 

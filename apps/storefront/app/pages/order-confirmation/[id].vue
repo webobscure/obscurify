@@ -38,6 +38,10 @@
             — estimated {{ order.shipping_line.estimated_days_min }}–{{ order.shipping_line.estimated_days_max }} days
           </template>
         </p>
+        <p v-if="order.shipping_line.pickup_point" class="pickup-point">
+          Pickup at: {{ order.shipping_line.pickup_point.name }} — {{ order.shipping_line.pickup_point.address }}, {{ order.shipping_line.pickup_point.city }}
+          <template v-if="order.shipping_line.pickup_point.opening_hours">({{ order.shipping_line.pickup_point.opening_hours }})</template>
+        </p>
       </section>
 
       <section v-if="order.shipping_address">

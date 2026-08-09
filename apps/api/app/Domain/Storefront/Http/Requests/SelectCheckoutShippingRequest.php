@@ -26,6 +26,10 @@ final class SelectCheckoutShippingRequest extends FormRequest
             'provider' => ['required', 'string', 'max:255'],
             'service_code' => ['sometimes', 'nullable', 'string', 'max:255'],
             'shipping_method_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            // Only the id — never trusted beyond that; SelectShippingRate
+            // cross-checks it against a fresh provider lookup and snapshots
+            // the real point data itself (spec section 6).
+            'pickup_point_id' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }
 }

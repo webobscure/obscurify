@@ -7,8 +7,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Deliberately excludes ShippingRate::$metadata — provider-internal detail
- * (spec section 29: "do not expose provider-internal metadata").
+ * Deliberately excludes ShippingRate::$metadata wholesale — provider-
+ * internal detail (spec section 29: "do not expose provider-internal
+ * metadata"; weight/international-surcharge bookkeeping is exactly that).
+ * `pickup_points` is the one deliberate, curated exception: customer-
+ * facing data the storefront genuinely needs to complete a pickup
+ * selection (spec section 5/17), pulled out of metadata explicitly by
+ * key rather than passing metadata through.
  *
  * @mixin ShippingRate
  */
@@ -28,6 +33,7 @@ final class StorefrontShippingRateResource extends JsonResource
             'currency' => $this->currency,
             'estimated_days_min' => $this->estimatedDaysMin,
             'estimated_days_max' => $this->estimatedDaysMax,
+            'pickup_points' => $this->metadata['pickup_points'] ?? null,
         ];
     }
 }

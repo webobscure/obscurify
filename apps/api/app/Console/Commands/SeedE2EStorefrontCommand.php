@@ -124,6 +124,34 @@ class SeedE2EStorefrontCommand extends Command
                 'shipping_method_id' => $method->id,
                 'shipping_zone_id' => $zone->id,
             ]);
+
+            // Second zone/method for the pickup E2E flow: the fake provider's
+            // static pickup-point network is RU-only (see
+            // commerce.shipping.fake.pickup_points), so this needs its own
+            // domestic-country zone distinct from the US one above.
+            $ruZone = ShippingZone::query()->firstOrCreate(['name' => 'E2E RU Zone']);
+            ShippingZoneRegion::query()->firstOrCreate([
+                'shipping_zone_id' => $ruZone->id,
+                'country_code' => 'RU',
+            ]);
+
+            $pickupMethod = ShippingMethod::query()->firstOrCreate(
+                ['code' => 'e2e-pickup'],
+                [
+                    'name' => 'Pickup Point',
+                    'provider' => FakeShippingProvider::CODE,
+                    'service_code' => 'pickup',
+                    'price_amount' => 15000,
+                    'currency' => 'RUB',
+                    'estimated_days_min' => 2,
+                    'estimated_days_max' => 4,
+                ],
+            );
+
+            ShippingMethodZone::query()->firstOrCreate([
+                'shipping_method_id' => $pickupMethod->id,
+                'shipping_zone_id' => $ruZone->id,
+            ]);
         });
 
         $this->info('E2E storefront fixture ready: e2e-storefront.localhost / e2e-shirt');

@@ -15,8 +15,26 @@ export type InventoryMovementReason =
   | 'correction'
 export type ShippingZoneStatus = 'active' | 'inactive'
 export type ShippingMethodStatus = 'active' | 'inactive'
-export type ShipmentStatus = 'pending' | 'ready' | 'created' | 'in_transit' | 'delivered' | 'failed' | 'cancelled'
-export type TrackingEventStatus = 'created' | 'in_transit' | 'delivered' | 'failed' | 'cancelled'
+export type ShipmentStatus =
+  | 'pending'
+  | 'ready'
+  | 'created'
+  | 'accepted'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'delivery_exception'
+  | 'failed'
+  | 'cancelled'
+export type TrackingEventStatus =
+  | 'created'
+  | 'accepted'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'delivery_exception'
+  | 'failed'
+  | 'cancelled'
 
 export interface User {
   id: string
@@ -246,6 +264,7 @@ export interface ShippingLine {
   currency: string
   estimated_days_min: number | null
   estimated_days_max: number | null
+  pickup_point: StorefrontPickupPoint | null
 }
 
 export interface ShipmentItem {
@@ -262,6 +281,12 @@ export interface TrackingEvent {
   location: string | null
 }
 
+export interface ShipmentDestination {
+  city: string | null
+  country_code: string | null
+  postal_code: string | null
+}
+
 export interface Shipment {
   id: string
   order_id: string
@@ -275,6 +300,10 @@ export interface Shipment {
   cancelled_at: string | null
   items?: ShipmentItem[]
   tracking_events?: TrackingEvent[]
+  /** Present once the order relation is loaded server-side (ShipmentController::show) — courier/express destination. */
+  destination?: ShipmentDestination | null
+  /** Present once the order relation is loaded server-side — populated instead of `destination` for the Pickup service. */
+  pickup_point?: StorefrontPickupPoint | null
   created_at: string
   updated_at: string
 }
@@ -450,10 +479,27 @@ export interface StorefrontCheckout {
 }
 
 /**
+ * Provider-neutral pickup point (spec section 5) — see PickupPoint on the
+ * backend.
+ */
+export interface StorefrontPickupPoint {
+  id: string
+  name: string
+  address: string
+  city: string
+  country_code: string
+  postal_code: string | null
+  opening_hours: string | null
+  latitude: number | null
+  longitude: number | null
+}
+
+/**
  * A calculated, not-yet-selected shipping option
  * (GET /storefront/checkout/shipping-rates) — see ShippingRate on the
- * backend. Deliberately no metadata field: provider-internal detail never
- * crosses this boundary.
+ * backend. Deliberately no raw metadata field: provider-internal detail
+ * never crosses this boundary — `pickup_points` is the one curated
+ * exception (spec section 5/17), populated only for the pickup service.
  */
 export interface StorefrontShippingRate {
   provider: string
@@ -464,6 +510,7 @@ export interface StorefrontShippingRate {
   currency: string
   estimated_days_min: number | null
   estimated_days_max: number | null
+  pickup_points: StorefrontPickupPoint[] | null
 }
 
 export interface StorefrontOrderItem {

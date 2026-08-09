@@ -3,11 +3,12 @@
 namespace App\Domain\Shipping\Support;
 
 /**
- * Everything a provider needs to price a shipment — deliberately just the
- * destination and currency this milestone, not weight/dimensions: every
- * ShippingMethod's price is currently flat (spec section 2), so nothing
- * yet reads a cart's physical characteristics. Extend here, not by adding
- * parameters to calculateRates() itself, when that changes.
+ * Everything a provider needs to price a shipment. `weightKg` is the
+ * checkout's billable weight (see ShipmentWeightCalculator) — computed
+ * server-side from the cart's own ProductVariant rows by every caller,
+ * never accepted from a client. Extended here (Reference Provider
+ * Hardening), not by adding parameters to calculateRates() itself, per
+ * this class's own original guidance.
  */
 final readonly class ShippingRateContext
 {
@@ -16,5 +17,6 @@ final readonly class ShippingRateContext
         public ?string $region,
         public ?string $postalCode,
         public string $currency,
+        public float $weightKg = 0.0,
     ) {}
 }

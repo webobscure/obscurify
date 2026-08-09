@@ -1,8 +1,13 @@
 # Shipping Architecture
 
-Milestone 6 — Shipping Foundation + Fake Shipping Provider. See
-[ADR-012](../adr/012-shipping-provider-abstraction.md) for why the
-provider abstraction is shaped the way it is.
+Milestone 6 — Shipping Foundation + Fake Shipping Provider, extended by
+the Fulfillment Core milestone (see
+[fulfillment.md](./fulfillment.md) — `Shipment` now always ships against
+a `ready` `Fulfillment`, not arbitrary Order quantities) and by the
+FakeShippingProvider Hardening milestone (§12 below — realistic rates,
+pickup points, the expanded async lifecycle, and dev-only failure
+simulation). See [ADR-012](../adr/012-shipping-provider-abstraction.md)
+for why the provider abstraction is shaped the way it is.
 
 ## 1. Shipping domain
 
@@ -143,12 +148,21 @@ what a past order reports (spec section 14).
 ## 7. Shipment lifecycle
 
 ```text
-pending -> ready -> created -> in_transit -> delivered
-   \-> failed / cancelled (from pending, ready, created, or in_transit)
+pending -> ready -> created -> accepted -> in_transit -> out_for_delivery -> delivered
+                                   \            \              \
+                                    \            \-> delivery_exception <-/  (recoverable — see below)
+                                     \-> failed / cancelled (from pending, ready, created, accepted, or in_transit)
 ```
 
-`delivered`/`failed`/`cancelled` are terminal — no transition leaves them
-(spec section 25: no `delivered -> in_transit` "correction" without a
+`accepted` and `out_for_delivery` were added by the FakeShippingProvider
+Hardening milestone (§12) to model a realistic carrier lifecycle instead
+of jumping straight from `created` to `in_transit` to `delivered`.
+`delivery_exception` is deliberately **not** terminal — a failed delivery
+attempt (nobody home, access issue) is recoverable in real carrier
+tracking, so it transitions back to `out_for_delivery` or `in_transit`,
+in addition to `failed`/`cancelled`. `delivered`/`failed`/`cancelled`
+remain the only true terminal states — no transition leaves them (spec
+section 25: no `delivered -> in_transit` "correction" without a
 documented policy, and none exists yet). Enforced by
 `ShipmentStateMachine`, the only place a transition is allowed to happen,
 mirroring `PaymentStateMachine`.
@@ -254,50 +268,191 @@ scoped resources (spec section 33) — see
 
 ## 10. Inventory / fulfillment boundary
 
-Explicitly documented per spec section 26/27, not left implicit:
+Superseded by the Fulfillment Core milestone — see
+[fulfillment.md §4](./fulfillment.md#4-reservation-consumption--the-invariant-this-milestone-exists-to-define)
+for the full `Order paid -> Fulfillment -> ready -> Shipment -> reservation
+consumed` flow and its concurrency guarantees. What remains true and
+worth restating here:
 
-```text
-Order paid (verified webhook, ProcessPaymentWebhook)
-  -> inventory reservation stays exactly as Payment Foundation left it:
-     ReserveInventory reserves at CompleteCheckout time (before payment),
-     nothing in Shipping changes reservation semantics.
-  -> [no Fulfillment entity exists yet]
-  -> Shipment created (merchant action, CreateShipment)
-```
-
-**Shipping-rate selection never touches inventory** — `SelectShippingRate`
-only reads/writes `ShippingQuote` and `Checkout` rows. **Shipment
-creation does not decrement `on_hand`, consume the reservation, or move
-any `InventoryReservation` row** — `CreateShipment` locks `OrderItem` rows
-(for the overshipment check) but never touches `Inventory*` tables at all.
-This is a deliberate, minimal choice, not an oversight: the milestone
-brief explicitly said not to invent stock-consumption semantics that
-don't exist yet, and not to build a full Fulfillment module this
-milestone. The concrete, currently-true state:
-
-- Stock is reserved at checkout completion (unchanged from Payment
-  Foundation) and stays reserved through payment and through shipment
-  creation/delivery.
-- Nothing in this milestone ever converts a reservation into consumed
-  `on_hand` — that transition point (reservation -> consumed, i.e. stock
-  actually leaving the warehouse) has no owner yet.
-
-**Recommended next milestone is Fulfillment** specifically to give that
-transition a home: a `Fulfillment` entity sitting between "Order paid"
-and "Shipment created" is the natural place to decide *when* a
-reservation becomes consumed (likely: when its first `Shipment` reaches
-`created`, since that's the point stock has genuinely left the building) —
-deferred rather than guessed at here, per spec section 27's "if Shipment
-is created before a future Fulfillment entity exists, keep the coupling
-minimal," which `CreateShipment`'s lack of any Inventory dependency
-already satisfies.
+- **Shipping-rate selection never touches inventory** —
+  `SelectShippingRate` only reads/writes `ShippingQuote` and `Checkout`
+  rows.
+- **`FakeShippingProvider` never touches Inventory tables at all** (spec
+  section 20 of the Hardening milestone, §12 below) — it reports carrier
+  lifecycle state (`created`/`accepted`/`in_transit`/.../`delivered`)
+  through `ProcessShippingWebhook`, which only ever writes `Shipment`/
+  `TrackingEvent` rows. Reservation consumption is driven entirely by
+  `Fulfillment\Application\CompleteFulfillment` (called from
+  `CreateShipment`, same transaction as Shipment creation) — Shipping
+  reports state, Fulfillment/Inventory own stock semantics, and that
+  boundary is intentionally one-directional: Shipping code has no
+  `Inventory*` model imports anywhere in the module.
 
 ## 11. What's deliberately not implemented
 
 Per spec section 45: no real carrier (CDEK, Russian Post, Boxberry,
-Yandex Delivery) and no real outbound HTTP calls to one; no full
-Fulfillment engine (see §10); no returns, refunds, discount engine, or
-taxes; the fake provider's own management page is dev/test-only,
+Yandex Delivery) and no real outbound HTTP calls to one, and this
+constraint was reaffirmed (not relaxed) by the Hardening milestone in
+§12 below — hardening `FakeShippingProvider` explicitly does **not**
+mean integrating a second, real provider, nor does it mean building a
+second fake provider alongside it; no returns, refunds, discount engine,
+or taxes; the fake provider's own management surface is dev/test-only,
 double-guarded at both the route and controller level
 (`commerce.shipping.fake.enabled`) so it is never reachable in a
 production configuration by default.
+
+## 12. FakeShippingProvider hardening
+
+`FakeShippingProvider` is the platform's permanent reference
+implementation of `ShippingProviderContract` — realistic enough to
+exercise every real-world carrier behavior (variable pricing, pickup
+networks, async multi-step delivery, webhook failure modes) without ever
+calling out to a real carrier. See also
+[docs/development/fake-shipping.md](../development/fake-shipping.md) for
+the developer-facing walkthrough of the dev control page and simulated
+failure modes.
+
+### 12.1 Rate algorithm
+
+All pricing lives under `commerce.shipping.fake.services.{standard,
+express,pickup}` — no magic numbers scattered through
+`FakeShippingProvider`. For a `ShippingMethod` whose `service_code`
+matches a configured service:
+
+```text
+price = base_price_amount + ceil(billable_weight_kg) * price_per_kg_amount
+price *= 1 + international_surcharge_percent/100   (if destination country != domestic_country_code)
+price *= 1 + rate_markup_percent/100
+```
+
+A `ShippingMethod` with a `service_code` that isn't in
+`commerce.shipping.fake.services` falls back to its own flat
+`price_amount` unmodified — an intentional escape hatch so a merchant
+can still define a custom fake-provider service without the weight/
+destination logic applying to it.
+
+**Weight**: `ShipmentWeightCalculator` computes actual weight (sum of
+`ProductVariant.weight` × quantity), volumetric weight (`(length * width
+* height) / commerce.shipping.fake.volumetric_divisor` per unit, industry-
+standard "dimensional weight"), and billable weight = `max(actual,
+volumetric)`, aggregated across every cart/order line. **Frontend-
+supplied weight is never trusted** — rates are always recomputed
+server-side from the cart's/order's own `ProductVariant` rows (spec
+section 3). **Missing-weight policy**: a variant with no `weight` set
+contributes `0kg`, not an error — documented here rather than silently
+implicit, since treating a missing weight as a hard failure would break
+every product that predates this milestone.
+
+### 12.2 Pickup-point architecture
+
+`ShippingProviderContract::listPickupPoints(ShippingRateContext)` returns
+a deterministic, provider-neutral `Collection<PickupPoint>`.
+`FakeShippingProvider`'s implementation filters a static list configured
+at `commerce.shipping.fake.pickup_points` (id/name/address/city/
+country_code/postal_code/opening_hours/lat/lng) by country match against
+the destination — the fake network is RU-only by design, so a non-RU
+destination legitimately gets zero points back, not an error.
+
+Selection flow (`SelectShippingRate`, spec section 6):
+
+```text
+Checkout selects a Pickup-service rate + pickup_point_id
+  -> SelectShippingRate re-runs calculateRates() AND listPickupPoints()
+     fresh against the checkout's saved address (never trusts a
+     frontend-supplied point)
+  -> pickup_point_id must appear in that fresh listPickupPoints() result
+     (PickupPointInvalidException / 422 `invalid_pickup_point` otherwise)
+  -> the matched point is snapshotted into ShippingQuote.metadata.pickup_point
+  -> CompleteCheckout copies that same snapshot into
+     OrderShippingLine.metadata.pickup_point (spec section 18: the
+     snapshot must never depend on current provider config, so it's a
+     plain array copy, not a live re-lookup)
+```
+
+The storefront never invents a point id — `StorefrontShippingRateResource`
+curates exactly one field out of the otherwise-hidden `ShippingRate.
+metadata` (`pickup_points`, spec section 17), and the checkout page
+renders that array as a second radio group, gated behind having already
+selected the Pickup-service rate.
+
+### 12.3 Async shipment lifecycle & webhook flow
+
+Extends §7/§8 above with the fuller state machine (`created -> accepted
+-> in_transit -> out_for_delivery -> delivered`, plus the recoverable
+`delivery_exception`). Every non-`created`, non-cancel transition still
+arrives exclusively through `ProcessShippingWebhook` — including when
+it's the dev control page that triggered it:
+
+```text
+Dev control click (FakeShipmentOutcomeController::outcome)
+  -> FakeShippingProvider builds a self-signed payload
+     (HMAC-SHA256, commerce.shipping.fake.secret)
+  -> dispatched through the *same* POST /api/v1/shipping/webhooks/fake
+     endpoint a real carrier's callback would hit (app()->call(), not a
+     direct Shipment::update()) — spec section 11
+  -> provider.verifyWebhook() / parseWebhook() / ProcessShippingWebhook
+     (identical to §8's flow)
+```
+
+**Delayed delivery** (spec section 14): the same dev action, with
+`delayed: true`, dispatches `SimulateFakeShippingWebhookJob`
+(`ShouldQueue`) with a per-status delay from
+`commerce.shipping.fake.delayed_lifecycle` instead of calling the webhook
+endpoint synchronously — tests assert this via `Queue::fake()` +
+`Queue::assertPushed(..., fn ($job) => ...)`, never a real sleep/wait.
+
+**Idempotency and out-of-order handling** are unchanged from §8 — a
+duplicate `event_id` is a no-op (proven by the dev control page's "Send
+duplicate webhook" action), and an out-of-order transition (e.g.
+`delivered` already recorded, then an `in_transit` arrives) is rejected
+*as a transition* by `ShipmentStateMachine::canTransition()` but still
+recorded as a `TrackingEvent` — the append-only timeline shows every
+delivery the endpoint received, never mutated after the fact.
+
+### 12.4 Failure simulation
+
+`commerce.shipping.fake.failure_simulation.enabled` gates a set of
+deliberately-triggerable failures (rate calculation failure/timeout,
+shipment creation failure/timeout, invalid webhook signature, out-of-
+order webhook, duplicate event) — **double-gated**: the config flag is
+checked both by the request validation (so the option isn't even offered
+in production) and independently inside `FakeShippingProvider` itself
+(so a config flag flip alone, without a code change, can never
+accidentally make failure simulation reachable through some other path).
+Allowlisted to `local`/`testing` environments the same way
+`commerce.shipping.fake.enabled` is — see §13 below.
+
+### 12.5 Fulfillment/Inventory boundary re-verified
+
+Re-confirmed (not re-derived) for this milestone: `FakeShippingProvider`
+has no `Inventory*`/`Fulfillment*` model imports; `CreateShipment` still
+requires shipping against a `ready` `Fulfillment` (Fulfillment Core,
+§10 above) with `quantity <= fulfilled/ready quantity`, unchanged by this
+milestone. Shipping only ever reports carrier state.
+
+## 13. Production safety
+
+- `commerce.shipping.fake.enabled` defaults to `in_array(APP_ENV, ['local',
+  'testing'])`, never a plain `env()` boolean read directly — the same
+  pattern `payments.fake.enabled` uses. `ShippingServiceProvider` does not
+  register `FakeShippingProvider` in the container at all when disabled;
+  resolving it fails the same way an unimplemented real carrier would.
+- The fake-shipment dev-control routes (`fake-shipments/{id}`,
+  `.../outcome`, `.../invalid-signature`) are gated by that same config
+  flag inside the controller, independent of the route registration —
+  they 404 in any environment where the flag is off, including a
+  misconfigured production deploy that somehow still registered the
+  routes.
+- `commerce.shipping.fake.failure_simulation.enabled` is a second,
+  independent flag on top of the above — failure-simulation triggers are
+  invisible even in an environment where the fake provider itself is
+  enabled but this second flag isn't (e.g. a shared staging environment
+  that wants realistic-but-not-chaotic fake shipping).
+- The admin Shipment Detail page renders its entire "Fake provider
+  controls" section behind `import.meta.dev` (build-time dead code
+  elimination in a production Nuxt build, not a runtime `if`) — never
+  shipped to a merchant-facing production build regardless of the
+  backend flags above.
+- `commerce.shipping.fake.secret` is never returned by any API
+  response — it exists only in backend config, used to sign/verify
+  payloads server-side.

@@ -12,8 +12,11 @@ enum ShipmentStatus: string
     case Pending = 'pending';
     case Ready = 'ready';
     case Created = 'created';
+    case Accepted = 'accepted';
     case InTransit = 'in_transit';
+    case OutForDelivery = 'out_for_delivery';
     case Delivered = 'delivered';
+    case DeliveryException = 'delivery_exception';
     case Failed = 'failed';
     case Cancelled = 'cancelled';
 }

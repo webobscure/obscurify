@@ -97,7 +97,9 @@ final class FulfillmentController extends Controller
      */
     public function complete(CompleteFulfillmentRequest $request, Fulfillment $fulfillment, CreateShipment $action): FulfillmentResource
     {
-        $action->handle($fulfillment, $request->validated()['provider']);
+        $data = $request->validated();
+
+        $action->handle($fulfillment, $data['provider'], $data['simulate'] ?? null);
 
         return new FulfillmentResource($fulfillment->fresh(self::WITH));
     }

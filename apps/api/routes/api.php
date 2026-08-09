@@ -152,6 +152,7 @@ Route::prefix('v1')->group(function () {
     if (config('commerce.shipping.fake.enabled')) {
         Route::get('fake-shipments/{externalShipmentId}', [FakeShipmentOutcomeController::class, 'show']);
         Route::post('fake-shipments/{externalShipmentId}/outcome', [FakeShipmentOutcomeController::class, 'outcome']);
+        Route::post('fake-shipments/{externalShipmentId}/invalid-signature', [FakeShipmentOutcomeController::class, 'invalidSignature']);
     }
 
     // Public storefront API: tenant is resolved from the request hostname

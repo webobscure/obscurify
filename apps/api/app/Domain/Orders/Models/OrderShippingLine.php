@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $currency
  * @property int|null $estimated_days_min
  * @property int|null $estimated_days_max
+ * @property array<string, mixed>|null $metadata
  */
 class OrderShippingLine extends Model
 {
@@ -48,6 +49,7 @@ class OrderShippingLine extends Model
         'currency',
         'estimated_days_min',
         'estimated_days_max',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -56,6 +58,7 @@ class OrderShippingLine extends Model
             'price_amount' => 'integer',
             'estimated_days_min' => 'integer',
             'estimated_days_max' => 'integer',
+            'metadata' => 'array',
         ];
     }
 

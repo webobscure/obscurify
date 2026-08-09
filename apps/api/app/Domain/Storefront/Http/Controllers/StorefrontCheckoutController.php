@@ -4,6 +4,7 @@ namespace App\Domain\Storefront\Http\Controllers;
 
 use App\Domain\Carts\Application\GetOrCreateCart;
 use App\Domain\Carts\Models\Cart;
+use App\Domain\Carts\Models\CartItem;
 use App\Domain\Checkouts\Application\CompleteCheckout;
 use App\Domain\Checkouts\Application\OpenCheckout;
 use App\Domain\Checkouts\Application\UpdateCheckout;
@@ -12,6 +13,7 @@ use App\Domain\Checkouts\Models\Checkout;
 use App\Domain\Checkouts\Models\CheckoutAddress;
 use App\Domain\Shipping\Application\CalculateShippingRates;
 use App\Domain\Shipping\Application\SelectShippingRate;
+use App\Domain\Shipping\Support\ShipmentWeightCalculator;
 use App\Domain\Shipping\Support\ShippingRateContext;
 use App\Domain\Storefront\Http\Requests\CompleteCheckoutRequest;
 use App\Domain\Storefront\Http\Requests\SelectCheckoutShippingRequest;
@@ -59,12 +61,12 @@ final class StorefrontCheckoutController extends Controller
      * shipping address, so PATCH .../checkout with a shipping_address must
      * happen first.
      */
-    public function shippingRates(Request $request, GetOrCreateCart $getOrCreateCart, CalculateShippingRates $action): AnonymousResourceCollection
+    public function shippingRates(Request $request, GetOrCreateCart $getOrCreateCart, CalculateShippingRates $action, ShipmentWeightCalculator $weightCalculator): AnonymousResourceCollection
     {
         $cart = $getOrCreateCart->handle($request->cookie(self::COOKIE_NAME));
         $checkout = $this->resolveOpenCheckout($cart);
 
-        $context = $this->shippingRateContext($checkout);
+        $context = $this->shippingRateContext($checkout, $cart, $weightCalculator);
 
         return StorefrontShippingRateResource::collection($action->handle($context));
     }
@@ -81,6 +83,7 @@ final class StorefrontCheckoutController extends Controller
             $data['provider'],
             $data['service_code'] ?? null,
             $data['shipping_method_id'] ?? null,
+            $data['pickup_point_id'] ?? null,
         );
 
         return $this->checkoutResponse($checkout);
@@ -174,7 +177,7 @@ final class StorefrontCheckoutController extends Controller
         return (new CheckoutResource($checkout))->response()->setStatusCode(200);
     }
 
-    private function shippingRateContext(Checkout $checkout): ShippingRateContext
+    private function shippingRateContext(Checkout $checkout, Cart $cart, ShipmentWeightCalculator $weightCalculator): ShippingRateContext
     {
         $shippingAddress = CheckoutAddress::query()
             ->where('checkout_id', $checkout->id)
@@ -187,11 +190,15 @@ final class StorefrontCheckoutController extends Controller
             ]);
         }
 
+        $lines = $cart->items()->with('variant')->get()
+            ->map(fn (CartItem $item) => ['variant' => $item->variant, 'quantity' => $item->quantity]);
+
         return new ShippingRateContext(
             countryCode: $shippingAddress->country_code ?? '',
             region: $shippingAddress->region,
             postalCode: $shippingAddress->postal_code,
             currency: $checkout->currency,
+            weightKg: $weightCalculator->handle($lines)->billableKg,
         );
     }
 }

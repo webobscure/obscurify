@@ -5,6 +5,7 @@ namespace App\Domain\Shipping\Contracts;
 use App\Domain\Shipping\Models\Shipment;
 use App\Domain\Shipping\Models\ShipmentItem;
 use App\Domain\Shipping\Models\ShippingMethod;
+use App\Domain\Shipping\Support\PickupPoint;
 use App\Domain\Shipping\Support\ShipmentCreationResult;
 use App\Domain\Shipping\Support\ShippingRate;
 use App\Domain\Shipping\Support\ShippingRateContext;
@@ -37,6 +38,17 @@ interface ShippingProviderContract
      * @return Collection<int, ShippingRate>
      */
     public function calculateRates(Collection $methods, ShippingRateContext $context): Collection;
+
+    /**
+     * A deterministic, provider-owned pickup-point network for the pickup
+     * service (spec section 5) — filtered to what's actually reachable
+     * for $context (e.g. same country). A provider with no pickup network
+     * returns an empty collection, the same "omit, don't error" policy as
+     * calculateRates() for an unavailable method.
+     *
+     * @return Collection<int, PickupPoint>
+     */
+    public function listPickupPoints(ShippingRateContext $context): Collection;
 
     /**
      * Registers the shipment with the provider and returns tracking

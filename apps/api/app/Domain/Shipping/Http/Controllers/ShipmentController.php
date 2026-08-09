@@ -27,10 +27,14 @@ final class ShipmentController extends Controller
     /**
      * $shipment is resolved via tenant-scoped route model binding: a
      * cross-tenant id yields a 404, never another store's shipment.
+     *
+     * Loads the order's shipping snapshot (address + OrderShippingLine)
+     * so the resource can surface destination-or-pickup-point (spec
+     * section 22) without the admin UI making a second request.
      */
     public function show(Shipment $shipment): ShipmentResource
     {
-        $shipment->load(['items', 'trackingEvents']);
+        $shipment->load(['items', 'trackingEvents', 'order.shippingAddress', 'order.shippingLine']);
 
         return new ShipmentResource($shipment);
     }

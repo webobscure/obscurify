@@ -197,6 +197,7 @@ final class CompleteCheckout
                     'currency' => $shippingQuote->currency,
                     'estimated_days_min' => $shippingQuote->estimated_days_min,
                     'estimated_days_max' => $shippingQuote->estimated_days_max,
+                    'metadata' => $shippingQuote->metadata,
                 ]);
             }
 

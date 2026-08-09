@@ -101,13 +101,19 @@ export function useCheckout() {
     }
   }
 
-  async function selectShipping(rate: StorefrontShippingRate) {
+  /**
+   * `pickupPointId` is required by the backend when rate.service_code is
+   * 'pickup' (spec section 6) — validated and snapshotted server-side
+   * against a fresh provider lookup, never trusted beyond the id itself.
+   */
+  async function selectShipping(rate: StorefrontShippingRate, pickupPointId?: string | null) {
     shippingError.value = null
     try {
       const response = await useStorefrontApi().checkout.selectShipping({
         provider: rate.provider,
         service_code: rate.service_code,
         shipping_method_id: rate.shipping_method_id,
+        pickup_point_id: pickupPointId ?? null,
       })
       checkout.value = response.data
     } catch (e) {

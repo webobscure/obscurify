@@ -32,10 +32,12 @@ it('selects a shipping rate, persists a quote, and updates the checkout total', 
         'shipping_method_id' => $this->shipping['standard']->id,
     ])->assertOk();
 
-    expect($selected->json('data.shipping_amount'))->toBe(50000)
-        ->and($selected->json('data.total_amount'))->toBe(51000)
+    // Reference Provider Hardening: 30000 base * 1.5 international
+    // surcharge (US destination, RU is domestic) = 45000; subtotal 1000.
+    expect($selected->json('data.shipping_amount'))->toBe(45000)
+        ->and($selected->json('data.total_amount'))->toBe(46000)
         ->and($selected->json('data.selected_shipping_rate.name'))->toBe('Standard Shipping')
-        ->and($selected->json('data.selected_shipping_rate.price_amount'))->toBe(50000);
+        ->and($selected->json('data.selected_shipping_rate.price_amount'))->toBe(45000);
 
     app(TenantContext::class)->scope($this->storeA, function () {
         expect(ShippingQuote::query()->count())->toBe(1);
@@ -58,7 +60,7 @@ it('cannot be overridden by a frontend-submitted price — the price always come
         'price_amount' => 1,
     ])->assertOk();
 
-    expect($selected->json('data.shipping_amount'))->toBe(50000);
+    expect($selected->json('data.shipping_amount'))->toBe(45000);
 });
 
 it('includes the selected shipping cost in the completed order total and snapshot', function () {
@@ -80,10 +82,11 @@ it('includes the selected shipping cost in the completed order total and snapsho
         ['Idempotency-Key' => 'shipping-complete-key'],
     )->assertCreated();
 
-    expect($complete->json('data.shipping_amount'))->toBe(150000)
-        ->and($complete->json('data.total_amount'))->toBe(151000)
+    // 80000 base * 1.5 international surcharge = 120000; subtotal 1000.
+    expect($complete->json('data.shipping_amount'))->toBe(120000)
+        ->and($complete->json('data.total_amount'))->toBe(121000)
         ->and($complete->json('data.shipping_line.service_code'))->toBe('express')
-        ->and($complete->json('data.shipping_line.price_amount'))->toBe(150000)
+        ->and($complete->json('data.shipping_line.price_amount'))->toBe(120000)
         ->and($complete->json('data.shipping_line.estimated_days_max'))->toBe(2);
 });
 

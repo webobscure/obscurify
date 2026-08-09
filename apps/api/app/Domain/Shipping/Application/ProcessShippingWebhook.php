@@ -115,8 +115,11 @@ final class ProcessShippingWebhook
     private function mapEventToStatus(TrackingWebhookEvent $event): ShipmentStatus
     {
         return match ($event->status) {
+            'accepted' => ShipmentStatus::Accepted,
             'in_transit' => ShipmentStatus::InTransit,
+            'out_for_delivery' => ShipmentStatus::OutForDelivery,
             'delivered' => ShipmentStatus::Delivered,
+            'delivery_exception' => ShipmentStatus::DeliveryException,
             'failed' => ShipmentStatus::Failed,
             'cancelled' => ShipmentStatus::Cancelled,
             default => throw MalformedShippingWebhookPayloadException::make("unrecognized status \"{$event->status}\"."),
@@ -126,8 +129,11 @@ final class ProcessShippingWebhook
     private function mapEventToTrackingStatus(TrackingWebhookEvent $event): string
     {
         return match ($event->status) {
+            'accepted' => TrackingEventStatus::Accepted->value,
             'in_transit' => TrackingEventStatus::InTransit->value,
+            'out_for_delivery' => TrackingEventStatus::OutForDelivery->value,
             'delivered' => TrackingEventStatus::Delivered->value,
+            'delivery_exception' => TrackingEventStatus::DeliveryException->value,
             'failed' => TrackingEventStatus::Failed->value,
             'cancelled' => TrackingEventStatus::Cancelled->value,
             default => throw MalformedShippingWebhookPayloadException::make("unrecognized status \"{$event->status}\"."),
@@ -138,7 +144,10 @@ final class ProcessShippingWebhook
     {
         $updates = ['status' => $target->value];
 
-        if ($target === ShipmentStatus::InTransit && $shipment->shipped_at === null) {
+        // First of accepted/in_transit to actually arrive sets shipped_at
+        // — a real carrier may skip straight to in_transit without ever
+        // reporting accepted, so this can't be pinned to one status alone.
+        if (in_array($target, [ShipmentStatus::Accepted, ShipmentStatus::InTransit], true) && $shipment->shipped_at === null) {
             $updates['shipped_at'] = now();
         }
 
@@ -153,8 +162,11 @@ final class ProcessShippingWebhook
         $shipment->update($updates);
 
         $eventType = match ($target) {
+            ShipmentStatus::Accepted => 'ShipmentAccepted',
             ShipmentStatus::InTransit => 'ShipmentInTransit',
+            ShipmentStatus::OutForDelivery => 'ShipmentOutForDelivery',
             ShipmentStatus::Delivered => 'ShipmentDelivered',
+            ShipmentStatus::DeliveryException => 'ShipmentDeliveryException',
             ShipmentStatus::Failed => 'ShipmentFailed',
             ShipmentStatus::Cancelled => 'ShipmentCancelled',
             default => throw new RuntimeException("No outbox event mapped for shipment status \"{$target->value}\"."),

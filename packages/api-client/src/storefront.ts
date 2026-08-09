@@ -169,7 +169,7 @@ export class StorefrontApiClient {
      * always re-derived server-side, never trusted from here (spec
      * section 11).
      */
-    selectShipping: (data: { provider: string; service_code?: string | null; shipping_method_id?: string | null }) =>
+    selectShipping: (data: { provider: string; service_code?: string | null; shipping_method_id?: string | null; pickup_point_id?: string | null }) =>
       this.request<ApiResource<StorefrontCheckout>>('/api/v1/storefront/checkout/shipping', {
         method: 'PATCH',
         body: JSON.stringify(data),
