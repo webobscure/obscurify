@@ -145,3 +145,12 @@ it('sorts the listing by price', function () {
     $desc = $this->getJson(storefrontUrl('store-a.localhost', '/api/v1/storefront/products?sort=price_desc'))->assertOk();
     expect(collect($desc->json('data'))->pluck('title')->all())->toBe(['Pricey', 'Cheap']);
 });
+
+it('never leaks the internal model class name to an anonymous caller on a 404', function () {
+    $response = $this->getJson(storefrontUrl('store-a.localhost', '/api/v1/storefront/products/does-not-exist'))
+        ->assertNotFound();
+
+    expect($response->json('message'))->not->toContain('App\\')
+        ->and($response->json('message'))->not->toContain('Domain\\Catalog')
+        ->and($response->json())->toBe(['message' => 'Not found.', 'error' => 'not_found']);
+});

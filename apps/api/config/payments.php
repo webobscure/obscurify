@@ -24,8 +24,17 @@ return [
         // config files load before the container's `env` binding exists,
         // so calling app()->environment() here crashes the entire boot
         // sequence (a real bug, caught by every command failing silently).
-        'enabled' => (bool) env('PAYMENTS_FAKE_ENABLED', env('APP_ENV') !== 'production'),
-        'secret' => (string) env('PAYMENTS_FAKE_SECRET', 'fake-payment-provider-secret'),
+        //
+        // Fails CLOSED: the default only enables the fake surface for the
+        // two APP_ENV values known to be safe (local, testing). An unset,
+        // misspelled, or unrecognized APP_ENV — the common failure mode of
+        // copying .env.example and deploying — must never enable a surface
+        // that can mark real orders as paid with nothing behind it.
+        'enabled' => (bool) env('PAYMENTS_FAKE_ENABLED', in_array(env('APP_ENV'), ['local', 'testing'], true)),
+        // No fallback: a secret whose only job is to be unguessable must
+        // never ship a guessable default. PaymentServiceProvider refuses
+        // to register the fake provider if this is enabled but empty.
+        'secret' => (string) env('PAYMENTS_FAKE_SECRET', ''),
     ],
 
     /*

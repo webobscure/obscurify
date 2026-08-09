@@ -34,6 +34,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="FILESYSTEM_DISK" value="local"/>
+        <env name="PAYMENTS_FAKE_SECRET" value="testing-fake-payment-secret"/>
+        <env name="SHIPPING_FAKE_SECRET" value="testing-fake-shipping-secret"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

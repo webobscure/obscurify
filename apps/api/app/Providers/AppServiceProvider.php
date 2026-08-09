@@ -35,5 +35,18 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('auth', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
+
+        // A wildcard origin combined with credentialed CORS reflects the
+        // request's Origin header back with Access-Control-Allow-Credentials:
+        // true, which is strictly worse than a real wildcard — any site can
+        // then make authenticated cross-origin requests. CORS_ALLOWED_ORIGINS
+        // is unset by default (see .env.example); the natural fix under
+        // incident pressure is "just set it to *", so guard against that
+        // combination at boot rather than let it ship silently.
+        if (in_array('*', config('cors.allowed_origins', []), true) && config('cors.supports_credentials')) {
+            throw new \RuntimeException(
+                'CORS_ALLOWED_ORIGINS must not be "*" while cors.supports_credentials is true.'
+            );
+        }
     }
 }

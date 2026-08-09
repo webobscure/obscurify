@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Session\Middleware\AuthenticatesSessions;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,7 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -56,4 +58,22 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Laravel's default handler preserves ModelNotFoundException's
+        // message ("No query results for model [App\Domain\Catalog\Models\
+        // Product].") even with app.debug off, converting it into a 404
+        // that still carries the fully-qualified class name. Every
+        // hand-thrown not-found in this codebase is deliberately
+        // message-free (see StorefrontCartController) — normalize the
+        // framework-thrown ones to match, since this is reachable
+        // unauthenticated on the storefront (product/collection/cart-item
+        // lookups, route-model-binding misses) and hands an anonymous
+        // caller the internal module map as free reconnaissance.
+        $exceptions->render(function (ModelNotFoundException|NotFoundHttpException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json(['message' => 'Not found.', 'error' => 'not_found'], 404);
+        });
     })->create();

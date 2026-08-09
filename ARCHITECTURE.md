@@ -246,18 +246,31 @@ Audit
 Platform Administration
 ```
 
-Only the following modules are implemented in the foundation milestone:
+Implemented through Milestone 6 (Shipping Foundation, see
+`docs/architecture/shipping.md`):
 
 ```text
 Identity
 Stores
-Staff / Membership
+Staff / Membership (role column exists; not yet enforced — see technical-debt.md)
 Tenant Context
-Catalog (minimal Product foundation only)
-Domains (minimal model only)
+Catalog (products, variants, options, categories, collections, media)
+Inventory (locations, levels, reservations, movements)
+Cart (storefront guest cart)
+Checkout (storefront)
+Orders
+Payments (fake provider only — no real gateway integrated yet)
+Shipping (fake provider only — no real carrier integrated yet; see docs/architecture/shipping.md)
+Domains
 ```
 
-Everything else remains documented but unimplemented.
+Everything else in the long-term map above remains documented but
+unimplemented: Pricing, Discounts, Refunds, Fulfillment, Themes,
+Pages, Navigation, Notifications, Integrations, Webhooks, Apps, Billing,
+Plans, Subscriptions, Analytics, Audit, Platform Administration, a real
+(non-fake) payment provider, and a real (non-fake) shipping carrier.
+Customers exists as an internal write-side model used by checkout (no
+admin-facing API or UI yet).
 
 ---
 
