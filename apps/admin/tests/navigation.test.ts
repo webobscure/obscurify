@@ -33,7 +33,7 @@ describe('isNavItemActive', () => {
 
 describe('navigation source of truth', () => {
   const realRoutes = new Set([
-    '/orders', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
+    '/orders', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
     '/shipments', '/shipping-methods', '/shipping-zones',
   ])
 

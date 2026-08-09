@@ -8,6 +8,7 @@ use App\Domain\Catalog\Http\Controllers\ProductOptionValueController;
 use App\Domain\Catalog\Http\Controllers\ProductVariantController;
 use App\Domain\Collections\Http\Controllers\CollectionController;
 use App\Domain\Collections\Http\Controllers\CollectionProductController;
+use App\Domain\Fulfillment\Http\Controllers\FulfillmentController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Inventory\Http\Controllers\InventoryController;
 use App\Domain\Locations\Http\Controllers\LocationController;
@@ -19,7 +20,6 @@ use App\Domain\Payments\Http\Controllers\FakePaymentOutcomeController;
 use App\Domain\Payments\Http\Controllers\PaymentController;
 use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
 use App\Domain\Shipping\Http\Controllers\FakeShipmentOutcomeController;
-use App\Domain\Shipping\Http\Controllers\OrderShipmentController;
 use App\Domain\Shipping\Http\Controllers\ShipmentController;
 use App\Domain\Shipping\Http\Controllers\ShippingMethodController;
 use App\Domain\Shipping\Http\Controllers\ShippingWebhookController;
@@ -96,7 +96,7 @@ Route::prefix('v1')->group(function () {
 
             Route::get('orders', [OrderController::class, 'index']);
             Route::get('orders/{order}', [OrderController::class, 'show']);
-            Route::post('orders/{order}/shipments', [OrderShipmentController::class, 'store']);
+            Route::post('orders/{order}/fulfillments', [FulfillmentController::class, 'store']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -111,7 +111,19 @@ Route::prefix('v1')->group(function () {
 
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
-            Route::post('shipments/{shipment}/cancel', [OrderShipmentController::class, 'cancel']);
+            Route::post('shipments/{shipment}/cancel', [ShipmentController::class, 'cancel']);
+
+            // Fulfillment Core (Milestone 7) — independent of Shipping
+            // except for /complete, which creates the Shipment against a
+            // ready Fulfillment (see FulfillmentController::complete).
+            Route::get('fulfillments', [FulfillmentController::class, 'index']);
+            Route::get('fulfillments/{fulfillment}', [FulfillmentController::class, 'show']);
+            Route::patch('fulfillments/{fulfillment}', [FulfillmentController::class, 'update']);
+            Route::post('fulfillments/{fulfillment}/allocate', [FulfillmentController::class, 'allocate']);
+            Route::post('fulfillments/{fulfillment}/pick', [FulfillmentController::class, 'pick']);
+            Route::post('fulfillments/{fulfillment}/pack', [FulfillmentController::class, 'pack']);
+            Route::post('fulfillments/{fulfillment}/complete', [FulfillmentController::class, 'complete']);
+            Route::post('fulfillments/{fulfillment}/cancel', [FulfillmentController::class, 'cancel']);
         });
     });
 

@@ -173,6 +173,19 @@ export interface InventoryItem {
   updated_at: string
 }
 
+export type InventoryReservationStatus = 'active' | 'consumed' | 'released' | 'expired'
+
+export interface InventoryReservation {
+  id: string
+  inventory_item_id: string
+  location_id: string
+  quantity: number
+  status: InventoryReservationStatus
+  expires_at: string | null
+  released_at: string | null
+  consumed_at: string | null
+}
+
 export interface InventoryMovement {
   id: string
   store_id: string
@@ -252,6 +265,7 @@ export interface TrackingEvent {
 export interface Shipment {
   id: string
   order_id: string
+  fulfillment_id: string
   provider: string
   status: ShipmentStatus
   tracking_number: string | null
@@ -261,6 +275,53 @@ export interface Shipment {
   cancelled_at: string | null
   items?: ShipmentItem[]
   tracking_events?: TrackingEvent[]
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * The Fulfillment entity's own detailed warehouse-workflow state — not to
+ * be confused with `FulfillmentStatus` below (Order.fulfillment_status),
+ * which is the Order's 3-state rollup across all of its Fulfillments.
+ */
+export type FulfillmentWorkflowStatus = 'pending' | 'allocated' | 'picking' | 'packing' | 'ready' | 'completed' | 'cancelled'
+
+export interface FulfillmentAllocation {
+  id: string
+  location_id: string
+  inventory_item_id: string
+  quantity: number
+  consumed_at: string | null
+  cancelled_at: string | null
+  created_at: string
+}
+
+export interface FulfillmentItem {
+  id: string
+  order_item_id: string
+  quantity: number
+  picked_quantity: number
+  packed_quantity: number
+  allocations?: FulfillmentAllocation[]
+}
+
+export interface FulfillmentEvent {
+  id: string
+  type: string
+  description: string | null
+  occurred_at: string
+}
+
+export interface Fulfillment {
+  id: string
+  order_id: string
+  status: FulfillmentWorkflowStatus
+  notes: string | null
+  created_by: string | null
+  completed_at: string | null
+  items?: FulfillmentItem[]
+  events?: FulfillmentEvent[]
+  shipments?: Shipment[]
   created_at: string
   updated_at: string
 }
@@ -356,6 +417,7 @@ export interface Cart {
 export type CheckoutStatus = 'open' | 'completed' | 'expired' | 'cancelled'
 export type OrderStatus = 'open' | 'cancelled' | 'closed'
 export type FinancialStatus = 'pending' | 'authorized' | 'paid' | 'partially_refunded' | 'refunded' | 'voided'
+/** Order's own rollup across all its Fulfillments — see FulfillmentWorkflowStatus for the Fulfillment entity's own status. */
 export type FulfillmentStatus = 'unfulfilled' | 'partial' | 'fulfilled'
 
 export interface StorefrontAddress {
@@ -490,6 +552,8 @@ export interface Order {
   shipping_address?: StorefrontAddress | null
   billing_address?: StorefrontAddress | null
   shipping_line?: ShippingLine | null
+  reservations?: InventoryReservation[]
+  fulfillments?: Fulfillment[]
   shipments?: Shipment[]
   cancelled_at: string | null
   created_at: string

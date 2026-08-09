@@ -4,16 +4,20 @@ Multi-tenant SaaS e-commerce platform foundation for the Russian market. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`docs/adr/`](docs/adr/) for the
 architectural decisions this codebase follows.
 
-Through Milestone 6 (Shipping Foundation): auth, stores, membership, tenant
+Through Milestone 7 (Fulfillment Core): auth, stores, membership, tenant
 isolation, catalog (products/variants/options/collections/categories/media),
 inventory (locations/levels/reservations), a guest storefront cart and
 checkout, orders, payments against a fake in-process provider (no real
-payment gateway integrated yet), and shipping (zones/methods/rates/
-shipments/tracking) against a fake in-process carrier (no real carrier
-integrated yet). No themes, fulfillment, or customer accounts yet — see
-[`ARCHITECTURE.md`](ARCHITECTURE.md) §5 for the full module map and what's
-still unimplemented, [`docs/architecture/shipping.md`](docs/architecture/shipping.md)
-for the shipping architecture, and
+payment gateway integrated yet), shipping (zones/methods/rates/shipments/
+tracking) against a fake in-process carrier (no real carrier integrated
+yet), and fulfillment (allocation, picking, packing, reservation
+consumption — independent of shipping). No themes or customer accounts
+yet — see [`ARCHITECTURE.md`](ARCHITECTURE.md) §5 for the full module map
+and what's still unimplemented,
+[`docs/architecture/shipping.md`](docs/architecture/shipping.md) for the
+shipping architecture,
+[`docs/architecture/fulfillment.md`](docs/architecture/fulfillment.md) for
+the fulfillment architecture, and
 [`docs/architecture/review-2026-08.md`](docs/architecture/review-2026-08.md)
 for the latest architecture health review.
 

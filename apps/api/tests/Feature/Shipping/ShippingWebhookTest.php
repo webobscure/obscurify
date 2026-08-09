@@ -51,13 +51,10 @@ beforeEach(function () {
 
     ['order_id' => $orderId, 'order_item_id' => $orderItemId] = paidOrderFor('store-a.localhost', $this->variantA->id, $this->storeA);
 
-    $shipment = $this->actingAs($this->userA, 'sanctum')->postJson("/api/v1/orders/{$orderId}/shipments", [
-        'provider' => 'fake',
-        'lines' => [['order_item_id' => $orderItemId, 'quantity' => 1]],
-    ], tenantHeader($this->storeA))->assertCreated();
+    $completed = shipViaFulfillment($this->userA, $this->storeA, $orderId, [['order_item_id' => $orderItemId, 'quantity' => 1]])->assertOk();
 
-    $this->shipmentId = $shipment->json('data.id');
-    $this->externalShipmentId = Str::after($shipment->json('data.tracking_url'), '/fake-shipments/');
+    $this->shipmentId = $completed->json('data.shipments.0.id');
+    $this->externalShipmentId = Str::after($completed->json('data.shipments.0.tracking_url'), '/fake-shipments/');
 });
 
 it('moves a shipment to in_transit then delivered on valid signed webhooks, appending tracking events', function () {

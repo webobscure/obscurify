@@ -2,6 +2,7 @@
 
 namespace App\Domain\Shipping\Http\Controllers;
 
+use App\Domain\Shipping\Application\CancelShipment;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Shipping\Models\Shipment;
 use App\Http\Controllers\Controller;
@@ -30,6 +31,16 @@ final class ShipmentController extends Controller
     public function show(Shipment $shipment): ShipmentResource
     {
         $shipment->load(['items', 'trackingEvents']);
+
+        return new ShipmentResource($shipment);
+    }
+
+    /**
+     * $shipment is resolved via tenant-scoped route model binding.
+     */
+    public function cancel(Shipment $shipment, CancelShipment $action): ShipmentResource
+    {
+        $shipment = $action->handle($shipment);
 
         return new ShipmentResource($shipment);
     }

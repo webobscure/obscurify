@@ -7,14 +7,16 @@ const ADMIN_BASE = 'http://localhost:3000'
 /**
  * Requires `php artisan e2e:seed-storefront` (apps/api) — see
  * playwright.config.ts and SeedE2EStorefrontCommand's shipping zone/
- * method fixture. Full Shipping Foundation flow (milestone spec section
- * 39): storefront cart -> checkout -> shipping address -> choose fake
- * shipping rate -> complete order -> fake payment -> paid; admin -> open
- * order -> create shipment -> fake provider in_transit -> delivered;
- * verify the tracking timeline throughout. One test, deliberately: this
- * shares the platform's 5/minute/IP login rate limit with
- * checkout.spec.ts/payment.spec.ts/admin-*.spec.ts (see those files'
- * comments on the same constraint).
+ * method fixture. Full order lifecycle through Fulfillment Core
+ * (Milestone 7's mandatory flow, spec section 21): storefront cart ->
+ * checkout -> shipping address -> choose fake shipping rate -> complete
+ * order -> fake payment -> paid; admin -> open order -> create Fulfillment
+ * -> allocate -> pick -> pack (auto-ready) -> create shipment (completes
+ * the Fulfillment) -> fake provider in_transit -> delivered; verify the
+ * tracking timeline throughout. One test, deliberately: this shares the
+ * platform's 5/minute/IP login rate limit with checkout.spec.ts/
+ * payment.spec.ts/admin-*.spec.ts (see those files' comments on the same
+ * constraint).
  */
 test('storefront checkout with a selected shipping rate, through fake payment, to a delivered shipment in admin', async ({ page }) => {
   await page.goto(`${BASE}/products/e2e-shirt`)
@@ -93,13 +95,33 @@ test('storefront checkout with a selected shipping rate, through fake payment, t
   // Order snapshot shows the shipping line the customer selected.
   await expect(page.getByText('— Standard Shipping')).toBeVisible()
 
-  // Create a shipment for the (now-paid) order.
-  await page.getByRole('heading', { name: 'Shipments' }).scrollIntoViewIfNeeded()
+  // Create a Fulfillment for the (now-paid) order — Milestone 7:
+  // Shipment creation moved off this page, now happens on the
+  // Fulfillment's own page once it's fully picked and packed.
+  await page.getByRole('heading', { name: 'Fulfillments' }).scrollIntoViewIfNeeded()
   await page.locator('.ship-form input[type="checkbox"]').first().check()
-  await page.getByRole('button', { name: 'Create shipment' }).click()
-  await expect(page.getByText('No shipments yet.')).not.toBeVisible()
+  await page.getByRole('button', { name: 'Create fulfillment' }).click()
+  await expect(page.getByText('No fulfillments yet.')).not.toBeVisible()
 
-  await page.getByRole('link', { name: 'View' }).last().click()
+  await page.getByRole('link', { name: 'View' }).click()
+  await page.waitForURL(/\/fulfillments\/.+/)
+
+  await page.getByRole('button', { name: 'Allocate' }).click()
+  await expect(page.getByRole('heading', { name: 'Picking' })).toBeVisible()
+
+  // Picked-quantity inputs default to each item's full ordered quantity.
+  await page.getByRole('button', { name: 'Save picked quantities' }).click()
+  await expect(page.getByRole('heading', { name: 'Packing' })).toBeVisible()
+
+  // Packed-quantity inputs default to each item's full picked quantity —
+  // fully packed in one call auto-advances the Fulfillment to `ready`.
+  await page.getByRole('button', { name: 'Save packed quantities' }).click()
+  await expect(page.getByRole('heading', { name: 'Create shipment' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Create shipment (fake provider)' }).click()
+  await expect(page.locator('.status-completed')).toBeVisible()
+
+  await page.getByRole('link', { name: 'View', exact: true }).click()
   await page.waitForURL(/\/shipments\/.+/)
   await expect(page.getByRole('row', { name: 'Status created' })).toBeVisible()
 

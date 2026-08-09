@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   Category,
   Collection,
+  Fulfillment,
   InventoryItem,
   InventoryLevel,
   Location,
@@ -286,9 +287,6 @@ export class ApiClient {
     list: (page?: number) => this.request<ApiCollection<Order>>(`/api/v1/orders${page ? `?page=${page}` : ''}`),
 
     get: (orderId: string) => this.request<ApiResource<Order>>(`/api/v1/orders/${orderId}`),
-
-    createShipment: (orderId: string, data: { provider: string; lines: { order_item_id: string; quantity: number }[] }) =>
-      this.request<ApiResource<Shipment>>(`/api/v1/orders/${orderId}/shipments`, { method: 'POST', body: JSON.stringify(data) }),
   }
 
   /**
@@ -347,6 +345,38 @@ export class ApiClient {
     get: (shipmentId: string) => this.request<ApiResource<Shipment>>(`/api/v1/shipments/${shipmentId}`),
 
     cancel: (shipmentId: string) => this.request<ApiResource<Shipment>>(`/api/v1/shipments/${shipmentId}/cancel`, { method: 'POST' }),
+  }
+
+  /**
+   * Milestone 7 (Fulfillment Core). A Shipment is now created via
+   * `complete()` against a `ready` Fulfillment, not directly from an
+   * Order — see `shipments` above, which stays read/cancel-only.
+   */
+  readonly fulfillments = {
+    list: (page?: number) => this.request<ApiCollection<Fulfillment>>(`/api/v1/fulfillments${page ? `?page=${page}` : ''}`),
+
+    get: (fulfillmentId: string) => this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}`),
+
+    create: (orderId: string, data: { items: { order_item_id: string; quantity: number }[]; notes?: string | null }) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/orders/${orderId}/fulfillments`, { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (fulfillmentId: string, data: { notes?: string | null }) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    allocate: (fulfillmentId: string) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}/allocate`, { method: 'POST' }),
+
+    pick: (fulfillmentId: string, items: { fulfillment_item_id: string; picked_quantity: number }[]) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}/pick`, { method: 'POST', body: JSON.stringify({ items }) }),
+
+    pack: (fulfillmentId: string, items: { fulfillment_item_id: string; packed_quantity: number }[]) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}/pack`, { method: 'POST', body: JSON.stringify({ items }) }),
+
+    complete: (fulfillmentId: string, provider: string) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}/complete`, { method: 'POST', body: JSON.stringify({ provider }) }),
+
+    cancel: (fulfillmentId: string) =>
+      this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}/cancel`, { method: 'POST' }),
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')

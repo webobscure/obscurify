@@ -2,6 +2,8 @@
 
 namespace App\Domain\Orders\Http\Resources;
 
+use App\Domain\Fulfillment\Http\Resources\FulfillmentResource;
+use App\Domain\Inventory\Http\Resources\InventoryReservationResource;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Shipping\Http\Resources\ShippingLineResource;
@@ -9,10 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Admin-facing order representation — no payment/refund/fulfillment
- * action affordances belong here beyond shipment creation, this milestone
- * deliberately ships read-only order visibility otherwise (no
- * PaymentGateway actions, no fulfillment module yet — spec section 27).
+ * Admin-facing order representation. No payment/refund action affordances
+ * belong here (no PaymentGateway exists yet). Fulfillment/Shipment
+ * creation happen on their own pages now (Milestone 7) — this resource
+ * exposes reservations/fulfillments/shipments read-only, per spec section
+ * 16's "Order page should display: Reservations, Fulfillments, Shipments."
  *
  * @mixin Order
  */
@@ -45,6 +48,8 @@ final class OrderResource extends JsonResource
             'shipping_address' => $this->whenLoaded('shippingAddress', fn () => $this->shippingAddress ? new OrderAddressResource($this->shippingAddress) : null),
             'billing_address' => $this->whenLoaded('billingAddress', fn () => $this->billingAddress ? new OrderAddressResource($this->billingAddress) : null),
             'shipping_line' => $this->whenLoaded('shippingLine', fn () => $this->shippingLine ? new ShippingLineResource($this->shippingLine) : null),
+            'reservations' => InventoryReservationResource::collection($this->whenLoaded('reservations')),
+            'fulfillments' => FulfillmentResource::collection($this->whenLoaded('fulfillments')),
             'shipments' => ShipmentResource::collection($this->whenLoaded('shipments')),
             'cancelled_at' => $this->cancelled_at,
             'created_at' => $this->created_at,

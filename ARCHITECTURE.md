@@ -246,8 +246,8 @@ Audit
 Platform Administration
 ```
 
-Implemented through Milestone 6 (Shipping Foundation, see
-`docs/architecture/shipping.md`):
+Implemented through Milestone 7 (Fulfillment Core, see
+`docs/architecture/fulfillment.md`):
 
 ```text
 Identity
@@ -261,16 +261,17 @@ Checkout (storefront)
 Orders
 Payments (fake provider only — no real gateway integrated yet)
 Shipping (fake provider only — no real carrier integrated yet; see docs/architecture/shipping.md)
+Fulfillment (allocation, picking, packing, reservation consumption; independent of Shipping — see docs/architecture/fulfillment.md)
 Domains
 ```
 
 Everything else in the long-term map above remains documented but
-unimplemented: Pricing, Discounts, Refunds, Fulfillment, Themes,
-Pages, Navigation, Notifications, Integrations, Webhooks, Apps, Billing,
-Plans, Subscriptions, Analytics, Audit, Platform Administration, a real
-(non-fake) payment provider, and a real (non-fake) shipping carrier.
-Customers exists as an internal write-side model used by checkout (no
-admin-facing API or UI yet).
+unimplemented: Pricing, Discounts, Refunds, Themes, Pages, Navigation,
+Notifications, Integrations, Webhooks, Apps, Billing, Plans,
+Subscriptions, Analytics, Audit, Platform Administration, a real
+(non-fake) payment provider, and a real (non-fake) shipping carrier (CDEK,
+Russian Post, Boxberry). Customers exists as an internal write-side model
+used by checkout (no admin-facing API or UI yet).
 
 ---
 

@@ -7,9 +7,11 @@
     <p v-if="error" class="error">{{ error }}</p>
 
     <!--
-      Read-only otherwise — no pay/refund/fulfill/cancel actions: no
-      PaymentGateway exists yet (see spec section 34). Shipment creation
-      below is the one write action this page supports.
+      Read-only otherwise — no pay/refund/cancel actions: no PaymentGateway
+      exists yet. Creating a Fulfillment below is the one write action
+      this page supports; picking/packing/completing/cancelling happen on
+      the Fulfillment's own page (Milestone 7 — Shipment creation moved
+      there too, since a Shipment now requires a ready Fulfillment).
     -->
     <section>
       <h2>Status</h2>
@@ -98,8 +100,87 @@
     </section>
 
     <section>
-      <h2>Shipments</h2>
+      <h2>Reservations</h2>
+      <table v-if="order.reservations?.length">
+        <thead>
+          <tr><th>Status</th><th>Quantity</th><th>Location</th><th>Expires</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="reservation in order.reservations" :key="reservation.id">
+            <td>{{ reservation.status }}</td>
+            <td>{{ reservation.quantity }}</td>
+            <td>{{ reservation.location_id }}</td>
+            <td>{{ reservation.expires_at ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No reservations.</p>
+    </section>
 
+    <section>
+      <h2>Fulfillments</h2>
+
+      <table v-if="order.fulfillments?.length">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Items</th>
+            <th/>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="fulfillment in order.fulfillments" :key="fulfillment.id">
+            <td>{{ fulfillment.status }}</td>
+            <td>{{ fulfillment.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0 }}</td>
+            <td><NuxtLink :to="`/fulfillments/${fulfillment.id}`">View</NuxtLink></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No fulfillments yet.</p>
+
+      <!--
+        Picking/packing/completing (which creates the Shipment) and
+        cancelling all happen on the Fulfillment's own page — this form
+        only covers step one of the lifecycle, registering which items
+        (and how much of each) this fulfillment attempt covers.
+      -->
+      <template v-if="order.financial_status === 'paid' && unfulfilledItems.length">
+        <h3>Create a fulfillment</h3>
+        <form class="ship-form" @submit.prevent="handleCreateFulfillment">
+          <table>
+            <thead>
+              <tr>
+                <th/>
+                <th>Product</th>
+                <th>Remaining</th>
+                <th>Fulfill quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in unfulfilledItems" :key="line.item.id">
+                <td><input v-model="line.selected" type="checkbox"></td>
+                <td>{{ line.item.product_title }} <span v-if="line.item.variant_title">({{ line.item.variant_title }})</span></td>
+                <td>{{ line.remaining }}</td>
+                <td>
+                  <input
+                    v-model.number="line.quantity"
+                    type="number"
+                    min="1"
+                    :max="line.remaining"
+                    :disabled="!line.selected"
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="submit" :disabled="creatingFulfillment">{{ creatingFulfillment ? 'Creating…' : 'Create fulfillment' }}</button>
+        </form>
+      </template>
+      <p v-if="fulfillmentError" class="error">{{ fulfillmentError }}</p>
+    </section>
+
+    <section>
+      <h2>Shipments</h2>
       <table v-if="order.shipments?.length">
         <thead>
           <tr>
@@ -119,40 +200,6 @@
         </tbody>
       </table>
       <p v-else>No shipments yet.</p>
-
-      <template v-if="order.financial_status === 'paid' && unshippedItems.length">
-        <h3>Create a shipment</h3>
-        <form class="ship-form" @submit.prevent="handleCreateShipment">
-          <table>
-            <thead>
-              <tr>
-                <th/>
-                <th>Product</th>
-                <th>Remaining</th>
-                <th>Ship quantity</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="line in unshippedItems" :key="line.item.id">
-                <td><input v-model="line.selected" type="checkbox"></td>
-                <td>{{ line.item.product_title }} <span v-if="line.item.variant_title">({{ line.item.variant_title }})</span></td>
-                <td>{{ line.remaining }}</td>
-                <td>
-                  <input
-                    v-model.number="line.quantity"
-                    type="number"
-                    min="1"
-                    :max="line.remaining"
-                    :disabled="!line.selected"
-                  >
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <button type="submit" :disabled="creatingShipment">{{ creatingShipment ? 'Creating…' : 'Create shipment' }}</button>
-        </form>
-      </template>
-      <p v-if="shipmentError" class="error">{{ shipmentError }}</p>
     </section>
   </div>
   <p v-else-if="loading">Loading…</p>
@@ -169,8 +216,8 @@ const orderId = route.params.id as string
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
-const creatingShipment = ref(false)
-const shipmentError = ref<string | null>(null)
+const creatingFulfillment = ref(false)
+const fulfillmentError = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -186,52 +233,53 @@ async function load() {
 }
 
 /**
- * Remaining-to-ship quantity per OrderItem — ordered quantity minus what's
- * already on any (non-cancelled) shipment for this order. The backend is
- * still the real guard against overshipping (CreateShipment locks the
- * OrderItem row); this is purely a UI convenience so the merchant isn't
- * offered a quantity the request would reject anyway.
+ * Remaining-to-fulfill quantity per OrderItem — ordered quantity minus
+ * what's already on any (non-cancelled) fulfillment for this order. The
+ * backend is still the real guard against over-fulfilling
+ * (CreateFulfillment locks the OrderItem row); this is purely a UI
+ * convenience so the merchant isn't offered a quantity the request would
+ * reject anyway.
  */
-const unshippedItems = computed(() => {
+const unfulfilledItems = computed(() => {
   if (!order.value) return []
 
-  const shippedByItem = new Map<string, number>()
-  for (const shipment of order.value.shipments ?? []) {
-    if (shipment.status === 'cancelled') continue
-    for (const shipmentItem of shipment.items ?? []) {
-      shippedByItem.set(shipmentItem.order_item_id, (shippedByItem.get(shipmentItem.order_item_id) ?? 0) + shipmentItem.quantity)
+  const fulfilledByItem = new Map<string, number>()
+  for (const fulfillment of order.value.fulfillments ?? []) {
+    if (fulfillment.status === 'cancelled') continue
+    for (const fulfillmentItem of fulfillment.items ?? []) {
+      fulfilledByItem.set(fulfillmentItem.order_item_id, (fulfilledByItem.get(fulfillmentItem.order_item_id) ?? 0) + fulfillmentItem.quantity)
     }
   }
 
   return (order.value.items ?? [])
     .map(item => ({
       item,
-      remaining: item.quantity - (shippedByItem.get(item.id) ?? 0),
+      remaining: item.quantity - (fulfilledByItem.get(item.id) ?? 0),
       selected: false,
-      quantity: item.quantity - (shippedByItem.get(item.id) ?? 0),
+      quantity: item.quantity - (fulfilledByItem.get(item.id) ?? 0),
     }))
     .filter(line => line.remaining > 0)
 })
 
-async function handleCreateShipment() {
-  const lines = unshippedItems.value
+async function handleCreateFulfillment() {
+  const items = unfulfilledItems.value
     .filter(line => line.selected && line.quantity > 0)
     .map(line => ({ order_item_id: line.item.id, quantity: line.quantity }))
 
-  if (lines.length === 0) {
-    shipmentError.value = 'Select at least one item to ship.'
+  if (items.length === 0) {
+    fulfillmentError.value = 'Select at least one item to fulfill.'
     return
   }
 
-  creatingShipment.value = true
-  shipmentError.value = null
+  creatingFulfillment.value = true
+  fulfillmentError.value = null
   try {
-    await useApi().orders.createShipment(orderId, { provider: 'fake', lines })
+    await useApi().fulfillments.create(orderId, { items })
     await load()
   } catch (e) {
-    shipmentError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+    fulfillmentError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
   } finally {
-    creatingShipment.value = false
+    creatingFulfillment.value = false
   }
 }
 

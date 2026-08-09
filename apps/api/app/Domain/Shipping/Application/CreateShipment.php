@@ -2,6 +2,9 @@
 
 namespace App\Domain\Shipping\Application;
 
+use App\Domain\Fulfillment\Application\CompleteFulfillment;
+use App\Domain\Fulfillment\Enums\FulfillmentStatus;
+use App\Domain\Fulfillment\Models\Fulfillment;
 use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderItem;
@@ -20,13 +23,24 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The single, transactional use case that registers a Shipment against a
- * paid Order (spec section 18). For this milestone, creation is always a
- * merchant action taken after the Order is paid — nothing dispatches this
- * automatically (spec section 15). Supports partial shipment: $lines may
- * cover a subset of the Order's items, and one OrderItem may be shipped
- * across multiple calls, as long as the running total per OrderItem never
- * exceeds what was ordered.
+ * The single, transactional use case that registers a Shipment (spec
+ * section 18/spec Milestone 7 section 12). A Shipment must reference a
+ * Fulfillment — Fulfillment Core (Milestone 7) removed the old
+ * "create a shipment directly from an Order" path entirely, since
+ * "prepare products for shipment" (Fulfillment) and "deliver the package"
+ * (Shipping) are deliberately separate concerns now: this is always a
+ * merchant action taken against a `ready` Fulfillment (which itself can
+ * only exist against a paid Order — see CreateFulfillment), never
+ * automatic. $lines are derived from the Fulfillment's own
+ * FulfillmentItems (their `quantity`, i.e. what packing already
+ * confirmed), not passed in by the caller.
+ *
+ * On success, delegates to Fulfillment\Application\CompleteFulfillment in
+ * the same transaction — that's where reservation consumption and the
+ * FulfillmentCompleted inventory movements actually happen (spec section
+ * 7's invariant), keeping "what does completing a fulfillment mean"
+ * entirely owned by the Fulfillment domain even though Shipping is what
+ * triggers it.
  */
 final class CreateShipment
 {
@@ -34,19 +48,25 @@ final class CreateShipment
         private readonly ShippingProviderRegistry $registry,
         private readonly ShipmentStateMachine $stateMachine,
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly CompleteFulfillment $completeFulfillment,
     ) {}
 
-    /**
-     * @param  list<array{order_item_id: string, quantity: int}>  $lines
-     */
-    public function handle(Order $order, string $providerCode, array $lines): Shipment
+    public function handle(Fulfillment $fulfillment, string $providerCode): Shipment
     {
         if (! $this->registry->has($providerCode)) {
             throw UnknownShippingProviderException::forCode($providerCode);
         }
 
-        return DB::transaction(function () use ($order, $providerCode, $lines) {
-            $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+        return DB::transaction(function () use ($fulfillment, $providerCode) {
+            $lockedFulfillment = Fulfillment::query()->whereKey($fulfillment->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedFulfillment->status !== FulfillmentStatus::Ready) {
+                throw ValidationException::withMessages([
+                    'fulfillment' => 'This fulfillment must be fully packed (ready) before a shipment can be created.',
+                ]);
+            }
+
+            $lockedOrder = Order::query()->whereKey($lockedFulfillment->order_id)->lockForUpdate()->firstOrFail();
 
             if ($lockedOrder->financial_status !== FinancialStatus::Paid) {
                 throw ValidationException::withMessages([
@@ -54,39 +74,36 @@ final class CreateShipment
                 ]);
             }
 
+            $fulfillmentItems = $lockedFulfillment->items()->lockForUpdate()->get();
             $orderedItems = [];
 
-            foreach ($lines as $line) {
+            foreach ($fulfillmentItems as $fulfillmentItem) {
                 // Locking every referenced OrderItem row is what makes
                 // "total shipped never exceeds ordered" concurrency-safe
-                // (spec section 38): two simultaneous shipment-create
-                // requests for the same OrderItem serialize on this lock,
-                // so the SUM() check below can never race.
+                // across simultaneous shipment-create requests, exactly as
+                // before Milestone 7 — this check is a second, independent
+                // safety net on top of Fulfillment's own overshipment
+                // protection at allocation time (spec section 13).
                 $orderItem = OrderItem::query()
                     ->where('order_id', $lockedOrder->id)
-                    ->whereKey($line['order_item_id'])
+                    ->whereKey($fulfillmentItem->order_item_id)
                     ->lockForUpdate()
-                    ->first();
-
-                if ($orderItem === null) {
-                    throw ValidationException::withMessages([
-                        'lines' => "Order item \"{$line['order_item_id']}\" does not belong to this order.",
-                    ]);
-                }
+                    ->firstOrFail();
 
                 $alreadyShipped = (int) ShipmentItem::query()
                     ->where('order_item_id', $orderItem->id)
                     ->sum('quantity');
 
-                if ($alreadyShipped + $line['quantity'] > $orderItem->quantity) {
+                if ($alreadyShipped + $fulfillmentItem->quantity > $orderItem->quantity) {
                     throw OvershipmentException::forOrderItem($orderItem->id);
                 }
 
-                $orderedItems[] = ['order_item' => $orderItem, 'quantity' => $line['quantity']];
+                $orderedItems[] = ['order_item' => $orderItem, 'quantity' => $fulfillmentItem->quantity];
             }
 
             $shipment = Shipment::query()->create([
                 'order_id' => $lockedOrder->id,
+                'fulfillment_id' => $lockedFulfillment->id,
                 'provider' => $providerCode,
                 'status' => ShipmentStatus::Pending->value,
             ]);
@@ -122,9 +139,12 @@ final class CreateShipment
             $this->recordOutboxEvent->handle('ShipmentCreated', 'Shipment', $shipment->id, [
                 'shipment_id' => $shipment->id,
                 'order_id' => $lockedOrder->id,
+                'fulfillment_id' => $lockedFulfillment->id,
                 'store_id' => $shipment->store_id,
                 'provider' => $providerCode,
             ]);
+
+            $this->completeFulfillment->handle($lockedFulfillment);
 
             return $shipment->fresh(['items', 'trackingEvents']);
         });

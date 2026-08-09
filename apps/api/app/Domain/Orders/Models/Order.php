@@ -4,6 +4,8 @@ namespace App\Domain\Orders\Models;
 
 use App\Domain\Checkouts\Models\Checkout;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Fulfillment\Models\Fulfillment;
+use App\Domain\Inventory\Models\InventoryReservation;
 use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Enums\FulfillmentStatus;
 use App\Domain\Orders\Enums\OrderStatus;
@@ -162,5 +164,21 @@ class Order extends Model
     public function shipments(): HasMany
     {
         return $this->hasMany(Shipment::class);
+    }
+
+    /**
+     * @return HasMany<Fulfillment, $this>
+     */
+    public function fulfillments(): HasMany
+    {
+        return $this->hasMany(Fulfillment::class);
+    }
+
+    /**
+     * @return HasMany<InventoryReservation, $this>
+     */
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(InventoryReservation::class);
     }
 }

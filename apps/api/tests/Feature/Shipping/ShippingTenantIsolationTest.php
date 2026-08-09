@@ -57,21 +57,19 @@ it('rejects Store A Order + Store B Shipment', function () {
     ['order_id' => $orderIdA] = paidOrderFor('store-a.localhost', $this->variantA->id, $this->storeA);
     ['order_id' => $orderIdB, 'order_item_id' => $orderItemIdB] = paidOrderFor('store-b.localhost', $this->variantB->id, $this->storeB);
 
-    $shipmentB = $this->actingAs($this->userB, 'sanctum')->postJson("/api/v1/orders/{$orderIdB}/shipments", [
-        'provider' => 'fake',
-        'lines' => [['order_item_id' => $orderItemIdB, 'quantity' => 1]],
-    ], tenantHeader($this->storeB))->assertCreated();
+    $shipmentB = shipViaFulfillment($this->userB, $this->storeB, $orderIdB, [['order_item_id' => $orderItemIdB, 'quantity' => 1]])->assertOk();
+    $shipmentBId = $shipmentB->json('data.shipments.0.id');
 
     // Store A, authenticated, with Store A active, cannot view Store B's
     // shipment via any route — neither the bare shipments endpoint...
     $this->actingAs($this->userA, 'sanctum')
-        ->getJson("/api/v1/shipments/{$shipmentB->json('data.id')}", tenantHeader($this->storeA))
+        ->getJson("/api/v1/shipments/{$shipmentBId}", tenantHeader($this->storeA))
         ->assertNotFound();
 
     // ...nor by attempting to cancel it while Store A is the active
     // tenant.
     $this->actingAs($this->userA, 'sanctum')
-        ->postJson("/api/v1/shipments/{$shipmentB->json('data.id')}/cancel", [], tenantHeader($this->storeA))
+        ->postJson("/api/v1/shipments/{$shipmentBId}/cancel", [], tenantHeader($this->storeA))
         ->assertNotFound();
 
     app(TenantContext::class)->scope($this->storeA, function () use ($orderIdA) {
@@ -79,13 +77,12 @@ it('rejects Store A Order + Store B Shipment', function () {
     });
 });
 
-it('rejects Store A Shipment + Store B OrderItem', function () {
+it('rejects Store A Fulfillment + Store B OrderItem', function () {
     ['order_id' => $orderIdA] = paidOrderFor('store-a.localhost', $this->variantA->id, $this->storeA);
     ['order_item_id' => $orderItemIdB] = paidOrderFor('store-b.localhost', $this->variantB->id, $this->storeB);
 
-    $this->actingAs($this->userA, 'sanctum')->postJson("/api/v1/orders/{$orderIdA}/shipments", [
-        'provider' => 'fake',
-        'lines' => [['order_item_id' => $orderItemIdB, 'quantity' => 1]],
+    $this->actingAs($this->userA, 'sanctum')->postJson("/api/v1/orders/{$orderIdA}/fulfillments", [
+        'items' => [['order_item_id' => $orderItemIdB, 'quantity' => 1]],
     ], tenantHeader($this->storeA))->assertStatus(422);
 
     app(TenantContext::class)->scope($this->storeA, function () use ($orderIdA) {

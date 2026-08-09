@@ -2,6 +2,7 @@
 
 namespace App\Domain\Shipping\Models;
 
+use App\Domain\Fulfillment\Models\Fulfillment;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Shipping\Enums\ShipmentStatus;
 use App\Domain\Stores\Models\Store;
@@ -18,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string $id
  * @property string $store_id
  * @property string $order_id
+ * @property string $fulfillment_id
  * @property string $provider
  * @property string|null $external_shipment_id
  * @property ShipmentStatus $status
@@ -40,6 +42,7 @@ class Shipment extends Model
 
     protected $fillable = [
         'order_id',
+        'fulfillment_id',
         'provider',
         'external_shipment_id',
         'status',
@@ -76,6 +79,14 @@ class Shipment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /**
+     * @return BelongsTo<Fulfillment, $this>
+     */
+    public function fulfillment(): BelongsTo
+    {
+        return $this->belongsTo(Fulfillment::class);
     }
 
     /**

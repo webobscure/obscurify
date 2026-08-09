@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domain\Fulfillment\Models\Fulfillment;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Shipping\Enums\ShipmentStatus;
 use App\Domain\Shipping\Infrastructure\Providers\FakeShippingProvider;
@@ -23,6 +24,7 @@ class ShipmentFactory extends Factory
     {
         return [
             'order_id' => Order::factory(),
+            'fulfillment_id' => Fulfillment::factory(),
             'provider' => FakeShippingProvider::CODE,
             'external_shipment_id' => 'fake_ship_'.(string) Str::ulid(),
             'status' => ShipmentStatus::Created,

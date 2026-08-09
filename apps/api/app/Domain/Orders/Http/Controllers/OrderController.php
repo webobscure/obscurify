@@ -8,8 +8,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Read-only this milestone: no payment/refund/fulfillment actions exist
- * yet (no PaymentGateway, no shipping provider) — see spec section 34.
+ * Read-only: no payment/refund actions exist yet (no PaymentGateway).
+ * Fulfillment/Shipment creation and lifecycle actions live on their own
+ * resources (see FulfillmentController, ShipmentController).
  */
 final class OrderController extends Controller
 {
@@ -33,7 +34,11 @@ final class OrderController extends Controller
      */
     public function show(Order $order): OrderResource
     {
-        $order->load(['customer', 'items', 'shippingAddress', 'billingAddress', 'shippingLine', 'shipments.items', 'shipments.trackingEvents']);
+        $order->load([
+            'customer', 'items', 'shippingAddress', 'billingAddress', 'shippingLine',
+            'reservations', 'fulfillments.items.allocations', 'fulfillments.events',
+            'shipments.items', 'shipments.trackingEvents',
+        ]);
 
         return new OrderResource($order);
     }
