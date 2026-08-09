@@ -15,6 +15,9 @@ import type {
   ProductOption,
   ProductOptionValue,
   ProductVariant,
+  Shipment,
+  ShippingMethod,
+  ShippingZone,
   Store,
   User,
 } from '@obscurify/types'
@@ -273,15 +276,19 @@ export class ApiClient {
   }
 
   /**
-   * Read-only this milestone — no shipping/fulfillment endpoints exist
-   * yet. Payment state is now visible (see `payments` below), but only
-   * ever changes through a verified provider webhook, never an admin
-   * action here.
+   * Order state is otherwise read-only — no cancel/refund/edit endpoints
+   * exist yet. Payment state only ever changes through a verified
+   * provider webhook, never an admin action here; shipment creation is
+   * the one write action, since it's a genuine merchant workflow step
+   * (spec section 15/18).
    */
   readonly orders = {
     list: (page?: number) => this.request<ApiCollection<Order>>(`/api/v1/orders${page ? `?page=${page}` : ''}`),
 
     get: (orderId: string) => this.request<ApiResource<Order>>(`/api/v1/orders/${orderId}`),
+
+    createShipment: (orderId: string, data: { provider: string; lines: { order_item_id: string; quantity: number }[] }) =>
+      this.request<ApiResource<Shipment>>(`/api/v1/orders/${orderId}/shipments`, { method: 'POST', body: JSON.stringify(data) }),
   }
 
   /**
@@ -291,6 +298,55 @@ export class ApiClient {
     list: (page?: number) => this.request<ApiCollection<Payment>>(`/api/v1/payments${page ? `?page=${page}` : ''}`),
 
     get: (paymentId: string) => this.request<ApiResource<Payment>>(`/api/v1/payments/${paymentId}`),
+  }
+
+  readonly shippingMethods = {
+    list: () => this.request<ApiCollection<ShippingMethod>>('/api/v1/shipping-methods'),
+
+    create: (data: {
+      name: string
+      code: string
+      provider: string
+      service_code?: string | null
+      status?: string
+      price_amount: number
+      currency: string
+      estimated_days_min?: number | null
+      estimated_days_max?: number | null
+      settings?: Record<string, unknown> | null
+      zone_ids?: string[]
+    }) => this.request<ApiResource<ShippingMethod>>('/api/v1/shipping-methods', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (methodId: string, data: Partial<{
+      name: string
+      code: string
+      service_code: string | null
+      status: string
+      price_amount: number
+      currency: string
+      estimated_days_min: number | null
+      estimated_days_max: number | null
+      settings: Record<string, unknown> | null
+      zone_ids: string[]
+    }>) => this.request<ApiResource<ShippingMethod>>(`/api/v1/shipping-methods/${methodId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  }
+
+  readonly shippingZones = {
+    list: () => this.request<ApiCollection<ShippingZone>>('/api/v1/shipping-zones'),
+
+    create: (data: { name: string; status?: string; regions?: { country_code: string; region?: string | null; postal_code_pattern?: string | null }[] }) =>
+      this.request<ApiResource<ShippingZone>>('/api/v1/shipping-zones', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (zoneId: string, data: Partial<{ name: string; status: string; regions: { country_code: string; region?: string | null; postal_code_pattern?: string | null }[] }>) =>
+      this.request<ApiResource<ShippingZone>>(`/api/v1/shipping-zones/${zoneId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  }
+
+  readonly shipments = {
+    list: (page?: number) => this.request<ApiCollection<Shipment>>(`/api/v1/shipments${page ? `?page=${page}` : ''}`),
+
+    get: (shipmentId: string) => this.request<ApiResource<Shipment>>(`/api/v1/shipments/${shipmentId}`),
+
+    cancel: (shipmentId: string) => this.request<ApiResource<Shipment>>(`/api/v1/shipments/${shipmentId}/cancel`, { method: 'POST' }),
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')

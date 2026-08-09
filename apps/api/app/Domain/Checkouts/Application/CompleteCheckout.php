@@ -14,6 +14,8 @@ use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderAddress;
 use App\Domain\Orders\Models\OrderItem;
+use App\Domain\Orders\Models\OrderShippingLine;
+use App\Domain\Shipping\Application\RevalidateShippingQuote;
 use App\Shared\Commerce\Application\RecordOutboxEvent;
 use App\Shared\Commerce\Enums\AddressType;
 use Illuminate\Support\Collection;
@@ -52,6 +54,7 @@ final class CompleteCheckout
         private readonly FindOrCreateCustomer $findOrCreateCustomer,
         private readonly AllocateOrderNumber $allocateOrderNumber,
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly RevalidateShippingQuote $revalidateShippingQuote,
     ) {}
 
     public function handle(Checkout $checkout): Order
@@ -95,12 +98,23 @@ final class CompleteCheckout
                 ->where('type', AddressType::Billing->value)
                 ->first() ?? $shippingAddress;
 
+            // Shipping selection is optional at completion (spec section
+            // 26 asked us to document, not invent, the fulfillment
+            // boundary — and making this mandatory would be a Checkout
+            // behavior change the milestone brief explicitly says not to
+            // make without a concrete issue forcing it). A checkout that
+            // never selected a rate completes with shipping_amount 0 and
+            // no OrderShippingLine, exactly like before this milestone.
+            $shippingQuote = $lockedCheckout->shipping_quote_id !== null
+                ? $this->revalidateShippingQuote->handle($lockedCheckout)
+                : null;
+
             $itemsSubtotal = 0;
             foreach ($lines as $line) {
                 $itemsSubtotal += $line['variant']->price_amount * $line['item']->quantity;
             }
 
-            $shippingAmount = 0;
+            $shippingAmount = $shippingQuote === null ? 0 : $shippingQuote->price_amount;
             $discountAmount = 0;
             $taxAmount = 0;
             $total = $itemsSubtotal + $shippingAmount - $discountAmount + $taxAmount;
@@ -169,6 +183,23 @@ final class CompleteCheckout
                 ...$this->addressSnapshot($billingAddress),
             ]);
 
+            // Snapshot, not a live reference (spec section 14) — copied
+            // once here so a later ShippingMethod rename/price change/
+            // deletion can never change what this order reports, same
+            // reasoning as OrderItem's product_title/unit_price_amount.
+            if ($shippingQuote !== null) {
+                OrderShippingLine::query()->create([
+                    'order_id' => $order->id,
+                    'provider' => $shippingQuote->provider,
+                    'service_code' => $shippingQuote->service_code,
+                    'title' => $shippingQuote->name,
+                    'price_amount' => $shippingQuote->price_amount,
+                    'currency' => $shippingQuote->currency,
+                    'estimated_days_min' => $shippingQuote->estimated_days_min,
+                    'estimated_days_max' => $shippingQuote->estimated_days_max,
+                ]);
+            }
+
             foreach ($reservations as $reservation) {
                 $reservation->update(['order_id' => $order->id]);
             }
@@ -189,7 +220,7 @@ final class CompleteCheckout
                 'currency' => $order->currency,
             ]);
 
-            return $order->load(['items', 'shippingAddress', 'billingAddress', 'customer']);
+            return $order->load(['items', 'shippingAddress', 'billingAddress', 'customer', 'shippingLine']);
         });
     }
 

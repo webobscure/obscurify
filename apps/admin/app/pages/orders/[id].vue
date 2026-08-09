@@ -7,9 +7,9 @@
     <p v-if="error" class="error">{{ error }}</p>
 
     <!--
-      Read-only this milestone — no pay/refund/fulfill/cancel actions:
-      no PaymentGateway or shipping provider exists yet (see spec section
-      34). This page is deliberately just a viewer.
+      Read-only otherwise — no pay/refund/fulfill/cancel actions: no
+      PaymentGateway exists yet (see spec section 34). Shipment creation
+      below is the one write action this page supports.
     -->
     <section>
       <h2>Status</h2>
@@ -83,12 +83,76 @@
       <table class="kv totals">
         <tbody>
           <tr><th>Subtotal</th><td>{{ formatMoney({ amount: order.items_subtotal_amount, currency: order.currency }) }}</td></tr>
-          <tr><th>Shipping</th><td>{{ formatMoney({ amount: order.shipping_amount, currency: order.currency }) }}</td></tr>
+          <tr>
+            <th>Shipping</th>
+            <td>
+              {{ formatMoney({ amount: order.shipping_amount, currency: order.currency }) }}
+              <span v-if="order.shipping_line" class="muted"> — {{ order.shipping_line.name }}</span>
+            </td>
+          </tr>
           <tr><th>Discount</th><td>{{ formatMoney({ amount: order.discount_amount, currency: order.currency }) }}</td></tr>
           <tr><th>Tax</th><td>{{ formatMoney({ amount: order.tax_amount, currency: order.currency }) }}</td></tr>
           <tr><th>Total</th><td><strong>{{ formatMoney({ amount: order.total_amount, currency: order.currency }) }}</strong></td></tr>
         </tbody>
       </table>
+    </section>
+
+    <section>
+      <h2>Shipments</h2>
+
+      <table v-if="order.shipments?.length">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Tracking</th>
+            <th>Items</th>
+            <th/>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="shipment in order.shipments" :key="shipment.id">
+            <td>{{ shipment.status }}</td>
+            <td>{{ shipment.tracking_number ?? '—' }}</td>
+            <td>{{ shipment.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0 }}</td>
+            <td><NuxtLink :to="`/shipments/${shipment.id}`">View</NuxtLink></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No shipments yet.</p>
+
+      <template v-if="order.financial_status === 'paid' && unshippedItems.length">
+        <h3>Create a shipment</h3>
+        <form class="ship-form" @submit.prevent="handleCreateShipment">
+          <table>
+            <thead>
+              <tr>
+                <th/>
+                <th>Product</th>
+                <th>Remaining</th>
+                <th>Ship quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in unshippedItems" :key="line.item.id">
+                <td><input v-model="line.selected" type="checkbox"></td>
+                <td>{{ line.item.product_title }} <span v-if="line.item.variant_title">({{ line.item.variant_title }})</span></td>
+                <td>{{ line.remaining }}</td>
+                <td>
+                  <input
+                    v-model.number="line.quantity"
+                    type="number"
+                    min="1"
+                    :max="line.remaining"
+                    :disabled="!line.selected"
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="submit" :disabled="creatingShipment">{{ creatingShipment ? 'Creating…' : 'Create shipment' }}</button>
+        </form>
+      </template>
+      <p v-if="shipmentError" class="error">{{ shipmentError }}</p>
     </section>
   </div>
   <p v-else-if="loading">Loading…</p>
@@ -105,6 +169,8 @@ const orderId = route.params.id as string
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const creatingShipment = ref(false)
+const shipmentError = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -116,6 +182,56 @@ async function load() {
     error.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * Remaining-to-ship quantity per OrderItem — ordered quantity minus what's
+ * already on any (non-cancelled) shipment for this order. The backend is
+ * still the real guard against overshipping (CreateShipment locks the
+ * OrderItem row); this is purely a UI convenience so the merchant isn't
+ * offered a quantity the request would reject anyway.
+ */
+const unshippedItems = computed(() => {
+  if (!order.value) return []
+
+  const shippedByItem = new Map<string, number>()
+  for (const shipment of order.value.shipments ?? []) {
+    if (shipment.status === 'cancelled') continue
+    for (const shipmentItem of shipment.items ?? []) {
+      shippedByItem.set(shipmentItem.order_item_id, (shippedByItem.get(shipmentItem.order_item_id) ?? 0) + shipmentItem.quantity)
+    }
+  }
+
+  return (order.value.items ?? [])
+    .map(item => ({
+      item,
+      remaining: item.quantity - (shippedByItem.get(item.id) ?? 0),
+      selected: false,
+      quantity: item.quantity - (shippedByItem.get(item.id) ?? 0),
+    }))
+    .filter(line => line.remaining > 0)
+})
+
+async function handleCreateShipment() {
+  const lines = unshippedItems.value
+    .filter(line => line.selected && line.quantity > 0)
+    .map(line => ({ order_item_id: line.item.id, quantity: line.quantity }))
+
+  if (lines.length === 0) {
+    shipmentError.value = 'Select at least one item to ship.'
+    return
+  }
+
+  creatingShipment.value = true
+  shipmentError.value = null
+  try {
+    await useApi().orders.createShipment(orderId, { provider: 'fake', lines })
+    await load()
+  } catch (e) {
+    shipmentError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+  } finally {
+    creatingShipment.value = false
   }
 }
 
@@ -132,5 +248,14 @@ onMounted(load)
   margin-top: 1rem;
   max-width: 320px;
   margin-left: auto;
+}
+
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.ship-form input[type='number'] {
+  width: 5rem;
 }
 </style>

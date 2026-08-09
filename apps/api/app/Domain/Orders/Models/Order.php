@@ -8,6 +8,7 @@ use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Enums\FulfillmentStatus;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Shipping\Models\Shipment;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Enums\AddressType;
 use App\Shared\Tenancy\Concerns\BelongsToTenant;
@@ -145,5 +146,21 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasOne<OrderShippingLine, $this>
+     */
+    public function shippingLine(): HasOne
+    {
+        return $this->hasOne(OrderShippingLine::class);
+    }
+
+    /**
+     * @return HasMany<Shipment, $this>
+     */
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class);
     }
 }

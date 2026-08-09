@@ -56,6 +56,32 @@
           </section>
 
           <section>
+            <h2>Shipping method</h2>
+            <button type="button" :disabled="loadingRates" @click="handleLoadShippingRates">
+              {{ loadingRates ? 'Checking…' : 'Check shipping options' }}
+            </button>
+
+            <ul v-if="checkout.shippingRates.value.length" class="rates">
+              <li v-for="rate in checkout.shippingRates.value" :key="`${rate.provider}-${rate.service_code}-${rate.shipping_method_id}`">
+                <label>
+                  <input
+                    type="radio"
+                    name="shipping-rate"
+                    :checked="isSelectedRate(rate)"
+                    :disabled="selectingRate"
+                    @change="handleSelectShippingRate(rate)"
+                  >
+                  {{ rate.name }} — {{ formatMoney({ amount: rate.price_amount, currency: rate.currency }) }}
+                  <span v-if="rate.estimated_days_min || rate.estimated_days_max" class="estimate">
+                    ({{ rate.estimated_days_min }}–{{ rate.estimated_days_max }} days)
+                  </span>
+                </label>
+              </li>
+            </ul>
+            <p v-if="checkout.shippingError.value" class="error">{{ checkout.shippingError.value }}</p>
+          </section>
+
+          <section>
             <label class="checkbox">
               <input v-model="billingSameAsShipping" type="checkbox">
               Billing address is the same as shipping
@@ -108,6 +134,10 @@
                 </tr>
               </tbody>
             </table>
+            <p v-if="checkout.checkout.value.selected_shipping_rate" class="totals-line">
+              Shipping ({{ checkout.checkout.value.selected_shipping_rate.name }}):
+              {{ formatMoney({ amount: checkout.checkout.value.shipping_amount, currency: checkout.checkout.value.currency }) }}
+            </p>
             <p class="totals">
               <strong>Total: {{ formatMoney({ amount: checkout.checkout.value.total_amount, currency: checkout.checkout.value.currency }) }}</strong>
             </p>
@@ -129,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+import type { StorefrontShippingRate } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
 const cart = useCart()
@@ -136,6 +167,8 @@ const checkout = useCheckout()
 
 const initializing = ref(true)
 const placingOrder = ref(false)
+const loadingRates = ref(false)
+const selectingRate = ref(false)
 
 const email = ref('')
 const phone = ref('')
@@ -159,6 +192,45 @@ onMounted(async () => {
     initializing.value = false
   }
 })
+
+/**
+ * Saves the address first (rates are calculated server-side from the
+ * checkout's already-persisted address — spec section 9), then fetches
+ * rates against it.
+ */
+async function handleLoadShippingRates() {
+  loadingRates.value = true
+  try {
+    await checkout.update({
+      email: email.value,
+      phone: phone.value || null,
+      shipping_address: { ...shipping },
+      billing_same_as_shipping: billingSameAsShipping.value,
+      billing_address: billingSameAsShipping.value ? undefined : { ...billing },
+    })
+    await checkout.fetchShippingRates()
+  } catch (e) {
+    if (!(e instanceof ApiClientError)) throw e
+  } finally {
+    loadingRates.value = false
+  }
+}
+
+function isSelectedRate(rate: StorefrontShippingRate): boolean {
+  const selected = checkout.checkout.value?.selected_shipping_rate
+  return !!selected && selected.provider === rate.provider && selected.service_code === rate.service_code
+}
+
+async function handleSelectShippingRate(rate: StorefrontShippingRate) {
+  selectingRate.value = true
+  try {
+    await checkout.selectShipping(rate)
+  } catch (e) {
+    if (!(e instanceof ApiClientError)) throw e
+  } finally {
+    selectingRate.value = false
+  }
+}
 
 async function handlePlaceOrder() {
   placingOrder.value = true
@@ -225,9 +297,42 @@ td {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.totals-line {
+  margin: 0.5rem 0 0;
+  text-align: right;
+  color: #555;
+}
+
 .totals {
   margin-top: 0.75rem;
   text-align: right;
+}
+
+.rates {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.rates li {
+  margin-bottom: 0.5rem;
+}
+
+.rates label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.rates label input[type='radio'] {
+  display: inline;
+  width: auto;
+}
+
+.estimate {
+  color: #777;
+  font-size: 0.85em;
 }
 
 button[type='submit'] {

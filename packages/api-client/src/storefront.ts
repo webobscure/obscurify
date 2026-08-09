@@ -10,6 +10,7 @@ import type {
   StorefrontOrderConfirmation,
   StorefrontPayment,
   StorefrontProduct,
+  StorefrontShippingRate,
   StorefrontStore,
 } from '@obscurify/types'
 import { ApiClientError } from './index'
@@ -152,6 +153,26 @@ export class StorefrontApiClient {
       this.request<ApiResource<StorefrontOrderConfirmation>>('/api/v1/storefront/checkout/complete', {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+
+    /**
+     * Requires a shipping address to already be saved on the checkout
+     * (via update() above) — the backend resolves rates from that address,
+     * never from anything passed here (spec section 9: "do not calculate
+     * from frontend").
+     */
+    shippingRates: () =>
+      this.request<ApiCollection<StorefrontShippingRate>>('/api/v1/storefront/checkout/shipping-rates'),
+
+    /**
+     * Identifies *which* previously-quoted rate to select — the price is
+     * always re-derived server-side, never trusted from here (spec
+     * section 11).
+     */
+    selectShipping: (data: { provider: string; service_code?: string | null; shipping_method_id?: string | null }) =>
+      this.request<ApiResource<StorefrontCheckout>>('/api/v1/storefront/checkout/shipping', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
       }),
   }
 

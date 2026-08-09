@@ -23,9 +23,22 @@
         </tbody>
       </table>
 
+      <p v-if="order.shipping_line" class="totals-line">
+        Shipping ({{ order.shipping_line.name }}): {{ formatMoney({ amount: order.shipping_amount, currency: order.currency }) }}
+      </p>
       <p class="totals">
         <strong>Total: {{ formatMoney({ amount: order.total_amount, currency: order.currency }) }}</strong>
       </p>
+
+      <section v-if="order.shipping_line">
+        <h2>Shipping method</h2>
+        <p>
+          {{ order.shipping_line.name }}
+          <template v-if="order.shipping_line.estimated_days_min || order.shipping_line.estimated_days_max">
+            — estimated {{ order.shipping_line.estimated_days_min }}–{{ order.shipping_line.estimated_days_max }} days
+          </template>
+        </p>
+      </section>
 
       <section v-if="order.shipping_address">
         <h2>Shipping address</h2>
@@ -87,6 +100,12 @@ table {
 td {
   padding: 0.35rem 0;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.totals-line {
+  margin: 0.5rem 0 0;
+  text-align: right;
+  color: #555;
 }
 
 .totals {

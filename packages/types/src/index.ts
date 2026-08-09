@@ -13,6 +13,10 @@ export type InventoryMovementReason =
   | 'return'
   | 'damage'
   | 'correction'
+export type ShippingZoneStatus = 'active' | 'inactive'
+export type ShippingMethodStatus = 'active' | 'inactive'
+export type ShipmentStatus = 'pending' | 'ready' | 'created' | 'in_transit' | 'delivered' | 'failed' | 'cancelled'
+export type TrackingEventStatus = 'created' | 'in_transit' | 'delivered' | 'failed' | 'cancelled'
 
 export interface User {
   id: string
@@ -182,6 +186,85 @@ export interface InventoryMovement {
   created_at: string
 }
 
+export interface ShippingZoneRegion {
+  id: string
+  country_code: string
+  region: string | null
+  postal_code_pattern: string | null
+}
+
+export interface ShippingZone {
+  id: string
+  name: string
+  status: ShippingZoneStatus
+  regions?: ShippingZoneRegion[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ShippingMethod {
+  id: string
+  name: string
+  code: string
+  provider: string
+  service_code: string | null
+  status: ShippingMethodStatus
+  price_amount: number
+  currency: string
+  estimated_days_min: number | null
+  estimated_days_max: number | null
+  settings: Record<string, unknown> | null
+  zone_ids?: string[]
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Shared shape for a selected/snapshotted shipping choice — what a
+ * checkout's selected_shipping_rate and an order's shipping_line both
+ * render as (a ShippingQuote and an OrderShippingLine on the backend
+ * respectively; see StorefrontShippingLineResource/ShippingLineResource).
+ */
+export interface ShippingLine {
+  provider: string
+  service_code: string | null
+  name: string
+  price_amount: number
+  currency: string
+  estimated_days_min: number | null
+  estimated_days_max: number | null
+}
+
+export interface ShipmentItem {
+  id: string
+  order_item_id: string
+  quantity: number
+}
+
+export interface TrackingEvent {
+  id: string
+  status: TrackingEventStatus
+  description: string | null
+  occurred_at: string
+  location: string | null
+}
+
+export interface Shipment {
+  id: string
+  order_id: string
+  provider: string
+  status: ShipmentStatus
+  tracking_number: string | null
+  tracking_url: string | null
+  shipped_at: string | null
+  delivered_at: string | null
+  cancelled_at: string | null
+  items?: ShipmentItem[]
+  tracking_events?: TrackingEvent[]
+  created_at: string
+  updated_at: string
+}
+
 export interface Money {
   amount: number
   currency: string
@@ -300,7 +383,25 @@ export interface StorefrontCheckout {
   status: CheckoutStatus
   shipping_address: StorefrontAddress | null
   billing_address: StorefrontAddress | null
+  selected_shipping_rate: ShippingLine | null
   expires_at: string | null
+}
+
+/**
+ * A calculated, not-yet-selected shipping option
+ * (GET /storefront/checkout/shipping-rates) — see ShippingRate on the
+ * backend. Deliberately no metadata field: provider-internal detail never
+ * crosses this boundary.
+ */
+export interface StorefrontShippingRate {
+  provider: string
+  service_code: string | null
+  shipping_method_id: string | null
+  name: string
+  price_amount: number
+  currency: string
+  estimated_days_min: number | null
+  estimated_days_max: number | null
 }
 
 export interface StorefrontOrderItem {
@@ -337,6 +438,7 @@ export interface StorefrontOrderConfirmation {
   items: StorefrontOrderItem[]
   shipping_address: StorefrontAddress | null
   billing_address: StorefrontAddress | null
+  shipping_line: ShippingLine | null
   created_at: string
 }
 
@@ -387,6 +489,8 @@ export interface Order {
   items?: OrderItem[]
   shipping_address?: StorefrontAddress | null
   billing_address?: StorefrontAddress | null
+  shipping_line?: ShippingLine | null
+  shipments?: Shipment[]
   cancelled_at: string | null
   created_at: string
   updated_at: string

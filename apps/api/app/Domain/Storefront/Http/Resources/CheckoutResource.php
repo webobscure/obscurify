@@ -10,9 +10,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Deliberately distinct from any admin representation: no store_id,
  * cart_id, or customer_id — nothing the storefront visitor has a reason
- * to see. Callers must eager-load 'addresses' before rendering this
- * (see StorefrontCheckoutController) — the shipping/billing lookup below
- * assumes it's already in memory.
+ * to see. Callers must eager-load 'addresses' and 'shippingQuote' before
+ * rendering this (see StorefrontCheckoutController) — the lookups below
+ * assume they're already in memory.
  *
  * @mixin Checkout
  */
@@ -39,6 +39,7 @@ final class CheckoutResource extends JsonResource
             'status' => $this->status->value,
             'shipping_address' => $shipping ? new CheckoutAddressResource($shipping) : null,
             'billing_address' => $billing ? new CheckoutAddressResource($billing) : null,
+            'selected_shipping_rate' => $this->shippingQuote ? new StorefrontShippingLineResource($this->shippingQuote) : null,
             'expires_at' => $this->expires_at,
         ];
     }

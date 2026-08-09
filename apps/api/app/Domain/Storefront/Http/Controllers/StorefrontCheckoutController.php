@@ -9,14 +9,22 @@ use App\Domain\Checkouts\Application\OpenCheckout;
 use App\Domain\Checkouts\Application\UpdateCheckout;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Checkouts\Models\Checkout;
+use App\Domain\Checkouts\Models\CheckoutAddress;
+use App\Domain\Shipping\Application\CalculateShippingRates;
+use App\Domain\Shipping\Application\SelectShippingRate;
+use App\Domain\Shipping\Support\ShippingRateContext;
 use App\Domain\Storefront\Http\Requests\CompleteCheckoutRequest;
+use App\Domain\Storefront\Http\Requests\SelectCheckoutShippingRequest;
 use App\Domain\Storefront\Http\Requests\UpdateCheckoutRequest;
 use App\Domain\Storefront\Http\Resources\CheckoutResource;
 use App\Domain\Storefront\Http\Resources\OrderConfirmationResource;
+use App\Domain\Storefront\Http\Resources\StorefrontShippingRateResource;
 use App\Http\Controllers\Controller;
 use App\Shared\Commerce\Application\IdempotencyKeyStore;
+use App\Shared\Commerce\Enums\AddressType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -24,7 +32,7 @@ final class StorefrontCheckoutController extends Controller
 {
     private const COOKIE_NAME = 'storefront_cart_token';
 
-    private const array CHECKOUT_EAGER_LOADS = ['addresses'];
+    private const array CHECKOUT_EAGER_LOADS = ['addresses', 'shippingQuote'];
 
     public function store(Request $request, GetOrCreateCart $getOrCreateCart, OpenCheckout $action): JsonResponse
     {
@@ -41,6 +49,39 @@ final class StorefrontCheckoutController extends Controller
         $checkout = $this->resolveOpenCheckout($cart);
 
         $checkout = $action->handle($checkout, $request->validated());
+
+        return $this->checkoutResponse($checkout);
+    }
+
+    /**
+     * Live-calculated on every call, never cached (spec section 9: "do not
+     * calculate from frontend") — reads the checkout's already-saved
+     * shipping address, so PATCH .../checkout with a shipping_address must
+     * happen first.
+     */
+    public function shippingRates(Request $request, GetOrCreateCart $getOrCreateCart, CalculateShippingRates $action): AnonymousResourceCollection
+    {
+        $cart = $getOrCreateCart->handle($request->cookie(self::COOKIE_NAME));
+        $checkout = $this->resolveOpenCheckout($cart);
+
+        $context = $this->shippingRateContext($checkout);
+
+        return StorefrontShippingRateResource::collection($action->handle($context));
+    }
+
+    public function selectShipping(SelectCheckoutShippingRequest $request, GetOrCreateCart $getOrCreateCart, SelectShippingRate $action): JsonResponse
+    {
+        $cart = $getOrCreateCart->handle($request->cookie(self::COOKIE_NAME));
+        $checkout = $this->resolveOpenCheckout($cart);
+
+        $data = $request->validated();
+
+        $checkout = $action->handle(
+            $checkout,
+            $data['provider'],
+            $data['service_code'] ?? null,
+            $data['shipping_method_id'] ?? null,
+        );
 
         return $this->checkoutResponse($checkout);
     }
@@ -131,5 +172,26 @@ final class StorefrontCheckoutController extends Controller
         $checkout->load(self::CHECKOUT_EAGER_LOADS);
 
         return (new CheckoutResource($checkout))->response()->setStatusCode(200);
+    }
+
+    private function shippingRateContext(Checkout $checkout): ShippingRateContext
+    {
+        $shippingAddress = CheckoutAddress::query()
+            ->where('checkout_id', $checkout->id)
+            ->where('type', AddressType::Shipping->value)
+            ->first();
+
+        if ($shippingAddress === null) {
+            throw ValidationException::withMessages([
+                'shipping_address' => 'A shipping address is required before requesting shipping rates.',
+            ]);
+        }
+
+        return new ShippingRateContext(
+            countryCode: $shippingAddress->country_code ?? '',
+            region: $shippingAddress->region,
+            postalCode: $shippingAddress->postal_code,
+            currency: $checkout->currency,
+        );
     }
 }

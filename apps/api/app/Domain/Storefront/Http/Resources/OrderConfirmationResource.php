@@ -13,8 +13,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * unlike the tenant-sequential `number`, so a visitor can never guess
  * their way into another customer's order by incrementing it.
  *
- * Callers must eager-load items/shippingAddress/billingAddress before
- * rendering (see StorefrontCheckoutController / StorefrontOrderController).
+ * Callers must eager-load items/shippingAddress/billingAddress/shippingLine
+ * before rendering (see StorefrontCheckoutController / StorefrontOrderController).
  *
  * @mixin Order
  */
@@ -42,6 +42,7 @@ final class OrderConfirmationResource extends JsonResource
             'items' => OrderItemResource::collection($this->items),
             'shipping_address' => $this->shippingAddress ? new OrderAddressResource($this->shippingAddress) : null,
             'billing_address' => $this->billingAddress ? new OrderAddressResource($this->billingAddress) : null,
+            'shipping_line' => $this->shippingLine ? new StorefrontShippingLineResource($this->shippingLine) : null,
             'created_at' => $this->created_at,
         ];
     }

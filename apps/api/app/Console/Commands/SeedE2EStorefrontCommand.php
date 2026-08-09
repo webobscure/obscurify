@@ -12,6 +12,11 @@ use App\Domain\Domains\Models\Domain;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLevel;
 use App\Domain\Locations\Models\Location;
+use App\Domain\Shipping\Infrastructure\Providers\FakeShippingProvider;
+use App\Domain\Shipping\Models\ShippingMethod;
+use App\Domain\Shipping\Models\ShippingMethodZone;
+use App\Domain\Shipping\Models\ShippingZone;
+use App\Domain\Shipping\Models\ShippingZoneRegion;
 use App\Domain\Stores\Application\CreateStore;
 use App\Domain\Stores\Models\Store;
 use App\Models\User;
@@ -92,6 +97,33 @@ class SeedE2EStorefrontCommand extends Command
             if ($level->on_hand < 10) {
                 $level->update(['on_hand' => 50]);
             }
+
+            // Matches the US/Testville address every checkout/payment/
+            // shipping E2E spec fills in — a real fake rate is always
+            // available for those flows to select.
+            $zone = ShippingZone::query()->firstOrCreate(['name' => 'E2E Zone']);
+            ShippingZoneRegion::query()->firstOrCreate([
+                'shipping_zone_id' => $zone->id,
+                'country_code' => 'US',
+            ]);
+
+            $method = ShippingMethod::query()->firstOrCreate(
+                ['code' => 'e2e-standard'],
+                [
+                    'name' => 'Standard Shipping',
+                    'provider' => FakeShippingProvider::CODE,
+                    'service_code' => 'standard',
+                    'price_amount' => 50000,
+                    'currency' => 'RUB',
+                    'estimated_days_min' => 3,
+                    'estimated_days_max' => 5,
+                ],
+            );
+
+            ShippingMethodZone::query()->firstOrCreate([
+                'shipping_method_id' => $method->id,
+                'shipping_zone_id' => $zone->id,
+            ]);
         });
 
         $this->info('E2E storefront fixture ready: e2e-storefront.localhost / e2e-shirt');

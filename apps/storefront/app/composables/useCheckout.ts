@@ -1,4 +1,4 @@
-import type { StorefrontCheckout } from '@obscurify/types'
+import type { StorefrontCheckout, StorefrontShippingRate } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
 export interface CheckoutAddressInput {
@@ -38,6 +38,9 @@ export function useCheckout() {
   const loading = useState<boolean>('checkout-loading', () => false)
   const error = useState<string | null>('checkout-error', () => null)
   const idempotencyKey = useState<string>('checkout-idempotency-key', () => crypto.randomUUID())
+  const shippingRates = useState<StorefrontShippingRate[]>('checkout-shipping-rates', () => [])
+  const shippingRatesLoading = useState<boolean>('checkout-shipping-rates-loading', () => false)
+  const shippingError = useState<string | null>('checkout-shipping-error', () => null)
 
   async function open() {
     loading.value = true
@@ -77,5 +80,53 @@ export function useCheckout() {
     }
   }
 
-  return { checkout, loading, error, open, update, complete }
+  /**
+   * Requires a shipping address to already be saved (see update() above) —
+   * clears any previously fetched rates on failure so a stale list can
+   * never be selected from after e.g. an address that no longer matches
+   * any zone.
+   */
+  async function fetchShippingRates() {
+    shippingRatesLoading.value = true
+    shippingError.value = null
+    try {
+      const response = await useStorefrontApi().checkout.shippingRates()
+      shippingRates.value = response.data
+    } catch (e) {
+      shippingRates.value = []
+      shippingError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+      throw e
+    } finally {
+      shippingRatesLoading.value = false
+    }
+  }
+
+  async function selectShipping(rate: StorefrontShippingRate) {
+    shippingError.value = null
+    try {
+      const response = await useStorefrontApi().checkout.selectShipping({
+        provider: rate.provider,
+        service_code: rate.service_code,
+        shipping_method_id: rate.shipping_method_id,
+      })
+      checkout.value = response.data
+    } catch (e) {
+      shippingError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+      throw e
+    }
+  }
+
+  return {
+    checkout,
+    loading,
+    error,
+    open,
+    update,
+    complete,
+    shippingRates,
+    shippingRatesLoading,
+    shippingError,
+    fetchShippingRates,
+    selectShipping,
+  }
 }

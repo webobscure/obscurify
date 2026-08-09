@@ -18,6 +18,12 @@ use App\Domain\Orders\Http\Controllers\OrderController;
 use App\Domain\Payments\Http\Controllers\FakePaymentOutcomeController;
 use App\Domain\Payments\Http\Controllers\PaymentController;
 use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
+use App\Domain\Shipping\Http\Controllers\FakeShipmentOutcomeController;
+use App\Domain\Shipping\Http\Controllers\OrderShipmentController;
+use App\Domain\Shipping\Http\Controllers\ShipmentController;
+use App\Domain\Shipping\Http\Controllers\ShippingMethodController;
+use App\Domain\Shipping\Http\Controllers\ShippingWebhookController;
+use App\Domain\Shipping\Http\Controllers\ShippingZoneController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCartController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCategoryController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCheckoutController;
@@ -90,9 +96,22 @@ Route::prefix('v1')->group(function () {
 
             Route::get('orders', [OrderController::class, 'index']);
             Route::get('orders/{order}', [OrderController::class, 'show']);
+            Route::post('orders/{order}/shipments', [OrderShipmentController::class, 'store']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
+
+            Route::get('shipping-methods', [ShippingMethodController::class, 'index']);
+            Route::post('shipping-methods', [ShippingMethodController::class, 'store']);
+            Route::patch('shipping-methods/{method}', [ShippingMethodController::class, 'update']);
+
+            Route::get('shipping-zones', [ShippingZoneController::class, 'index']);
+            Route::post('shipping-zones', [ShippingZoneController::class, 'store']);
+            Route::patch('shipping-zones/{zone}', [ShippingZoneController::class, 'update']);
+
+            Route::get('shipments', [ShipmentController::class, 'index']);
+            Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
+            Route::post('shipments/{shipment}/cancel', [OrderShipmentController::class, 'cancel']);
         });
     });
 
@@ -102,6 +121,10 @@ Route::prefix('v1')->group(function () {
     // safely from the payload instead.
     Route::post('payments/webhooks/{provider}', [PaymentWebhookController::class, 'handle']);
 
+    // Same reasoning as the payments webhook above — see
+    // ShippingWebhookController / ProcessShippingWebhook.
+    Route::post('shipping/webhooks/{provider}', [ShippingWebhookController::class, 'handle']);
+
     // Dev/test-only fake payment page backend (spec sections 9-12) —
     // registered only when the fake provider itself is enabled (see
     // config/payments.php); the controller re-checks the same flag as a
@@ -110,6 +133,13 @@ Route::prefix('v1')->group(function () {
     if (config('payments.fake.enabled')) {
         Route::get('fake-payments/{externalPaymentId}', [FakePaymentOutcomeController::class, 'show']);
         Route::post('fake-payments/{externalPaymentId}/outcome', [FakePaymentOutcomeController::class, 'outcome']);
+    }
+
+    // Dev/test-only fake shipment control page (spec section 20) — same
+    // double-guard discipline as the fake payment page above.
+    if (config('commerce.shipping.fake.enabled')) {
+        Route::get('fake-shipments/{externalShipmentId}', [FakeShipmentOutcomeController::class, 'show']);
+        Route::post('fake-shipments/{externalShipmentId}/outcome', [FakeShipmentOutcomeController::class, 'outcome']);
     }
 
     // Public storefront API: tenant is resolved from the request hostname
@@ -135,6 +165,8 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/checkout', [StorefrontCheckoutController::class, 'store']);
         Route::patch('/checkout', [StorefrontCheckoutController::class, 'update']);
+        Route::get('/checkout/shipping-rates', [StorefrontCheckoutController::class, 'shippingRates']);
+        Route::patch('/checkout/shipping', [StorefrontCheckoutController::class, 'selectShipping']);
         Route::post('/checkout/complete', [StorefrontCheckoutController::class, 'complete']);
 
         Route::get('/orders/{order}', [StorefrontOrderController::class, 'show']);

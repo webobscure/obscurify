@@ -5,6 +5,7 @@ namespace App\Domain\Checkouts\Models;
 use App\Domain\Carts\Models\Cart;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Shipping\Models\ShippingQuote;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Enums\AddressType;
 use App\Shared\Tenancy\Concerns\BelongsToTenant;
@@ -47,6 +48,7 @@ class Checkout extends Model
     protected $fillable = [
         'cart_id',
         'customer_id',
+        'shipping_quote_id',
         'email',
         'phone',
         'currency',
@@ -125,5 +127,13 @@ class Checkout extends Model
     public function billingAddress(): HasOne
     {
         return $this->hasOne(CheckoutAddress::class)->where('type', AddressType::Billing);
+    }
+
+    /**
+     * @return BelongsTo<ShippingQuote, $this>
+     */
+    public function shippingQuote(): BelongsTo
+    {
+        return $this->belongsTo(ShippingQuote::class);
     }
 }

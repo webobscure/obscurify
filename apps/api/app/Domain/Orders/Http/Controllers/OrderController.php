@@ -33,7 +33,7 @@ final class OrderController extends Controller
      */
     public function show(Order $order): OrderResource
     {
-        $order->load(['customer', 'items', 'shippingAddress', 'billingAddress']);
+        $order->load(['customer', 'items', 'shippingAddress', 'billingAddress', 'shippingLine', 'shipments.items', 'shipments.trackingEvents']);
 
         return new OrderResource($order);
     }
