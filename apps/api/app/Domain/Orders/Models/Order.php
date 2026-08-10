@@ -10,6 +10,7 @@ use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Enums\FulfillmentStatus;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Returns\Models\ReturnRequest;
 use App\Domain\Shipping\Models\Shipment;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Enums\AddressType;
@@ -180,5 +181,13 @@ class Order extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(InventoryReservation::class);
+    }
+
+    /**
+     * @return HasMany<ReturnRequest, $this>
+     */
+    public function returns(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class);
     }
 }

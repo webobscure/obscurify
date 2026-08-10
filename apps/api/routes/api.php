@@ -19,6 +19,7 @@ use App\Domain\Orders\Http\Controllers\OrderController;
 use App\Domain\Payments\Http\Controllers\FakePaymentOutcomeController;
 use App\Domain\Payments\Http\Controllers\PaymentController;
 use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
+use App\Domain\Returns\Http\Controllers\ReturnController;
 use App\Domain\Shipping\Http\Controllers\FakeShipmentOutcomeController;
 use App\Domain\Shipping\Http\Controllers\ShipmentController;
 use App\Domain\Shipping\Http\Controllers\ShippingMethodController;
@@ -97,6 +98,7 @@ Route::prefix('v1')->group(function () {
             Route::get('orders', [OrderController::class, 'index']);
             Route::get('orders/{order}', [OrderController::class, 'show']);
             Route::post('orders/{order}/fulfillments', [FulfillmentController::class, 'store']);
+            Route::post('orders/{order}/returns', [ReturnController::class, 'store']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -124,6 +126,21 @@ Route::prefix('v1')->group(function () {
             Route::post('fulfillments/{fulfillment}/pack', [FulfillmentController::class, 'pack']);
             Route::post('fulfillments/{fulfillment}/complete', [FulfillmentController::class, 'complete']);
             Route::post('fulfillments/{fulfillment}/cancel', [FulfillmentController::class, 'cancel']);
+
+            // Returns & Reverse Logistics Core (Milestone 8) — independent
+            // of Payments/Shipping/Fulfillment (see docs/architecture/
+            // returns.md); reads OrderItem/ShipmentItem to validate
+            // returnable quantity and writes InventoryMovement directly,
+            // never through those domains' own Application classes.
+            Route::get('returns', [ReturnController::class, 'index']);
+            Route::get('returns/{returnRequest}', [ReturnController::class, 'show']);
+            Route::patch('returns/{returnRequest}', [ReturnController::class, 'update']);
+            Route::post('returns/{returnRequest}/approve', [ReturnController::class, 'approve']);
+            Route::post('returns/{returnRequest}/reject', [ReturnController::class, 'reject']);
+            Route::post('returns/{returnRequest}/receive', [ReturnController::class, 'receive']);
+            Route::post('returns/{returnRequest}/inspect', [ReturnController::class, 'inspect']);
+            Route::post('returns/{returnRequest}/complete', [ReturnController::class, 'complete']);
+            Route::post('returns/{returnRequest}/cancel', [ReturnController::class, 'cancel']);
         });
     });
 

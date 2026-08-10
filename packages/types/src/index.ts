@@ -355,6 +355,66 @@ export interface Fulfillment {
   updated_at: string
 }
 
+export type ReturnStatus = 'requested' | 'approved' | 'awaiting_return' | 'received' | 'inspection' | 'completed' | 'rejected' | 'cancelled'
+export type ReturnReason = 'wrong_size' | 'damaged' | 'not_as_described' | 'ordered_by_mistake' | 'defective' | 'other'
+/** Shared by ReturnItem.condition (unverified, claimed at request time) and ReturnInspection.condition (verified after physical examination). */
+export type ReturnCondition = 'new' | 'like_new' | 'damaged' | 'defective' | 'missing_parts' | 'other'
+export type ReturnDispositionValue = 'restock' | 'damaged' | 'repair' | 'discard' | 'manual_review'
+
+export interface ReturnInspection {
+  id: string
+  condition: ReturnCondition
+  photos: unknown[] | null
+  notes: string | null
+  inspected_by: string | null
+  inspected_at: string
+}
+
+export interface ReturnDisposition {
+  id: string
+  disposition: ReturnDispositionValue
+  notes: string | null
+  decided_by: string | null
+  decided_at: string
+  /** Set once CompleteReturn has actually applied the inventory effect — null while still awaiting completion. */
+  applied_at: string | null
+}
+
+export interface ReturnItem {
+  id: string
+  order_item_id: string
+  quantity: number
+  reason: ReturnReason
+  condition: ReturnCondition | null
+  notes: string | null
+  inspection?: ReturnInspection | null
+  disposition?: ReturnDisposition | null
+}
+
+export interface ReturnEvent {
+  id: string
+  type: string
+  description: string | null
+  occurred_at: string
+}
+
+export interface ReturnRequest {
+  id: string
+  order_id: string
+  customer_id: string | null
+  number: number
+  status: ReturnStatus
+  requested_at: string
+  approved_at: string | null
+  received_at: string | null
+  closed_at: string | null
+  notes: string | null
+  items?: ReturnItem[]
+  events?: ReturnEvent[]
+  created_at: string
+  updated_at: string
+}
+
 export interface Money {
   amount: number
   currency: string
@@ -602,6 +662,7 @@ export interface Order {
   reservations?: InventoryReservation[]
   fulfillments?: Fulfillment[]
   shipments?: Shipment[]
+  returns?: ReturnRequest[]
   cancelled_at: string | null
   created_at: string
   updated_at: string

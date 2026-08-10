@@ -16,6 +16,7 @@ import type {
   ProductOption,
   ProductOptionValue,
   ProductVariant,
+  ReturnRequest,
   Shipment,
   ShippingMethod,
   ShippingZone,
@@ -377,6 +378,44 @@ export class ApiClient {
 
     cancel: (fulfillmentId: string) =>
       this.request<ApiResource<Fulfillment>>(`/api/v1/fulfillments/${fulfillmentId}/cancel`, { method: 'POST' }),
+  }
+
+  readonly returns = {
+    list: (page?: number) => this.request<ApiCollection<ReturnRequest>>(`/api/v1/returns${page ? `?page=${page}` : ''}`),
+
+    get: (returnId: string) => this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}`),
+
+    create: (
+      orderId: string,
+      data: {
+        items: { order_item_id: string; quantity: number; reason: string; condition?: string | null; notes?: string | null }[]
+        notes?: string | null
+        customer_id?: string | null
+      },
+    ) => this.request<ApiResource<ReturnRequest>>(`/api/v1/orders/${orderId}/returns`, { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (returnId: string, data: { notes?: string | null }) =>
+      this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    approve: (returnId: string) =>
+      this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/approve`, { method: 'POST' }),
+
+    reject: (returnId: string, reason?: string | null) =>
+      this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+
+    receive: (returnId: string) =>
+      this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/receive`, { method: 'POST' }),
+
+    inspect: (
+      returnId: string,
+      items: { return_item_id: string; condition: string; photos?: unknown[] | null; notes?: string | null; disposition: string; disposition_notes?: string | null }[],
+    ) => this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/inspect`, { method: 'POST', body: JSON.stringify({ items }) }),
+
+    complete: (returnId: string) =>
+      this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/complete`, { method: 'POST' }),
+
+    cancel: (returnId: string) =>
+      this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/cancel`, { method: 'POST' }),
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')

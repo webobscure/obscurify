@@ -38,6 +38,7 @@ final class OrderController extends Controller
             'customer', 'items', 'shippingAddress', 'billingAddress', 'shippingLine',
             'reservations', 'fulfillments.items.allocations', 'fulfillments.events',
             'shipments.items', 'shipments.trackingEvents',
+            'returns.items.inspection', 'returns.items.disposition', 'returns.events',
         ]);
 
         return new OrderResource($order);

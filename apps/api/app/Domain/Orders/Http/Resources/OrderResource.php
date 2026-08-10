@@ -5,6 +5,7 @@ namespace App\Domain\Orders\Http\Resources;
 use App\Domain\Fulfillment\Http\Resources\FulfillmentResource;
 use App\Domain\Inventory\Http\Resources\InventoryReservationResource;
 use App\Domain\Orders\Models\Order;
+use App\Domain\Returns\Http\Resources\ReturnResource;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Shipping\Http\Resources\ShippingLineResource;
 use Illuminate\Http\Request;
@@ -51,6 +52,7 @@ final class OrderResource extends JsonResource
             'reservations' => InventoryReservationResource::collection($this->whenLoaded('reservations')),
             'fulfillments' => FulfillmentResource::collection($this->whenLoaded('fulfillments')),
             'shipments' => ShipmentResource::collection($this->whenLoaded('shipments')),
+            'returns' => ReturnResource::collection($this->whenLoaded('returns')),
             'cancelled_at' => $this->cancelled_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

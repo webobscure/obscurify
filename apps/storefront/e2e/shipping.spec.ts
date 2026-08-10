@@ -139,4 +139,38 @@ test('storefront checkout with a selected shipping rate, through fake payment, t
   await expect(timelineRows.nth(0)).toContainText('created')
   await expect(timelineRows.nth(1)).toContainText('in_transit')
   await expect(timelineRows.nth(2)).toContainText('delivered')
+
+  // Returns & Reverse Logistics Core (Milestone 8) — request a return
+  // against the now-delivered order and walk it through the full
+  // lifecycle to a restock. Reuses this test's existing admin login
+  // rather than opening a new one, since the platform's 5/minute/IP
+  // login throttle is already shared tightly across this whole suite
+  // (see this file's top-of-file comment and admin-navigation.spec.ts's
+  // identical constraint).
+  await page.getByRole('link', { name: 'View order' }).click()
+  await page.waitForURL(/\/orders\/.+/)
+
+  await page.getByRole('heading', { name: 'Request a return' }).scrollIntoViewIfNeeded()
+  await page.locator('section', { hasText: 'Request a return' }).locator('input[type="checkbox"]').first().check()
+  await page.getByRole('button', { name: 'Request return' }).click()
+  await expect(page.getByText('No returns yet.')).not.toBeVisible()
+
+  await page.locator('section', { hasText: 'Returns' }).getByRole('link', { name: 'View' }).click()
+  await page.waitForURL(/\/returns\/.+/)
+
+  await page.getByRole('button', { name: 'Approve' }).click()
+  await expect(page.locator('.status').getByText('awaiting_return')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Mark received' }).click()
+  await expect(page.locator('.status').getByText('received')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Complete inspection' }).click()
+  await expect(page.locator('.status').getByText('inspection')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Complete return' }).click()
+  await expect(page.locator('.status').getByText('completed')).toBeVisible()
+
+  // The restock disposition was actually applied to Inventory, not just
+  // recorded as a decision (spec section 8: only after inspection).
+  await expect(page.getByText(/Applied/)).toBeVisible()
 })

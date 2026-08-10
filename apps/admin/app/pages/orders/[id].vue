@@ -207,14 +207,84 @@
       </table>
       <p v-else>No shipments yet.</p>
     </section>
+
+    <section>
+      <h2>Returns</h2>
+      <table v-if="order.returns?.length">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Status</th>
+            <th>Items</th>
+            <th/>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="returnRequest in order.returns" :key="returnRequest.id">
+            <td>#{{ returnRequest.number }}</td>
+            <td>{{ returnRequest.status }}</td>
+            <td>{{ returnRequest.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0 }}</td>
+            <td><NuxtLink :to="`/returns/${returnRequest.id}`">View</NuxtLink></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No returns yet.</p>
+
+      <!--
+        Approving/receiving/inspecting/completing all happen on the
+        Return's own page — this form only covers step one, registering
+        which items (and how much of each) are being returned.
+      -->
+      <template v-if="returnableItems.length">
+        <h3>Request a return</h3>
+        <form class="ship-form" @submit.prevent="handleCreateReturn">
+          <table>
+            <thead>
+              <tr>
+                <th/>
+                <th>Product</th>
+                <th>Returnable</th>
+                <th>Return quantity</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in returnableItems" :key="line.item.id">
+                <td><input v-model="line.selected" type="checkbox"></td>
+                <td>{{ line.item.product_title }} <span v-if="line.item.variant_title">({{ line.item.variant_title }})</span></td>
+                <td>{{ line.returnable }}</td>
+                <td>
+                  <input
+                    v-model.number="line.quantity"
+                    type="number"
+                    min="1"
+                    :max="line.returnable"
+                    :disabled="!line.selected"
+                  >
+                </td>
+                <td>
+                  <select v-model="line.reason" :disabled="!line.selected">
+                    <option v-for="r in RETURN_REASONS" :key="r" :value="r">{{ r }}</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="submit" :disabled="creatingReturn">{{ creatingReturn ? 'Requesting…' : 'Request return' }}</button>
+        </form>
+      </template>
+      <p v-if="returnError" class="error">{{ returnError }}</p>
+    </section>
   </div>
   <p v-else-if="loading">Loading…</p>
   <p v-else>Order not found.</p>
 </template>
 
 <script setup lang="ts">
-import type { Order } from '@obscurify/types'
+import type { Order, ReturnReason } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
+
+const RETURN_REASONS: ReturnReason[] = ['wrong_size', 'damaged', 'not_as_described', 'ordered_by_mistake', 'defective', 'other']
 
 const route = useRoute()
 const orderId = route.params.id as string
@@ -224,6 +294,8 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const creatingFulfillment = ref(false)
 const fulfillmentError = ref<string | null>(null)
+const creatingReturn = ref(false)
+const returnError = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -266,6 +338,66 @@ const unfulfilledItems = computed(() => {
     }))
     .filter(line => line.remaining > 0)
 })
+
+/**
+ * Returnable quantity per OrderItem — shipped quantity (across non-
+ * cancelled Shipments) minus what's already claimed by any non-rejected,
+ * non-cancelled ReturnRequest. The backend is still the real guard
+ * (RequestReturn locks the OrderItem row and re-derives this exact
+ * number) — this is purely a UI convenience, same reasoning as
+ * unfulfilledItems above.
+ */
+const returnableItems = computed(() => {
+  if (!order.value) return []
+
+  const shippedByItem = new Map<string, number>()
+  for (const shipment of order.value.shipments ?? []) {
+    if (shipment.status === 'cancelled') continue
+    for (const shipmentItem of shipment.items ?? []) {
+      shippedByItem.set(shipmentItem.order_item_id, (shippedByItem.get(shipmentItem.order_item_id) ?? 0) + shipmentItem.quantity)
+    }
+  }
+
+  const returnedByItem = new Map<string, number>()
+  for (const returnRequest of order.value.returns ?? []) {
+    if (returnRequest.status === 'rejected' || returnRequest.status === 'cancelled') continue
+    for (const returnItem of returnRequest.items ?? []) {
+      returnedByItem.set(returnItem.order_item_id, (returnedByItem.get(returnItem.order_item_id) ?? 0) + returnItem.quantity)
+    }
+  }
+
+  return (order.value.items ?? [])
+    .map(item => ({
+      item,
+      returnable: (shippedByItem.get(item.id) ?? 0) - (returnedByItem.get(item.id) ?? 0),
+      selected: false,
+      quantity: (shippedByItem.get(item.id) ?? 0) - (returnedByItem.get(item.id) ?? 0),
+      reason: 'other' as ReturnReason,
+    }))
+    .filter(line => line.returnable > 0)
+})
+
+async function handleCreateReturn() {
+  const items = returnableItems.value
+    .filter(line => line.selected && line.quantity > 0)
+    .map(line => ({ order_item_id: line.item.id, quantity: line.quantity, reason: line.reason }))
+
+  if (items.length === 0) {
+    returnError.value = 'Select at least one item to return.'
+    return
+  }
+
+  creatingReturn.value = true
+  returnError.value = null
+  try {
+    await useApi().returns.create(orderId, { items })
+    await load()
+  } catch (e) {
+    returnError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+  } finally {
+    creatingReturn.value = false
+  }
+}
 
 async function handleCreateFulfillment() {
   const items = unfulfilledItems.value

@@ -20,4 +20,20 @@ enum InventoryMovementReason: string
     case FulfillmentCompleted = 'fulfillment_completed';
     case ReservationReleased = 'reservation_released';
     case ShipmentCancelled = 'shipment_cancelled';
+
+    // Returns & Reverse Logistics (Milestone 8) — see
+    // docs/architecture/returns.md "Inventory integration" for exactly
+    // when each fires. Deliberately new cases rather than reusing the
+    // generic ReturnStock/Damage above: those are unscoped manual-
+    // adjustment reasons, while these are always written by CompleteReturn/
+    // ReceiveReturn with a ReturnItem reference. ReturnReceived carries a
+    // zero on_hand delta (the package physically arrived — inventory
+    // changes only happen after inspection, per spec). ReturnRestocked is
+    // the one real positive on_hand delta. ReturnDamaged/ReturnDiscarded
+    // are also zero-delta: damaged or discarded units must never
+    // automatically become sellable stock.
+    case ReturnReceived = 'return_received';
+    case ReturnRestocked = 'return_restocked';
+    case ReturnDamaged = 'return_damaged';
+    case ReturnDiscarded = 'return_discarded';
 }
