@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Minimal transactional outbox — written in the same DB transaction as
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $aggregate_type
  * @property string $aggregate_id
  * @property array<string, mixed> $payload
+ * @property Carbon|null $occurred_at
+ * @property Carbon|null $processed_at
  * @property int $attempts
  */
 class OutboxEvent extends Model

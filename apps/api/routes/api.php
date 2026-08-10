@@ -38,6 +38,8 @@ use App\Domain\Storefront\Http\Controllers\StorefrontPaymentController;
 use App\Domain\Storefront\Http\Controllers\StorefrontProductController;
 use App\Domain\Storefront\Http\Controllers\StorefrontStoreController;
 use App\Domain\Stores\Http\Controllers\StoreController;
+use App\Domain\Webhooks\Http\Controllers\WebhookDeliveryController;
+use App\Domain\Webhooks\Http\Controllers\WebhookSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -142,6 +144,17 @@ Route::prefix('v1')->group(function () {
             Route::get('discount-codes', [DiscountCodeController::class, 'index']);
             Route::post('discount-codes', [DiscountCodeController::class, 'store']);
             Route::patch('discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
+
+            // Platform Events + Webhooks (Milestone 11) — a merchant-owned
+            // subscription to Platform Events (see docs/architecture/
+            // webhooks.md). No destroy: deactivate via status, the same
+            // pragmatic bar as promotions/shipping-zones.
+            Route::get('webhook-subscriptions', [WebhookSubscriptionController::class, 'index']);
+            Route::post('webhook-subscriptions', [WebhookSubscriptionController::class, 'store']);
+            Route::get('webhook-subscriptions/{webhookSubscription}', [WebhookSubscriptionController::class, 'show']);
+            Route::patch('webhook-subscriptions/{webhookSubscription}', [WebhookSubscriptionController::class, 'update']);
+            Route::get('webhook-subscriptions/{webhookSubscription}/deliveries', [WebhookDeliveryController::class, 'index']);
+            Route::post('webhook-deliveries/{webhookDelivery}/retry', [WebhookDeliveryController::class, 'retry']);
 
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
