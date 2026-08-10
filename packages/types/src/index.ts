@@ -663,6 +663,10 @@ export interface Order {
   fulfillments?: Fulfillment[]
   shipments?: Shipment[]
   returns?: ReturnRequest[]
+  payments?: Payment[]
+  refunds?: Refund[]
+  ledger_transactions?: LedgerTransaction[]
+  financial_events?: FinancialEvent[]
   cancelled_at: string | null
   created_at: string
   updated_at: string
@@ -751,6 +755,70 @@ export interface Payment {
   transactions?: PaymentTransaction[]
   created_at: string
   updated_at: string
+}
+
+export type RefundStatus = 'requested' | 'processing' | 'completed' | 'failed' | 'cancelled'
+
+export interface RefundItem {
+  id: string
+  return_item_id: string
+  quantity: number
+  amount: number
+}
+
+/**
+ * Admin-facing refund representation (GET /refunds, GET /refunds/{refund}).
+ * `provider` null means a manual refund (no provider call) — see
+ * docs/architecture/financial.md.
+ */
+export interface Refund {
+  id: string
+  order_id: string
+  payment_id: string
+  number: number
+  status: RefundStatus
+  currency: string
+  amount: number
+  shipping_amount: number
+  adjustment_amount: number
+  reason: string | null
+  provider: string | null
+  provider_reference: string | null
+  items?: RefundItem[]
+  requested_at: string
+  processed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type LedgerAccount = 'cash' | 'revenue'
+export type LedgerDirection = 'debit' | 'credit'
+
+export interface LedgerEntry {
+  id: string
+  account: LedgerAccount
+  direction: LedgerDirection
+  currency: string
+  amount: number
+  created_at: string
+}
+
+/** `reference_type` is the referenced model's short class name ("Payment" or "Refund"), not the FQCN. */
+export interface LedgerTransaction {
+  id: string
+  reference_type: string
+  reference_id: string
+  description: string | null
+  entries?: LedgerEntry[]
+  occurred_at: string
+}
+
+/** Unified per-order financial timeline (spec: "Payment captured" / "Refund requested" / .../ "Ledger created"). */
+export interface FinancialEvent {
+  id: string
+  type: string
+  description: string | null
+  occurred_at: string
 }
 
 export interface ApiResource<T> {

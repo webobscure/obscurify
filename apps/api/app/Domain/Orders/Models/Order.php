@@ -4,6 +4,9 @@ namespace App\Domain\Orders\Models;
 
 use App\Domain\Checkouts\Models\Checkout;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Financial\Models\FinancialEvent;
+use App\Domain\Financial\Models\LedgerTransaction;
+use App\Domain\Financial\Models\Refund;
 use App\Domain\Fulfillment\Models\Fulfillment;
 use App\Domain\Inventory\Models\InventoryReservation;
 use App\Domain\Orders\Enums\FinancialStatus;
@@ -189,5 +192,29 @@ class Order extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(ReturnRequest::class);
+    }
+
+    /**
+     * @return HasMany<Refund, $this>
+     */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    /**
+     * @return HasMany<LedgerTransaction, $this>
+     */
+    public function ledgerTransactions(): HasMany
+    {
+        return $this->hasMany(LedgerTransaction::class);
+    }
+
+    /**
+     * @return HasMany<FinancialEvent, $this>
+     */
+    public function financialEvents(): HasMany
+    {
+        return $this->hasMany(FinancialEvent::class);
     }
 }

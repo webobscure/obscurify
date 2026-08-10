@@ -2,6 +2,8 @@
 
 namespace App\Domain\Payments\Application;
 
+use App\Domain\Financial\Application\RecomputeOrderFinancialStatus;
+use App\Domain\Financial\Application\RecordPaymentCapturedLedgerEntries;
 use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Payments\Enums\PaymentSessionStatus;
 use App\Domain\Payments\Enums\PaymentStatus;
@@ -51,6 +53,8 @@ final class ProcessPaymentWebhook
     public function __construct(
         private readonly PaymentStateMachine $stateMachine,
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly RecordPaymentCapturedLedgerEntries $recordPaymentCapturedLedgerEntries,
+        private readonly RecomputeOrderFinancialStatus $recomputeOrderFinancialStatus,
     ) {}
 
     public function handle(string $providerCode, WebhookEvent $event, string $rawPayload): void
@@ -159,19 +163,35 @@ final class ProcessPaymentWebhook
         }
 
         if ($target === PaymentStatus::Paid) {
-            // Order financial_status only ever moves here — never from
-            // payment creation, a redirect-return page, or any other
-            // path (spec section 19).
+            // Order financial_status only ever moves here (on first
+            // capture) or from Financial\Application\ApplyRefundCompletion
+            // (on refund) — never from payment creation, a redirect-return
+            // page, or any other path (spec section 19). Both callers
+            // funnel through RecomputeOrderFinancialStatus, which derives
+            // the status from scratch rather than writing it directly
+            // (spec section 6).
             $order = $payment->order()->lockForUpdate()->first();
 
-            if ($order !== null && $order->financial_status === FinancialStatus::Pending) {
-                $order->update(['financial_status' => FinancialStatus::Paid->value]);
+            if ($order !== null) {
+                $wasPending = $order->financial_status === FinancialStatus::Pending;
 
-                $this->recordOutboxEvent->handle('OrderPaymentConfirmed', 'Order', $order->id, [
-                    'order_id' => $order->id,
-                    'payment_id' => $payment->id,
-                    'store_id' => $payment->store_id,
-                ]);
+                // Ledger entries for a capture are posted exactly once,
+                // the first time this Payment reaches Paid — a later
+                // duplicate/out-of-order "succeeded" webhook for the same
+                // Payment can never reach this branch a second time,
+                // since $target !== $lockedPayment->status already
+                // guards the caller above (same-state is a no-op).
+                if ($wasPending) {
+                    $this->recordPaymentCapturedLedgerEntries->handle($order, $payment);
+
+                    $this->recordOutboxEvent->handle('OrderPaymentConfirmed', 'Order', $order->id, [
+                        'order_id' => $order->id,
+                        'payment_id' => $payment->id,
+                        'store_id' => $payment->store_id,
+                    ]);
+                }
+
+                $this->recomputeOrderFinancialStatus->handle($order);
             }
         }
 

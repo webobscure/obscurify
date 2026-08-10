@@ -87,7 +87,10 @@ test('pays successfully through the fake provider and shows paid everywhere', as
   await page.waitForLoadState('networkidle')
   await page.getByRole('row', { name: new RegExp(`#${orderNumber}`) }).getByRole('link', { name: 'View' }).click()
   await page.waitForURL(/\/orders\/.+/)
-  await expect(page.getByText('paid')).toBeVisible()
+  // Scoped to the Financial status row, not just any "paid" text — the
+  // order page's own Payments section (Milestone 9) also renders a
+  // payment's status as plain "paid" text elsewhere on the same page.
+  await expect(page.getByRole('row', { name: 'Financial paid' })).toBeVisible()
 
   await page.getByRole('link', { name: 'Payments' }).click()
   await expect(page).toHaveURL(`${ADMIN_BASE}/payments`)

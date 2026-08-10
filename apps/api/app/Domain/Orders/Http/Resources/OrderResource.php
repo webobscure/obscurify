@@ -2,9 +2,13 @@
 
 namespace App\Domain\Orders\Http\Resources;
 
+use App\Domain\Financial\Http\Resources\FinancialEventResource;
+use App\Domain\Financial\Http\Resources\LedgerTransactionResource;
+use App\Domain\Financial\Http\Resources\RefundResource;
 use App\Domain\Fulfillment\Http\Resources\FulfillmentResource;
 use App\Domain\Inventory\Http\Resources\InventoryReservationResource;
 use App\Domain\Orders\Models\Order;
+use App\Domain\Payments\Http\Resources\PaymentResource;
 use App\Domain\Returns\Http\Resources\ReturnResource;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Shipping\Http\Resources\ShippingLineResource;
@@ -12,11 +16,12 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Admin-facing order representation. No payment/refund action affordances
- * belong here (no PaymentGateway exists yet). Fulfillment/Shipment
- * creation happen on their own pages now (Milestone 7) — this resource
- * exposes reservations/fulfillments/shipments read-only, per spec section
- * 16's "Order page should display: Reservations, Fulfillments, Shipments."
+ * Admin-facing order representation. Payment/refund/ledger state only
+ * ever changes through their own resources/actions (PaymentController is
+ * still read-only; RefundController's create/cancel are the one write
+ * path) — this resource exposes payments/refunds/ledger_transactions/
+ * financial_events read-only, per Financial spec section 15's "Order
+ * page must display: Payments, Refunds, Ledger."
  *
  * @mixin Order
  */
@@ -53,6 +58,10 @@ final class OrderResource extends JsonResource
             'fulfillments' => FulfillmentResource::collection($this->whenLoaded('fulfillments')),
             'shipments' => ShipmentResource::collection($this->whenLoaded('shipments')),
             'returns' => ReturnResource::collection($this->whenLoaded('returns')),
+            'payments' => PaymentResource::collection($this->whenLoaded('payments')),
+            'refunds' => RefundResource::collection($this->whenLoaded('refunds')),
+            'ledger_transactions' => LedgerTransactionResource::collection($this->whenLoaded('ledgerTransactions')),
+            'financial_events' => FinancialEventResource::collection($this->whenLoaded('financialEvents')),
             'cancelled_at' => $this->cancelled_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -38,7 +38,13 @@ final class CreateFulfillment
         return DB::transaction(function () use ($order, $lines, $notes, $createdBy) {
             $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            if ($lockedOrder->financial_status !== FinancialStatus::Paid) {
+            // PartiallyRefunded is allowed alongside Paid (Milestone 9):
+            // a partial refund (e.g. one damaged item) must never block
+            // fulfilling the rest of a still-owed order — financial_status
+            // moving off Paid was never reachable before refunds existed,
+            // so this guard's original "must be Paid" reading predates
+            // that possibility rather than deliberately excluding it.
+            if (! in_array($lockedOrder->financial_status, [FinancialStatus::Paid, FinancialStatus::PartiallyRefunded], true)) {
                 throw ValidationException::withMessages([
                     'order' => 'This order must be paid before it can be fulfilled.',
                 ]);

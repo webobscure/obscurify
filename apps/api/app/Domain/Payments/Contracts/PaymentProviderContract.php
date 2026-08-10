@@ -31,7 +31,14 @@ interface PaymentProviderContract
 
     public function cancelPayment(Payment $payment): void;
 
-    public function refundPayment(Payment $payment, int $amount): void;
+    /**
+     * Submits a refund request for $amount against $payment. Must not
+     * mark anything as refunded itself — that only ever happens through
+     * a verified webhook (ApplyRefundCompletion), or synchronously for a
+     * manual (provider-less) refund, which never calls this method at
+     * all. Returns the provider's own external refund id.
+     */
+    public function createRefund(Payment $payment, int $amount): string;
 
     /**
      * Constant-time signature check against the raw request. Must be

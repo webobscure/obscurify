@@ -8,9 +8,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
- * Read-only: no payment/refund actions exist yet (no PaymentGateway).
- * Fulfillment/Shipment creation and lifecycle actions live on their own
- * resources (see FulfillmentController, ShipmentController).
+ * Read-only. Fulfillment/Shipment/Return/Refund creation and lifecycle
+ * actions all live on their own resources (see FulfillmentController,
+ * ShipmentController, ReturnController, RefundController); Payment
+ * status only ever changes through a verified provider webhook.
  */
 final class OrderController extends Controller
 {
@@ -39,6 +40,8 @@ final class OrderController extends Controller
             'reservations', 'fulfillments.items.allocations', 'fulfillments.events',
             'shipments.items', 'shipments.trackingEvents',
             'returns.items.inspection', 'returns.items.disposition', 'returns.events',
+            'payments.attempts', 'payments.transactions',
+            'refunds.items', 'ledgerTransactions.entries', 'financialEvents',
         ]);
 
         return new OrderResource($order);

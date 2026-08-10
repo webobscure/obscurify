@@ -75,7 +75,9 @@ final class CreateShipment
 
             $lockedOrder = Order::query()->whereKey($lockedFulfillment->order_id)->lockForUpdate()->firstOrFail();
 
-            if ($lockedOrder->financial_status !== FinancialStatus::Paid) {
+            // PartiallyRefunded is allowed alongside Paid (Milestone 9) —
+            // see CreateFulfillment's identical guard for the reasoning.
+            if (! in_array($lockedOrder->financial_status, [FinancialStatus::Paid, FinancialStatus::PartiallyRefunded], true)) {
                 throw ValidationException::withMessages([
                     'order' => 'This order must be paid before a shipment can be created.',
                 ]);

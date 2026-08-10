@@ -65,10 +65,14 @@ final class FakePaymentProvider implements PaymentProviderContract
         // Same as capturePayment() — not exercised this milestone.
     }
 
-    public function refundPayment(Payment $payment, int $amount): void
+    /**
+     * Generates an external refund id — never marks anything refunded
+     * here, mirrors createPayment()'s own "hand back an id, resolve the
+     * outcome later via webhook" shape.
+     */
+    public function createRefund(Payment $payment, int $amount): string
     {
-        // Refunds are explicitly out of scope this milestone (spec
-        // section 35) — present only so the contract shape is real.
+        return 'fake_refund_'.(string) Str::ulid();
     }
 
     public function verifyWebhook(Request $request): bool
@@ -82,6 +86,12 @@ final class FakePaymentProvider implements PaymentProviderContract
         return hash_equals($this->sign($request->getContent()), $signature);
     }
 
+    /**
+     * Shared by both payment and refund payloads (spec section 7: "Use
+     * same webhook pipeline as payments") — a refund payload carries
+     * `external_refund_id` instead of `external_payment_id`; which one is
+     * required is decided by the `event_type` prefix, not by trying both.
+     */
     public function parseWebhook(Request $request): WebhookEvent
     {
         $data = json_decode($request->getContent(), true);
@@ -90,7 +100,7 @@ final class FakePaymentProvider implements PaymentProviderContract
             throw MalformedWebhookPayloadException::make('body is not a JSON object.');
         }
 
-        foreach (['event_id', 'external_payment_id', 'event_type', 'status', 'amount', 'currency', 'timestamp'] as $field) {
+        foreach (['event_id', 'event_type', 'status', 'amount', 'currency', 'timestamp'] as $field) {
             if (! array_key_exists($field, $data)) {
                 throw MalformedWebhookPayloadException::make("missing field \"{$field}\".");
             }
@@ -104,14 +114,23 @@ final class FakePaymentProvider implements PaymentProviderContract
             throw MalformedWebhookPayloadException::make('"timestamp" is not numeric.');
         }
 
+        $eventType = (string) $data['event_type'];
+        $isRefundEvent = str_starts_with($eventType, 'refund.');
+        $idField = $isRefundEvent ? 'external_refund_id' : 'external_payment_id';
+
+        if (! array_key_exists($idField, $data) || ! is_string($data[$idField]) || $data[$idField] === '') {
+            throw MalformedWebhookPayloadException::make("missing field \"{$idField}\".");
+        }
+
         return new WebhookEvent(
             eventId: (string) $data['event_id'],
-            externalPaymentId: (string) $data['external_payment_id'],
-            eventType: (string) $data['event_type'],
+            externalPaymentId: $isRefundEvent ? null : $data[$idField],
+            eventType: $eventType,
             status: (string) $data['status'],
             amount: (int) $data['amount'],
             currency: (string) $data['currency'],
             occurredAt: Carbon::createFromTimestamp((int) $data['timestamp']),
+            externalRefundId: $isRefundEvent ? $data[$idField] : null,
         );
     }
 
@@ -137,6 +156,37 @@ final class FakePaymentProvider implements PaymentProviderContract
             'event_id' => (string) Str::ulid(),
             'external_payment_id' => $externalPaymentId,
             'event_type' => 'payment.updated',
+            'status' => $status,
+            'amount' => $amount,
+            'currency' => $currency,
+            'timestamp' => now()->timestamp,
+        ];
+
+        $raw = json_encode($payload, JSON_THROW_ON_ERROR);
+
+        return ['payload' => $raw, 'signature' => $this->sign($raw)];
+    }
+
+    /**
+     * Refund counterpart to simulateWebhookPayload() — same dev/test-only
+     * reasoning, same signing, a different (smaller) status vocabulary:
+     * a refund only ever resolves to succeeded or failed (spec section
+     * 12), never "pending"/"cancelled" the way a payment page visit can.
+     *
+     * @return array{payload: string, signature: string}
+     */
+    public function simulateRefundWebhookPayload(string $externalRefundId, string $outcome, int $amount, string $currency): array
+    {
+        $status = match ($outcome) {
+            'success' => 'succeeded',
+            'failure' => 'failed',
+            default => throw new InvalidArgumentException("Unknown fake refund outcome \"{$outcome}\"."),
+        };
+
+        $payload = [
+            'event_id' => (string) Str::ulid(),
+            'external_refund_id' => $externalRefundId,
+            'event_type' => 'refund.updated',
             'status' => $status,
             'amount' => $amount,
             'currency' => $currency,

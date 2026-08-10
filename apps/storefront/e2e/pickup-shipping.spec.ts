@@ -96,7 +96,10 @@ test('storefront pickup checkout, through fake payment, to a delivered shipment 
   await page.waitForLoadState('networkidle')
   await page.getByRole('row', { name: new RegExp(`#${orderNumber}`) }).getByRole('link', { name: 'View' }).click()
   await page.waitForURL(/\/orders\/.+/)
-  await expect(page.getByText('paid')).toBeVisible()
+  // Scoped to the Financial status row, not just any "paid" text — the
+  // order page's own Payments section (Milestone 9) also renders a
+  // payment's status as plain "paid" text elsewhere on the same page.
+  await expect(page.getByRole('row', { name: 'Financial paid' })).toBeVisible()
 
   // Order snapshot shows the shipping line the customer selected and the
   // pickup point snapshot (spec section 17).
@@ -108,7 +111,9 @@ test('storefront pickup checkout, through fake payment, to a delivered shipment 
   await page.getByRole('button', { name: 'Create fulfillment' }).click()
   await expect(page.getByText('No fulfillments yet.')).not.toBeVisible()
 
-  await page.getByRole('link', { name: 'View' }).click()
+  // Scoped to the Fulfillments section — the order page's own Payments
+  // section (Milestone 9) also has its own "View" link by this point.
+  await page.locator('section', { hasText: 'Fulfillments' }).getByRole('link', { name: 'View' }).click()
   await page.waitForURL(/\/fulfillments\/.+/)
 
   await page.getByRole('button', { name: 'Allocate' }).click()

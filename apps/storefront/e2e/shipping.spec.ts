@@ -90,7 +90,10 @@ test('storefront checkout with a selected shipping rate, through fake payment, t
   await page.waitForLoadState('networkidle')
   await page.getByRole('row', { name: new RegExp(`#${orderNumber}`) }).getByRole('link', { name: 'View' }).click()
   await page.waitForURL(/\/orders\/.+/)
-  await expect(page.getByText('paid')).toBeVisible()
+  // Scoped to the Financial status row, not just any "paid" text — the
+  // order page's own Payments section (Milestone 9) also renders a
+  // payment's status as plain "paid" text elsewhere on the same page.
+  await expect(page.getByRole('row', { name: 'Financial paid' })).toBeVisible()
 
   // Order snapshot shows the shipping line the customer selected.
   await expect(page.getByText('— Standard Shipping')).toBeVisible()
@@ -103,7 +106,9 @@ test('storefront checkout with a selected shipping rate, through fake payment, t
   await page.getByRole('button', { name: 'Create fulfillment' }).click()
   await expect(page.getByText('No fulfillments yet.')).not.toBeVisible()
 
-  await page.getByRole('link', { name: 'View' }).click()
+  // Scoped to the Fulfillments section — the order page's own Payments
+  // section (Milestone 9) also has its own "View" link by this point.
+  await page.locator('section', { hasText: 'Fulfillments' }).getByRole('link', { name: 'View' }).click()
   await page.waitForURL(/\/fulfillments\/.+/)
 
   await page.getByRole('button', { name: 'Allocate' }).click()
@@ -173,4 +178,38 @@ test('storefront checkout with a selected shipping rate, through fake payment, t
   // The restock disposition was actually applied to Inventory, not just
   // recorded as a decision (spec section 8: only after inspection).
   await expect(page.getByText(/Applied/)).toBeVisible()
+
+  // Refunds & Financial Ledger (Milestone 9) — request a manual refund
+  // (no provider call, completes synchronously) against the now-restocked
+  // return and confirm the ledger/financial timeline reflect it. Still the
+  // same admin login/order as above — see the comment above the return
+  // section for why.
+  await page.getByRole('link', { name: 'View order' }).click()
+  await page.waitForURL(/\/orders\/.+/)
+
+  await page.getByRole('heading', { name: 'Request a refund' }).scrollIntoViewIfNeeded()
+  await page.locator('section', { hasText: 'Request a refund' }).locator('input[type="checkbox"]').first().check()
+  await page.getByRole('button', { name: 'Request refund' }).click()
+  await expect(page.getByText('No refunds yet.')).not.toBeVisible()
+
+  await page.locator('section', { hasText: 'Refunds' }).getByRole('link', { name: 'View' }).click()
+  await page.waitForURL(/\/refunds\/.+/)
+  await expect(page.locator('.status').getByText('completed')).toBeVisible()
+  await expect(page.getByText('manual')).toBeVisible()
+
+  // Back on the order page, the ledger/financial timeline both reflect
+  // the refund — proving Milestone 9's Payment -> ... -> Ledger -> Order
+  // Financial Status pipeline actually ran, not just the Refund row.
+  await page.getByRole('link', { name: 'View order' }).click()
+  await page.waitForURL(/\/orders\/.+/)
+
+  // Scoped by which section actually *contains* the heading, not by
+  // substring — the Financial timeline's own event description text
+  // ("Ledger entries posted for refund #...") would otherwise also match
+  // a plain hasText: 'Ledger' filter.
+  const ledgerSection = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Ledger', exact: true }) })
+  await expect(ledgerSection.getByText('Refund', { exact: true })).toBeVisible()
+
+  const timelineSection = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Financial timeline', exact: true }) })
+  await expect(timelineSection.getByText('refund_completed')).toBeVisible()
 })

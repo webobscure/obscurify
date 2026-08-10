@@ -16,6 +16,7 @@ import type {
   ProductOption,
   ProductOptionValue,
   ProductVariant,
+  Refund,
   ReturnRequest,
   Shipment,
   ShippingMethod,
@@ -297,6 +298,50 @@ export class ApiClient {
     list: (page?: number) => this.request<ApiCollection<Payment>>(`/api/v1/payments${page ? `?page=${page}` : ''}`),
 
     get: (paymentId: string) => this.request<ApiResource<Payment>>(`/api/v1/payments/${paymentId}`),
+  }
+
+  readonly refunds = {
+    list: (page?: number) => this.request<ApiCollection<Refund>>(`/api/v1/refunds${page ? `?page=${page}` : ''}`),
+
+    get: (refundId: string) => this.request<ApiResource<Refund>>(`/api/v1/refunds/${refundId}`),
+
+    /**
+     * `idempotencyKey` should be generated once per refund-request attempt
+     * and reused across retries of the *same* attempt (spec section 13) —
+     * see StorefrontApiClient.checkout.complete() for the identical
+     * pattern on the storefront side.
+     */
+    create: (
+      orderId: string,
+      data: {
+        items?: { return_item_id: string; quantity: number; amount: number }[]
+        shipping_amount?: number
+        adjustment_amount?: number
+        reason?: string | null
+        provider?: string | null
+      },
+      idempotencyKey: string,
+    ) =>
+      this.request<ApiResource<Refund>>(`/api/v1/orders/${orderId}/refunds`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(data),
+      }),
+
+    cancel: (refundId: string) =>
+      this.request<ApiResource<Refund>>(`/api/v1/refunds/${refundId}/cancel`, { method: 'POST' }),
+  }
+
+  /**
+   * Dev/test-only — backs the fake refund control page. Never available
+   * in a production API; calling these against one 404s.
+   */
+  readonly fakeRefunds = {
+    outcome: (externalRefundId: string, outcome: 'success' | 'failure') =>
+      this.request<ApiResource<{ processed?: boolean }>>(`/api/v1/fake-refunds/${externalRefundId}/outcome`, {
+        method: 'POST',
+        body: JSON.stringify({ outcome }),
+      }),
   }
 
   readonly shippingMethods = {

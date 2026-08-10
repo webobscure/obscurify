@@ -275,6 +275,158 @@
       </template>
       <p v-if="returnError" class="error">{{ returnError }}</p>
     </section>
+
+    <section>
+      <h2>Payments</h2>
+      <table v-if="order.payments?.length">
+        <thead>
+          <tr><th>Provider</th><th>Status</th><th>Amount</th><th>Refunded</th><th/></tr>
+        </thead>
+        <tbody>
+          <tr v-for="payment in order.payments" :key="payment.id">
+            <td>{{ payment.provider }}</td>
+            <td>{{ payment.status }}</td>
+            <td>{{ formatMoney({ amount: payment.amount, currency: payment.currency }) }}</td>
+            <td>{{ formatMoney({ amount: payment.refunded_amount, currency: payment.currency }) }}</td>
+            <td><NuxtLink :to="`/payments/${payment.id}`">View</NuxtLink></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No payments yet.</p>
+    </section>
+
+    <section>
+      <h2>Refunds</h2>
+      <table v-if="order.refunds?.length">
+        <thead>
+          <tr><th>Number</th><th>Status</th><th>Provider</th><th>Amount</th><th/></tr>
+        </thead>
+        <tbody>
+          <tr v-for="refund in order.refunds" :key="refund.id">
+            <td>#{{ refund.number }}</td>
+            <td>{{ refund.status }}</td>
+            <td>{{ refund.provider ?? 'manual' }}</td>
+            <td>{{ formatMoney({ amount: refund.amount, currency: refund.currency }) }}</td>
+            <td><NuxtLink :to="`/refunds/${refund.id}`">View</NuxtLink></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No refunds yet.</p>
+
+      <!--
+        Provider submission/completion/cancellation all happen on the
+        Refund's own page — this form only covers step one, registering
+        which returned items (and/or shipping, and/or a free-standing
+        adjustment) this refund covers (spec section 9).
+      -->
+      <template v-if="refundableItems.length || refundableShipping > 0">
+        <h3>Request a refund</h3>
+        <form class="ship-form" @submit.prevent="handleCreateRefund">
+          <table v-if="refundableItems.length">
+            <thead>
+              <tr>
+                <th/>
+                <th>Product</th>
+                <th>Refundable</th>
+                <th>Refund quantity</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in refundableItems" :key="line.returnItemId">
+                <td><input v-model="line.selected" type="checkbox"></td>
+                <td>{{ line.productTitle }}</td>
+                <td>{{ line.refundable }}</td>
+                <td>
+                  <input
+                    v-model.number="line.quantity"
+                    type="number"
+                    min="1"
+                    :max="line.refundable"
+                    :disabled="!line.selected"
+                  >
+                </td>
+                <td>
+                  <input
+                    v-model.number="line.amount"
+                    type="number"
+                    min="1"
+                    :disabled="!line.selected"
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <label v-if="refundableShipping > 0">
+            Shipping refund amount (max {{ formatMoney({ amount: refundableShipping, currency: order.currency }) }})
+            <input v-model.number="shippingRefundAmount" type="number" min="0" :max="refundableShipping">
+          </label>
+
+          <label>
+            Manual adjustment amount
+            <input v-model.number="adjustmentRefundAmount" type="number" min="0">
+          </label>
+
+          <label>
+            Reason
+            <input v-model="refundReason" type="text" placeholder="Optional">
+          </label>
+
+          <label>
+            Provider
+            <select v-model="refundProvider">
+              <option :value="null">Manual (no provider call)</option>
+              <option value="fake">Fake provider</option>
+            </select>
+          </label>
+
+          <button type="submit" :disabled="creatingRefund">{{ creatingRefund ? 'Requesting…' : 'Request refund' }}</button>
+        </form>
+      </template>
+      <p v-if="refundError" class="error">{{ refundError }}</p>
+    </section>
+
+    <section>
+      <h2>Ledger</h2>
+      <table v-if="order.ledger_transactions?.length">
+        <thead>
+          <tr><th>Reference</th><th>Description</th><th>Entries</th><th>Occurred</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="transaction in order.ledger_transactions" :key="transaction.id">
+            <td>{{ transaction.reference_type }}</td>
+            <td>{{ transaction.description ?? '—' }}</td>
+            <td>
+              <ul class="ledger-entries">
+                <li v-for="entry in transaction.entries" :key="entry.id">
+                  {{ entry.direction }} {{ entry.account }} {{ formatMoney({ amount: entry.amount, currency: entry.currency }) }}
+                </li>
+              </ul>
+            </td>
+            <td>{{ transaction.occurred_at }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No ledger entries yet.</p>
+    </section>
+
+    <section>
+      <h2>Financial timeline</h2>
+      <table v-if="order.financial_events?.length">
+        <thead>
+          <tr><th>Event</th><th>Description</th><th>Occurred</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="event in order.financial_events" :key="event.id">
+            <td>{{ event.type }}</td>
+            <td>{{ event.description ?? '—' }}</td>
+            <td>{{ event.occurred_at }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else>No financial events yet.</p>
+    </section>
   </div>
   <p v-else-if="loading">Loading…</p>
   <p v-else>Order not found.</p>
@@ -296,6 +448,12 @@ const creatingFulfillment = ref(false)
 const fulfillmentError = ref<string | null>(null)
 const creatingReturn = ref(false)
 const returnError = ref<string | null>(null)
+const creatingRefund = ref(false)
+const refundError = ref<string | null>(null)
+const shippingRefundAmount = ref(0)
+const adjustmentRefundAmount = ref(0)
+const refundReason = ref('')
+const refundProvider = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -399,6 +557,98 @@ async function handleCreateReturn() {
   }
 }
 
+/**
+ * Refundable quantity per completed ReturnItem — its own quantity minus
+ * whatever is already claimed by any non-failed, non-cancelled Refund
+ * (RequestRefund locks the ReturnItem row and re-derives this exact
+ * number server-side; this is purely a UI convenience). Only ReturnItems
+ * belonging to a `completed` ReturnRequest are offered (spec section 4:
+ * a refund only makes sense once inspection/disposition finished).
+ * `amount` defaults to the OrderItem's own per-unit price × quantity —
+ * a starting point the merchant can still adjust, never trusted as-is
+ * by the backend.
+ */
+const refundableItems = computed(() => {
+  if (!order.value) return []
+
+  const orderItemById = new Map((order.value.items ?? []).map(item => [item.id, item]))
+
+  const refundedByReturnItem = new Map<string, number>()
+  for (const refund of order.value.refunds ?? []) {
+    if (refund.status === 'failed' || refund.status === 'cancelled') continue
+    for (const refundItem of refund.items ?? []) {
+      refundedByReturnItem.set(refundItem.return_item_id, (refundedByReturnItem.get(refundItem.return_item_id) ?? 0) + refundItem.quantity)
+    }
+  }
+
+  const lines: { returnItemId: string; productTitle: string; refundable: number; selected: boolean; quantity: number; amount: number }[] = []
+
+  for (const returnRequest of order.value.returns ?? []) {
+    if (returnRequest.status !== 'completed') continue
+
+    for (const returnItem of returnRequest.items ?? []) {
+      const refundable = returnItem.quantity - (refundedByReturnItem.get(returnItem.id) ?? 0)
+      if (refundable <= 0) continue
+
+      const orderItem = orderItemById.get(returnItem.order_item_id)
+      const unitPrice = orderItem ? Math.round(orderItem.line_total_amount / orderItem.quantity) : 0
+
+      lines.push({
+        returnItemId: returnItem.id,
+        productTitle: orderItem ? `${orderItem.product_title}${orderItem.variant_title ? ` (${orderItem.variant_title})` : ''}` : returnItem.order_item_id,
+        refundable,
+        selected: false,
+        quantity: refundable,
+        amount: unitPrice * refundable,
+      })
+    }
+  }
+
+  return lines
+})
+
+/** Remaining shipping refund capacity — order.shipping_amount minus what's already claimed by any non-failed, non-cancelled Refund. */
+const refundableShipping = computed(() => {
+  if (!order.value) return 0
+
+  const alreadyRefunded = (order.value.refunds ?? [])
+    .filter(refund => refund.status !== 'failed' && refund.status !== 'cancelled')
+    .reduce((sum, refund) => sum + refund.shipping_amount, 0)
+
+  return Math.max(0, order.value.shipping_amount - alreadyRefunded)
+})
+
+async function handleCreateRefund() {
+  const items = refundableItems.value
+    .filter(line => line.selected && line.quantity > 0 && line.amount > 0)
+    .map(line => ({ return_item_id: line.returnItemId, quantity: line.quantity, amount: line.amount }))
+
+  if (items.length === 0 && shippingRefundAmount.value <= 0 && adjustmentRefundAmount.value <= 0) {
+    refundError.value = 'Select at least one item, or a shipping/adjustment amount, to refund.'
+    return
+  }
+
+  creatingRefund.value = true
+  refundError.value = null
+  try {
+    await useApi().refunds.create(orderId, {
+      items,
+      shipping_amount: shippingRefundAmount.value || undefined,
+      adjustment_amount: adjustmentRefundAmount.value || undefined,
+      reason: refundReason.value || null,
+      provider: refundProvider.value,
+    }, crypto.randomUUID())
+    shippingRefundAmount.value = 0
+    adjustmentRefundAmount.value = 0
+    refundReason.value = ''
+    await load()
+  } catch (e) {
+    refundError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+  } finally {
+    creatingRefund.value = false
+  }
+}
+
 async function handleCreateFulfillment() {
   const items = unfulfilledItems.value
     .filter(line => line.selected && line.quantity > 0)
@@ -443,5 +693,11 @@ onMounted(load)
 
 .ship-form input[type='number'] {
   width: 5rem;
+}
+
+.ledger-entries {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--text-sm);
 }
 </style>

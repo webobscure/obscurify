@@ -8,6 +8,8 @@ use App\Domain\Catalog\Http\Controllers\ProductOptionValueController;
 use App\Domain\Catalog\Http\Controllers\ProductVariantController;
 use App\Domain\Collections\Http\Controllers\CollectionController;
 use App\Domain\Collections\Http\Controllers\CollectionProductController;
+use App\Domain\Financial\Http\Controllers\FakeRefundOutcomeController;
+use App\Domain\Financial\Http\Controllers\RefundController;
 use App\Domain\Fulfillment\Http\Controllers\FulfillmentController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Inventory\Http\Controllers\InventoryController;
@@ -103,6 +105,17 @@ Route::prefix('v1')->group(function () {
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
 
+            // Refunds & Financial Ledger (Milestone 9) — provider-neutral;
+            // reuses the existing FakePaymentProvider only (see
+            // docs/architecture/financial.md). POST here creates the
+            // Refund and, for a provider-backed refund, submits it —
+            // completion always arrives through the shared payment/refund
+            // webhook pipeline (or synchronously for a manual refund).
+            Route::get('refunds', [RefundController::class, 'index']);
+            Route::get('refunds/{refund}', [RefundController::class, 'show']);
+            Route::post('orders/{order}/refunds', [RefundController::class, 'store']);
+            Route::post('refunds/{refund}/cancel', [RefundController::class, 'cancel']);
+
             Route::get('shipping-methods', [ShippingMethodController::class, 'index']);
             Route::post('shipping-methods', [ShippingMethodController::class, 'store']);
             Route::patch('shipping-methods/{method}', [ShippingMethodController::class, 'update']);
@@ -162,6 +175,11 @@ Route::prefix('v1')->group(function () {
     if (config('payments.fake.enabled')) {
         Route::get('fake-payments/{externalPaymentId}', [FakePaymentOutcomeController::class, 'show']);
         Route::post('fake-payments/{externalPaymentId}/outcome', [FakePaymentOutcomeController::class, 'outcome']);
+
+        // Dev/test-only fake refund control page — same fake provider,
+        // same flag, no separate refund-specific config.
+        Route::get('fake-refunds/{externalRefundId}', [FakeRefundOutcomeController::class, 'show']);
+        Route::post('fake-refunds/{externalRefundId}/outcome', [FakeRefundOutcomeController::class, 'outcome']);
     }
 
     // Dev/test-only fake shipment control page (spec section 20) — same
