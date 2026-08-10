@@ -41,6 +41,8 @@ export function useCheckout() {
   const shippingRates = useState<StorefrontShippingRate[]>('checkout-shipping-rates', () => [])
   const shippingRatesLoading = useState<boolean>('checkout-shipping-rates-loading', () => false)
   const shippingError = useState<string | null>('checkout-shipping-error', () => null)
+  const discountCodeLoading = useState<boolean>('checkout-discount-code-loading', () => false)
+  const discountCodeError = useState<string | null>('checkout-discount-code-error', () => null)
 
   async function open() {
     loading.value = true
@@ -122,6 +124,40 @@ export function useCheckout() {
     }
   }
 
+  /**
+   * Rejected with a 422 (surfaced via discountCodeError) if the code is
+   * unknown/inactive/expired/exhausted, or this cart simply doesn't earn
+   * it yet — see ApplyDiscountCode on the backend. Never computes the
+   * discount itself; the returned checkout is PromotionEngine's output.
+   */
+  async function applyDiscountCode(code: string) {
+    discountCodeLoading.value = true
+    discountCodeError.value = null
+    try {
+      const response = await useStorefrontApi().checkout.applyDiscountCode(code)
+      checkout.value = response.data
+    } catch (e) {
+      discountCodeError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+      throw e
+    } finally {
+      discountCodeLoading.value = false
+    }
+  }
+
+  async function removeDiscountCode() {
+    discountCodeLoading.value = true
+    discountCodeError.value = null
+    try {
+      const response = await useStorefrontApi().checkout.removeDiscountCode()
+      checkout.value = response.data
+    } catch (e) {
+      discountCodeError.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+      throw e
+    } finally {
+      discountCodeLoading.value = false
+    }
+  }
+
   return {
     checkout,
     loading,
@@ -134,5 +170,9 @@ export function useCheckout() {
     shippingError,
     fetchShippingRates,
     selectShipping,
+    discountCodeLoading,
+    discountCodeError,
+    applyDiscountCode,
+    removeDiscountCode,
   }
 }

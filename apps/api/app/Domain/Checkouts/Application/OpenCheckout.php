@@ -6,6 +6,7 @@ use App\Domain\Carts\Models\Cart;
 use App\Domain\Carts\Support\CartPricing;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Checkouts\Models\Checkout;
+use App\Domain\Promotions\Application\RecalculateCheckoutTotals;
 
 /**
  * Reuses an existing *open*, non-expired Checkout for this Cart instead
@@ -16,7 +17,10 @@ use App\Domain\Checkouts\Models\Checkout;
  */
 final class OpenCheckout
 {
-    public function __construct(private readonly RevalidateCart $revalidateCart) {}
+    public function __construct(
+        private readonly RevalidateCart $revalidateCart,
+        private readonly RecalculateCheckoutTotals $recalculateCheckoutTotals,
+    ) {}
 
     public function handle(Cart $cart): Checkout
     {
@@ -30,7 +34,10 @@ final class OpenCheckout
             ->first();
 
         if ($existing !== null && ! $existing->isExpired()) {
-            return $this->refreshTotals($existing, $cart);
+            $checkout = $this->refreshTotals($existing, $cart);
+            $this->recalculateCheckoutTotals->handle($checkout);
+
+            return $checkout;
         }
 
         if ($existing !== null) {
@@ -39,7 +46,7 @@ final class OpenCheckout
 
         $totals = CartPricing::for($cart);
 
-        return Checkout::query()->create([
+        $checkout = Checkout::query()->create([
             'cart_id' => $cart->id,
             'currency' => $totals['currency'],
             'items_subtotal_amount' => $totals['items_subtotal'],
@@ -50,6 +57,14 @@ final class OpenCheckout
             'status' => CheckoutStatus::Open->value,
             'expires_at' => now()->addMinutes((int) config('commerce.checkout.checkout_ttl')),
         ]);
+
+        // Automatic promotions may already apply before any shipping
+        // rate is selected (shipping_amount is 0 at this point) — free
+        // shipping/order-total-dependent actions get corrected once
+        // SelectShippingRate runs.
+        $this->recalculateCheckoutTotals->handle($checkout);
+
+        return $checkout;
     }
 
     /**

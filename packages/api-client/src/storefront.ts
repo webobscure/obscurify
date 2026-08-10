@@ -174,6 +174,20 @@ export class StorefrontApiClient {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
+
+    /**
+     * Case-insensitive lookup — rejected with a 422 if the code is
+     * unknown/inactive/expired/exhausted or this cart simply doesn't earn
+     * it yet (see ApplyDiscountCode on the backend).
+     */
+    applyDiscountCode: (code: string) =>
+      this.request<ApiResource<StorefrontCheckout>>('/api/v1/storefront/checkout/discount-code', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      }),
+
+    removeDiscountCode: () =>
+      this.request<ApiResource<StorefrontCheckout>>('/api/v1/storefront/checkout/discount-code', { method: 'DELETE' }),
   }
 
   readonly orders = {

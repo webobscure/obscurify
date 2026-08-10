@@ -3,6 +3,7 @@
 namespace App\Domain\Storefront\Http\Resources;
 
 use App\Domain\Orders\Models\Order;
+use App\Domain\Promotions\Http\Resources\DiscountApplicationResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -40,6 +41,7 @@ final class OrderConfirmationResource extends JsonResource
             'financial_status' => $this->financial_status->value,
             'fulfillment_status' => $this->fulfillment_status->value,
             'items' => OrderItemResource::collection($this->items),
+            'discount_applications' => DiscountApplicationResource::collection($this->whenLoaded('discountApplications')),
             'shipping_address' => $this->shippingAddress ? new OrderAddressResource($this->shippingAddress) : null,
             'billing_address' => $this->billingAddress ? new OrderAddressResource($this->billingAddress) : null,
             'shipping_line' => $this->shippingLine ? new StorefrontShippingLineResource($this->shippingLine) : null,

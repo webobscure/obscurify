@@ -26,9 +26,22 @@
       <p v-if="order.shipping_line" class="totals-line">
         Shipping ({{ order.shipping_line.name }}): {{ formatMoney({ amount: order.shipping_amount, currency: order.currency }) }}
       </p>
+      <p v-if="order.discount_amount" class="totals-line">
+        Discount: -{{ formatMoney({ amount: order.discount_amount, currency: order.currency }) }}
+      </p>
       <p class="totals">
         <strong>Total: {{ formatMoney({ amount: order.total_amount, currency: order.currency }) }}</strong>
       </p>
+
+      <section v-if="order.discount_applications?.length">
+        <h2>Discounts applied</h2>
+        <ul>
+          <li v-for="application in order.discount_applications" :key="application.id">
+            {{ application.promotion_name }}<template v-if="application.code"> ({{ application.code }})</template>
+            — {{ formatMoney({ amount: application.amount, currency: application.currency }) }}
+          </li>
+        </ul>
+      </section>
 
       <section v-if="order.shipping_line">
         <h2>Shipping method</h2>

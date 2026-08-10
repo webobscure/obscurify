@@ -34,7 +34,7 @@ describe('isNavItemActive', () => {
 describe('navigation source of truth', () => {
   const realRoutes = new Set([
     '/orders', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
-    '/shipments', '/shipping-methods', '/shipping-zones',
+    '/shipments', '/shipping-methods', '/shipping-zones', '/promotions',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {

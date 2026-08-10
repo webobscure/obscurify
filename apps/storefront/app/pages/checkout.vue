@@ -147,6 +147,23 @@
           </section>
 
           <section>
+            <h2>Discount code</h2>
+            <div v-if="checkout.checkout.value.discount_code" class="discount-applied">
+              <span>Code <strong>{{ checkout.checkout.value.discount_code }}</strong> applied</span>
+              <button type="button" :disabled="checkout.discountCodeLoading.value" @click="handleRemoveDiscountCode">
+                Remove
+              </button>
+            </div>
+            <div v-else class="discount-form">
+              <input v-model="discountCodeInput" type="text" placeholder="Enter discount code">
+              <button type="button" :disabled="checkout.discountCodeLoading.value || !discountCodeInput" @click="handleApplyDiscountCode">
+                {{ checkout.discountCodeLoading.value ? 'Applying…' : 'Apply' }}
+              </button>
+            </div>
+            <p v-if="checkout.discountCodeError.value" class="error">{{ checkout.discountCodeError.value }}</p>
+          </section>
+
+          <section>
             <h2>Review</h2>
             <table>
               <tbody>
@@ -163,6 +180,9 @@
             <p v-if="checkout.checkout.value.selected_shipping_rate?.pickup_point" class="totals-line">
               Pickup at: {{ checkout.checkout.value.selected_shipping_rate.pickup_point.name }} —
               {{ checkout.checkout.value.selected_shipping_rate.pickup_point.address }}, {{ checkout.checkout.value.selected_shipping_rate.pickup_point.city }}
+            </p>
+            <p v-if="checkout.checkout.value.discount_amount" class="totals-line">
+              Discount: -{{ formatMoney({ amount: checkout.checkout.value.discount_amount, currency: checkout.checkout.value.currency }) }}
             </p>
             <p class="totals">
               <strong>Total: {{ formatMoney({ amount: checkout.checkout.value.total_amount, currency: checkout.checkout.value.currency }) }}</strong>
@@ -204,6 +224,7 @@ const selectingRate = ref(false)
  */
 const pendingPickupRate = shallowRef<StorefrontShippingRate | null>(null)
 const selectedPickupPointId = ref<string | null>(null)
+const discountCodeInput = ref('')
 
 const email = ref('')
 const phone = ref('')
@@ -289,6 +310,23 @@ async function handleSelectShippingRate(rate: StorefrontShippingRate, pickupPoin
   }
 }
 
+async function handleApplyDiscountCode() {
+  try {
+    await checkout.applyDiscountCode(discountCodeInput.value)
+    discountCodeInput.value = ''
+  } catch (e) {
+    if (!(e instanceof ApiClientError)) throw e
+  }
+}
+
+async function handleRemoveDiscountCode() {
+  try {
+    await checkout.removeDiscountCode()
+  } catch (e) {
+    if (!(e instanceof ApiClientError)) throw e
+  }
+}
+
 async function handlePlaceOrder() {
   placingOrder.value = true
   try {
@@ -352,6 +390,18 @@ table {
 td {
   padding: 0.35rem 0;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.discount-form,
+.discount-applied {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discount-form input {
+  max-width: 220px;
+  padding: 0.4rem;
 }
 
 .totals-line {

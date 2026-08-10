@@ -2,9 +2,11 @@ import type {
   ApiCollection,
   ApiErrorBody,
   ApiResource,
+  AppliedDiscount,
   AuthResponse,
   Category,
   Collection,
+  DiscountCode,
   Fulfillment,
   InventoryItem,
   InventoryLevel,
@@ -16,6 +18,8 @@ import type {
   ProductOption,
   ProductOptionValue,
   ProductVariant,
+  Promotion,
+  PromotionUsage,
   Refund,
   ReturnRequest,
   Shipment,
@@ -383,6 +387,60 @@ export class ApiClient {
 
     update: (zoneId: string, data: Partial<{ name: string; status: string; regions: { country_code: string; region?: string | null; postal_code_pattern?: string | null }[] }>) =>
       this.request<ApiResource<ShippingZone>>(`/api/v1/shipping-zones/${zoneId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  }
+
+  readonly promotions = {
+    list: () => this.request<ApiCollection<Promotion>>('/api/v1/promotions'),
+
+    get: (promotionId: string) => this.request<ApiResource<Promotion>>(`/api/v1/promotions/${promotionId}`),
+
+    create: (data: {
+      name: string
+      description?: string | null
+      trigger_type?: string
+      stacking_mode?: string
+      priority?: number
+      status?: string
+      starts_at?: string | null
+      ends_at?: string | null
+      rules?: { type: string; parameters?: Record<string, unknown> }[]
+      actions?: { type: string; parameters?: Record<string, unknown> }[]
+    }) => this.request<ApiResource<Promotion>>('/api/v1/promotions', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (promotionId: string, data: Partial<{
+      name: string
+      description: string | null
+      trigger_type: string
+      stacking_mode: string
+      priority: number
+      status: string
+      starts_at: string | null
+      ends_at: string | null
+      rules: { type: string; parameters?: Record<string, unknown> }[]
+      actions: { type: string; parameters?: Record<string, unknown> }[]
+    }>) => this.request<ApiResource<Promotion>>(`/api/v1/promotions/${promotionId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    usage: (promotionId: string) => this.request<ApiCollection<PromotionUsage>>(`/api/v1/promotions/${promotionId}/usage`),
+
+    /** "What would apply" for a hypothetical cart — never persists anything (see PreviewPromotions on the backend). */
+    preview: (data: {
+      items: { product_variant_id: string; quantity: number }[]
+      shipping_amount?: number
+      country_code?: string | null
+      customer_id?: string | null
+      discount_code?: string | null
+    }) => this.request<{ discount_amount: number; applied: AppliedDiscount[] }>('/api/v1/promotions/preview', { method: 'POST', body: JSON.stringify(data) }),
+  }
+
+  readonly discountCodes = {
+    list: (promotionId?: string) =>
+      this.request<ApiCollection<DiscountCode>>(`/api/v1/discount-codes${promotionId ? `?promotion_id=${promotionId}` : ''}`),
+
+    create: (data: { promotion_id: string; code: string; usage_limit?: number | null; per_customer_limit?: number | null; expires_at?: string | null; status?: string }) =>
+      this.request<ApiResource<DiscountCode>>('/api/v1/discount-codes', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (discountCodeId: string, data: Partial<{ code: string; usage_limit: number | null; per_customer_limit: number | null; expires_at: string | null; status: string }>) =>
+      this.request<ApiResource<DiscountCode>>(`/api/v1/discount-codes/${discountCodeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   }
 
   readonly shipments = {

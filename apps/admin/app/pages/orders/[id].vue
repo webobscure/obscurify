@@ -98,7 +98,19 @@
               </template>
             </td>
           </tr>
-          <tr><th>Discount</th><td>{{ formatMoney({ amount: order.discount_amount, currency: order.currency }) }}</td></tr>
+          <tr>
+            <th>Discount</th>
+            <td>
+              {{ formatMoney({ amount: order.discount_amount, currency: order.currency }) }}
+              <template v-if="order.discount_applications?.length">
+                <br>
+                <span v-for="application in order.discount_applications" :key="application.id" class="muted">
+                  {{ application.promotion_name }}<template v-if="application.code"> ({{ application.code }})</template>
+                  — {{ formatMoney({ amount: application.amount, currency: application.currency }) }}<br>
+                </span>
+              </template>
+            </td>
+          </tr>
           <tr><th>Tax</th><td>{{ formatMoney({ amount: order.tax_amount, currency: order.currency }) }}</td></tr>
           <tr><th>Total</th><td><strong>{{ formatMoney({ amount: order.total_amount, currency: order.currency }) }}</strong></td></tr>
         </tbody>

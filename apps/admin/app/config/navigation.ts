@@ -53,6 +53,7 @@ export const primaryNavigation: NavigationSection[] = [
   {
     items: [
       { label: 'Payments', to: '/payments', icon: 'payments' },
+      { label: 'Promotions', to: '/promotions', icon: 'promotions' },
       {
         label: 'Shipping',
         to: '/shipments',

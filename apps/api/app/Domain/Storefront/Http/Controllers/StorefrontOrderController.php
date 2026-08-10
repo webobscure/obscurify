@@ -17,7 +17,7 @@ final class StorefrontOrderController extends Controller
      */
     public function show(Order $order): OrderConfirmationResource
     {
-        $order->load(['items', 'shippingAddress', 'billingAddress']);
+        $order->load(['items', 'shippingAddress', 'billingAddress', 'discountApplications']);
 
         return new OrderConfirmationResource($order);
     }

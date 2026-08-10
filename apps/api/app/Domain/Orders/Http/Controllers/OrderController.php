@@ -42,6 +42,7 @@ final class OrderController extends Controller
             'returns.items.inspection', 'returns.items.disposition', 'returns.events',
             'payments.attempts', 'payments.transactions',
             'refunds.items', 'ledgerTransactions.entries', 'financialEvents',
+            'discountApplications',
         ]);
 
         return new OrderResource($order);

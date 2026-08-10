@@ -9,6 +9,7 @@ use App\Domain\Fulfillment\Http\Resources\FulfillmentResource;
 use App\Domain\Inventory\Http\Resources\InventoryReservationResource;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Payments\Http\Resources\PaymentResource;
+use App\Domain\Promotions\Http\Resources\DiscountApplicationResource;
 use App\Domain\Returns\Http\Resources\ReturnResource;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Shipping\Http\Resources\ShippingLineResource;
@@ -49,6 +50,7 @@ final class OrderResource extends JsonResource
             'order_status' => $this->order_status->value,
             'financial_status' => $this->financial_status->value,
             'fulfillment_status' => $this->fulfillment_status->value,
+            'discount_applications' => DiscountApplicationResource::collection($this->whenLoaded('discountApplications')),
             'customer' => new OrderCustomerResource($this->whenLoaded('customer')),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'shipping_address' => $this->whenLoaded('shippingAddress', fn () => $this->shippingAddress ? new OrderAddressResource($this->shippingAddress) : null),

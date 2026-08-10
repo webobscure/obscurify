@@ -12,6 +12,13 @@ use App\Domain\Domains\Models\Domain;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Domain\Inventory\Models\InventoryLevel;
 use App\Domain\Locations\Models\Location;
+use App\Domain\Promotions\Enums\DiscountCodeStatus;
+use App\Domain\Promotions\Enums\PromotionActionType;
+use App\Domain\Promotions\Enums\PromotionStatus;
+use App\Domain\Promotions\Enums\PromotionTriggerType;
+use App\Domain\Promotions\Models\DiscountCode;
+use App\Domain\Promotions\Models\Promotion;
+use App\Domain\Promotions\Models\PromotionAction;
 use App\Domain\Shipping\Infrastructure\Providers\FakeShippingProvider;
 use App\Domain\Shipping\Models\ShippingMethod;
 use App\Domain\Shipping\Models\ShippingMethodZone;
@@ -152,6 +159,25 @@ class SeedE2EStorefrontCommand extends Command
                 'shipping_method_id' => $pickupMethod->id,
                 'shipping_zone_id' => $ruZone->id,
             ]);
+
+            // Discount & Promotion Engine (Milestone 10) fixture — a
+            // no-rules, always-eligible code so promotions.spec.ts can
+            // apply it without depending on cart totals staying in sync
+            // with a minimum-subtotal rule.
+            $promotion = Promotion::query()->firstOrCreate(
+                ['name' => 'E2E 500 off'],
+                ['trigger_type' => PromotionTriggerType::Code, 'status' => PromotionStatus::Active],
+            );
+
+            PromotionAction::query()->firstOrCreate(
+                ['promotion_id' => $promotion->id, 'type' => PromotionActionType::OrderDiscount->value],
+                ['parameters' => ['amount' => 500]],
+            );
+
+            DiscountCode::query()->firstOrCreate(
+                ['promotion_id' => $promotion->id, 'code' => 'E2E10OFF'],
+                ['status' => DiscountCodeStatus::Active->value],
+            );
         });
 
         $this->info('E2E storefront fixture ready: e2e-storefront.localhost / e2e-shirt');

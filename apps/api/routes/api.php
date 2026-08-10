@@ -21,6 +21,8 @@ use App\Domain\Orders\Http\Controllers\OrderController;
 use App\Domain\Payments\Http\Controllers\FakePaymentOutcomeController;
 use App\Domain\Payments\Http\Controllers\PaymentController;
 use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
+use App\Domain\Promotions\Http\Controllers\DiscountCodeController;
+use App\Domain\Promotions\Http\Controllers\PromotionController;
 use App\Domain\Returns\Http\Controllers\ReturnController;
 use App\Domain\Shipping\Http\Controllers\FakeShipmentOutcomeController;
 use App\Domain\Shipping\Http\Controllers\ShipmentController;
@@ -124,6 +126,23 @@ Route::prefix('v1')->group(function () {
             Route::post('shipping-zones', [ShippingZoneController::class, 'store']);
             Route::patch('shipping-zones/{zone}', [ShippingZoneController::class, 'update']);
 
+            // Discount & Promotion Engine (Milestone 10) — provider-neutral,
+            // reusable from Checkout/Draft Orders/Admin/future APIs (see
+            // docs/architecture/promotions.md). No destroy: a Promotion or
+            // DiscountCode is deactivated via status, never deleted, so
+            // existing DiscountApplication/PromotionUsage snapshots and FKs
+            // stay intact — same pragmatic bar as shipping-zones/-methods.
+            Route::get('promotions', [PromotionController::class, 'index']);
+            Route::post('promotions', [PromotionController::class, 'store']);
+            Route::get('promotions/{promotion}', [PromotionController::class, 'show']);
+            Route::patch('promotions/{promotion}', [PromotionController::class, 'update']);
+            Route::get('promotions/{promotion}/usage', [PromotionController::class, 'usage']);
+            Route::post('promotions/preview', [PromotionController::class, 'preview']);
+
+            Route::get('discount-codes', [DiscountCodeController::class, 'index']);
+            Route::post('discount-codes', [DiscountCodeController::class, 'store']);
+            Route::patch('discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
+
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
             Route::post('shipments/{shipment}/cancel', [ShipmentController::class, 'cancel']);
@@ -215,6 +234,8 @@ Route::prefix('v1')->group(function () {
         Route::patch('/checkout', [StorefrontCheckoutController::class, 'update']);
         Route::get('/checkout/shipping-rates', [StorefrontCheckoutController::class, 'shippingRates']);
         Route::patch('/checkout/shipping', [StorefrontCheckoutController::class, 'selectShipping']);
+        Route::post('/checkout/discount-code', [StorefrontCheckoutController::class, 'applyDiscountCode']);
+        Route::delete('/checkout/discount-code', [StorefrontCheckoutController::class, 'removeDiscountCode']);
         Route::post('/checkout/complete', [StorefrontCheckoutController::class, 'complete']);
 
         Route::get('/orders/{order}', [StorefrontOrderController::class, 'show']);

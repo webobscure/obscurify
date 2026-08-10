@@ -15,6 +15,13 @@ use App\Domain\Orders\Models\Order;
 use App\Domain\Orders\Models\OrderAddress;
 use App\Domain\Orders\Models\OrderItem;
 use App\Domain\Orders\Models\OrderShippingLine;
+use App\Domain\Promotions\Application\BuildPromotionContext;
+use App\Domain\Promotions\Exceptions\DiscountCodeInvalidException;
+use App\Domain\Promotions\Models\DiscountApplication;
+use App\Domain\Promotions\Models\DiscountCode;
+use App\Domain\Promotions\Models\PromotionUsage;
+use App\Domain\Promotions\Support\AppliedDiscount;
+use App\Domain\Promotions\Support\PromotionEngine;
 use App\Domain\Shipping\Application\RevalidateShippingQuote;
 use App\Shared\Commerce\Application\RecordOutboxEvent;
 use App\Shared\Commerce\Enums\AddressType;
@@ -55,6 +62,8 @@ final class CompleteCheckout
         private readonly AllocateOrderNumber $allocateOrderNumber,
         private readonly RecordOutboxEvent $recordOutboxEvent,
         private readonly RevalidateShippingQuote $revalidateShippingQuote,
+        private readonly BuildPromotionContext $buildPromotionContext,
+        private readonly PromotionEngine $promotionEngine,
     ) {}
 
     public function handle(Checkout $checkout): Order
@@ -115,7 +124,35 @@ final class CompleteCheckout
             }
 
             $shippingAmount = $shippingQuote === null ? 0 : $shippingQuote->price_amount;
-            $discountAmount = 0;
+
+            // Checkout never calculates its own discount (spec section 7)
+            // — PromotionEngine is the sole authority, called fresh here
+            // regardless of whatever discount_amount is cached on the
+            // Checkout row, the same way shipping is revalidated above
+            // rather than trusted. The DiscountCode row (if any) is
+            // locked first so two concurrent completions racing the same
+            // single-use code serialize on it (spec section 13) — the
+            // second sees the first's committed usage_count and
+            // PromotionEngine naturally excludes the code as no longer
+            // usable.
+            $discountCode = $lockedCheckout->discount_code_id !== null
+                ? DiscountCode::query()->whereKey($lockedCheckout->discount_code_id)->lockForUpdate()->first()
+                : null;
+
+            $promotionContext = $this->buildPromotionContext->handle($cart, $lockedCheckout, $shippingAmount, $discountCode);
+            $evaluation = $this->promotionEngine->handle($promotionContext);
+
+            if ($discountCode !== null) {
+                $codeWasApplied = $evaluation->applied->contains(
+                    fn (AppliedDiscount $applied) => $applied->discountCode?->id === $discountCode->id,
+                );
+
+                if (! $codeWasApplied) {
+                    throw DiscountCodeInvalidException::make('this discount code is no longer valid for this order.');
+                }
+            }
+
+            $discountAmount = $evaluation->discountAmount;
             $taxAmount = 0;
             $total = $itemsSubtotal + $shippingAmount - $discountAmount + $taxAmount;
 
@@ -156,8 +193,9 @@ final class CompleteCheckout
                 'phone' => $lockedCheckout->phone,
             ]);
 
+            $orderItemIdsByVariantId = [];
             foreach ($lines as $line) {
-                OrderItem::query()->create([
+                $orderItem = OrderItem::query()->create([
                     'order_id' => $order->id,
                     'product_id' => $line['product']->id,
                     'product_variant_id' => $line['variant']->id,
@@ -169,6 +207,8 @@ final class CompleteCheckout
                     'line_total_amount' => $line['variant']->price_amount * $line['item']->quantity,
                     'currency' => $line['variant']->currency,
                 ]);
+
+                $orderItemIdsByVariantId[$line['variant']->id] = $orderItem->id;
             }
 
             OrderAddress::query()->create([
@@ -198,6 +238,56 @@ final class CompleteCheckout
                     'estimated_days_min' => $shippingQuote->estimated_days_min,
                     'estimated_days_max' => $shippingQuote->estimated_days_max,
                     'metadata' => $shippingQuote->metadata,
+                ]);
+            }
+
+            // Order snapshot (spec section 8): one DiscountApplication per
+            // applied action, carrying its own promotion_name/code copy so
+            // a later rename/delete of the Promotion or DiscountCode can
+            // never change what this Order reports — and one PromotionUsage
+            // per applied Promotion, the append-only record concurrency and
+            // per-customer limits are checked against.
+            $appliedByPromotion = $evaluation->applied->groupBy(fn (AppliedDiscount $applied) => $applied->promotion->id);
+
+            foreach ($appliedByPromotion as $promotionApplications) {
+                /** @var AppliedDiscount $first */
+                $first = $promotionApplications->first();
+
+                foreach ($promotionApplications as $applied) {
+                    DiscountApplication::query()->create([
+                        'order_id' => $order->id,
+                        'promotion_id' => $applied->promotion->id,
+                        'discount_code_id' => $applied->discountCode?->id,
+                        'order_item_id' => $applied->productVariantId !== null
+                            ? ($orderItemIdsByVariantId[$applied->productVariantId] ?? null)
+                            : null,
+                        'promotion_name' => $applied->promotion->name,
+                        'code' => $applied->discountCode?->code,
+                        'action_type' => $applied->actionType->value,
+                        'target' => $applied->target->value,
+                        'amount' => $applied->amount,
+                        'currency' => $lockedCheckout->currency,
+                    ]);
+                }
+
+                PromotionUsage::query()->create([
+                    'promotion_id' => $first->promotion->id,
+                    'discount_code_id' => $first->discountCode?->id,
+                    'customer_id' => $customer->id,
+                    'order_id' => $order->id,
+                    'amount' => (int) $promotionApplications->sum('amount'),
+                ]);
+            }
+
+            if ($discountCode !== null) {
+                $discountCode->increment('usage_count');
+
+                $this->recordOutboxEvent->handle('DiscountCodeRedeemed', 'Order', $order->id, [
+                    'order_id' => $order->id,
+                    'store_id' => $order->store_id,
+                    'discount_code_id' => $discountCode->id,
+                    'code' => $discountCode->code,
+                    'promotion_id' => $discountCode->promotion_id,
                 ]);
             }
 

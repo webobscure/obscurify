@@ -13,6 +13,7 @@ use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Enums\FulfillmentStatus;
 use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Payments\Models\Payment;
+use App\Domain\Promotions\Models\DiscountApplication;
 use App\Domain\Returns\Models\ReturnRequest;
 use App\Domain\Shipping\Models\Shipment;
 use App\Domain\Stores\Models\Store;
@@ -216,5 +217,16 @@ class Order extends Model
     public function financialEvents(): HasMany
     {
         return $this->hasMany(FinancialEvent::class);
+    }
+
+    /**
+     * The Order's immutable discount snapshot (spec section 8) — see
+     * DiscountApplication.
+     *
+     * @return HasMany<DiscountApplication, $this>
+     */
+    public function discountApplications(): HasMany
+    {
+        return $this->hasMany(DiscountApplication::class);
     }
 }

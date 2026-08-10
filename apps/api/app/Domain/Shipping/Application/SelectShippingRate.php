@@ -6,6 +6,7 @@ use App\Domain\Carts\Models\CartItem;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Checkouts\Models\Checkout;
 use App\Domain\Checkouts\Models\CheckoutAddress;
+use App\Domain\Promotions\Application\RecalculateCheckoutTotals;
 use App\Domain\Shipping\Exceptions\PickupPointInvalidException;
 use App\Domain\Shipping\Exceptions\ShippingQuoteInvalidException;
 use App\Domain\Shipping\Models\ShippingQuote;
@@ -31,6 +32,7 @@ final class SelectShippingRate
         private readonly CalculateShippingRates $calculateShippingRates,
         private readonly ShipmentWeightCalculator $weightCalculator,
         private readonly ShippingProviderRegistry $registry,
+        private readonly RecalculateCheckoutTotals $recalculateCheckoutTotals,
     ) {}
 
     public function handle(Checkout $checkout, string $provider, ?string $serviceCode, ?string $methodId, ?string $pickupPointId = null): Checkout
@@ -139,14 +141,16 @@ final class SelectShippingRate
                 'metadata' => $metadata === [] ? null : $metadata,
             ]);
 
-            $totalAmount = $locked->items_subtotal_amount + $selected->priceAmount
-                - $locked->discount_amount + $locked->tax_amount;
-
             $locked->update([
                 'shipping_quote_id' => $quote->id,
                 'shipping_amount' => $selected->priceAmount,
-                'total_amount' => $totalAmount,
             ]);
+
+            // Discounts may depend on the shipping amount (free_shipping,
+            // an order_total rule) — always re-derive from PromotionEngine
+            // rather than reusing whatever discount_amount was cached
+            // before this shipping rate was selected.
+            $this->recalculateCheckoutTotals->handle($locked);
 
             return $locked->fresh(['addresses']);
         });

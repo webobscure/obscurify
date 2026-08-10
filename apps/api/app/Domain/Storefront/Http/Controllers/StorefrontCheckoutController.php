@@ -11,10 +11,13 @@ use App\Domain\Checkouts\Application\UpdateCheckout;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Checkouts\Models\Checkout;
 use App\Domain\Checkouts\Models\CheckoutAddress;
+use App\Domain\Promotions\Application\ApplyDiscountCode;
+use App\Domain\Promotions\Application\RemoveDiscountCode;
 use App\Domain\Shipping\Application\CalculateShippingRates;
 use App\Domain\Shipping\Application\SelectShippingRate;
 use App\Domain\Shipping\Support\ShipmentWeightCalculator;
 use App\Domain\Shipping\Support\ShippingRateContext;
+use App\Domain\Storefront\Http\Requests\ApplyDiscountCodeRequest;
 use App\Domain\Storefront\Http\Requests\CompleteCheckoutRequest;
 use App\Domain\Storefront\Http\Requests\SelectCheckoutShippingRequest;
 use App\Domain\Storefront\Http\Requests\UpdateCheckoutRequest;
@@ -34,7 +37,7 @@ final class StorefrontCheckoutController extends Controller
 {
     private const COOKIE_NAME = 'storefront_cart_token';
 
-    private const array CHECKOUT_EAGER_LOADS = ['addresses', 'shippingQuote'];
+    private const array CHECKOUT_EAGER_LOADS = ['addresses', 'shippingQuote', 'discountCode'];
 
     public function store(Request $request, GetOrCreateCart $getOrCreateCart, OpenCheckout $action): JsonResponse
     {
@@ -90,6 +93,30 @@ final class StorefrontCheckoutController extends Controller
     }
 
     /**
+     * Case-insensitive lookup, validated against this exact cart before
+     * anything is persisted (spec section 10) — see ApplyDiscountCode.
+     */
+    public function applyDiscountCode(ApplyDiscountCodeRequest $request, GetOrCreateCart $getOrCreateCart, ApplyDiscountCode $action): JsonResponse
+    {
+        $cart = $getOrCreateCart->handle($request->cookie(self::COOKIE_NAME));
+        $checkout = $this->resolveOpenCheckout($cart);
+
+        $checkout = $action->handle($checkout, $request->validated()['code']);
+
+        return $this->checkoutResponse($checkout);
+    }
+
+    public function removeDiscountCode(Request $request, GetOrCreateCart $getOrCreateCart, RemoveDiscountCode $action): JsonResponse
+    {
+        $cart = $getOrCreateCart->handle($request->cookie(self::COOKIE_NAME));
+        $checkout = $this->resolveOpenCheckout($cart);
+
+        $checkout = $action->handle($checkout);
+
+        return $this->checkoutResponse($checkout);
+    }
+
+    /**
      * Requires an Idempotency-Key header (stricter than the spec's letter,
      * deliberately — the storefront frontend always controls sending it,
      * and duplicate-order prevention on checkout completion is critical
@@ -115,7 +142,7 @@ final class StorefrontCheckoutController extends Controller
         $requestHash = hash('sha256', $checkout->id.'|'.$request->getContent());
 
         $result = $idempotencyKeyStore->handle('checkout.complete', $key, $requestHash, function () use ($checkout, $action) {
-            $order = $action->handle($checkout)->load(['items', 'shippingAddress', 'billingAddress']);
+            $order = $action->handle($checkout)->load(['items', 'shippingAddress', 'billingAddress', 'discountApplications']);
 
             return [
                 'status' => 201,

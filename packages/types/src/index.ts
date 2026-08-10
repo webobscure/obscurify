@@ -532,6 +532,7 @@ export interface StorefrontCheckout {
   tax_amount: number
   total_amount: number
   status: CheckoutStatus
+  discount_code: string | null
   shipping_address: StorefrontAddress | null
   billing_address: StorefrontAddress | null
   selected_shipping_rate: ShippingLine | null
@@ -605,6 +606,7 @@ export interface StorefrontOrderConfirmation {
   financial_status: FinancialStatus
   fulfillment_status: FulfillmentStatus
   items: StorefrontOrderItem[]
+  discount_applications?: DiscountApplication[]
   shipping_address: StorefrontAddress | null
   billing_address: StorefrontAddress | null
   shipping_line: ShippingLine | null
@@ -656,6 +658,7 @@ export interface Order {
   fulfillment_status: FulfillmentStatus
   customer?: OrderCustomer
   items?: OrderItem[]
+  discount_applications?: DiscountApplication[]
   shipping_address?: StorefrontAddress | null
   billing_address?: StorefrontAddress | null
   shipping_line?: ShippingLine | null
@@ -819,6 +822,113 @@ export interface FinancialEvent {
   type: string
   description: string | null
   occurred_at: string
+}
+
+export type PromotionTriggerType = 'automatic' | 'code'
+export type PromotionStackingMode = 'stackable' | 'exclusive'
+export type PromotionStatus = 'active' | 'inactive'
+export type DiscountCodeStatus = 'active' | 'inactive'
+
+export type PromotionRuleType =
+  | 'min_subtotal'
+  | 'product'
+  | 'collection'
+  | 'category'
+  | 'customer'
+  | 'country'
+  | 'currency'
+  | 'order_quantity'
+  | 'order_total'
+  | 'date_range'
+  | 'usage_limit'
+
+export type PromotionActionType =
+  | 'percentage_off'
+  | 'fixed_amount_off'
+  | 'free_shipping'
+  | 'free_product'
+  | 'line_item_discount'
+  | 'order_discount'
+
+export type DiscountApplicationTarget = 'order' | 'shipping' | 'line_item'
+
+export interface PromotionRule {
+  id: string
+  type: PromotionRuleType
+  parameters: Record<string, unknown>
+}
+
+export interface PromotionAction {
+  id: string
+  type: PromotionActionType
+  parameters: Record<string, unknown>
+}
+
+export interface DiscountCode {
+  id: string
+  promotion_id: string
+  code: string
+  usage_limit: number | null
+  per_customer_limit: number | null
+  usage_count: number
+  expires_at: string | null
+  status: DiscountCodeStatus
+  created_at: string
+}
+
+/**
+ * Admin-facing promotion representation (GET/POST/PATCH /promotions). See
+ * docs/architecture/promotions.md — trigger_type separates "how it's
+ * activated" from "what it does" (rules/actions carry the latter).
+ */
+export interface Promotion {
+  id: string
+  name: string
+  description: string | null
+  trigger_type: PromotionTriggerType
+  stacking_mode: PromotionStackingMode
+  priority: number
+  status: PromotionStatus
+  starts_at: string | null
+  ends_at: string | null
+  rules?: PromotionRule[]
+  actions?: PromotionAction[]
+  discount_codes?: DiscountCode[]
+  created_at: string
+  updated_at: string
+}
+
+export interface PromotionUsage {
+  id: string
+  promotion_id: string
+  discount_code_id: string | null
+  customer_id: string | null
+  order_id: string
+  amount: number
+  created_at: string
+}
+
+/** One PromotionAction's computed effect — returned by POST /promotions/preview. */
+export interface AppliedDiscount {
+  promotion_id: string
+  promotion_name: string
+  discount_code: string | null
+  action_type: PromotionActionType
+  target: DiscountApplicationTarget
+  amount: number
+  product_variant_id: string | null
+}
+
+/** The Order's immutable discount snapshot (spec section 8) — see DiscountApplicationResource on the backend. */
+export interface DiscountApplication {
+  id: string
+  promotion_name: string
+  code: string | null
+  action_type: PromotionActionType
+  target: DiscountApplicationTarget
+  order_item_id: string | null
+  amount: number
+  currency: string
 }
 
 export interface ApiResource<T> {

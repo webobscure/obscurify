@@ -34,6 +34,7 @@ final class CheckoutResource extends JsonResource
             'items_subtotal_amount' => $this->items_subtotal_amount,
             'shipping_amount' => $this->shipping_amount,
             'discount_amount' => $this->discount_amount,
+            'discount_code' => $this->discountCode?->code,
             'tax_amount' => $this->tax_amount,
             'total_amount' => $this->total_amount,
             'status' => $this->status->value,

@@ -5,6 +5,7 @@ namespace App\Domain\Checkouts\Models;
 use App\Domain\Carts\Models\Cart;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Promotions\Models\DiscountCode;
 use App\Domain\Shipping\Models\ShippingQuote;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Enums\AddressType;
@@ -49,6 +50,7 @@ class Checkout extends Model
         'cart_id',
         'customer_id',
         'shipping_quote_id',
+        'discount_code_id',
         'email',
         'phone',
         'currency',
@@ -135,5 +137,13 @@ class Checkout extends Model
     public function shippingQuote(): BelongsTo
     {
         return $this->belongsTo(ShippingQuote::class);
+    }
+
+    /**
+     * @return BelongsTo<DiscountCode, $this>
+     */
+    public function discountCode(): BelongsTo
+    {
+        return $this->belongsTo(DiscountCode::class);
     }
 }
