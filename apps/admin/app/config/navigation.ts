@@ -55,6 +55,7 @@ export const primaryNavigation: NavigationSection[] = [
       { label: 'Payments', to: '/payments', icon: 'payments' },
       { label: 'Promotions', to: '/promotions', icon: 'promotions' },
       { label: 'Apps', to: '/apps', icon: 'apps' },
+      { label: 'Themes', to: '/themes', icon: 'themes' },
       {
         label: 'Shipping',
         to: '/shipments',

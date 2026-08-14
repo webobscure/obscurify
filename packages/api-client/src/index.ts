@@ -25,11 +25,17 @@ import type {
   Promotion,
   PromotionUsage,
   Refund,
+  RenderedPage,
   ReturnRequest,
   Shipment,
   ShippingMethod,
   ShippingZone,
   Store,
+  Theme,
+  ThemeStatus,
+  ThemeTemplate,
+  ThemeTemplateType,
+  ThemeVersion,
   User,
 } from '@obscurify/types'
 
@@ -562,6 +568,65 @@ export class ApiClient {
 
     cancel: (returnId: string) =>
       this.request<ApiResource<ReturnRequest>>(`/api/v1/returns/${returnId}/cancel`, { method: 'POST' }),
+  }
+
+  /**
+   * Theme Engine (Milestone 13). No `destroy`: an unwanted theme is
+   * archived via `update({ status: 'archived' })`, never deleted, so
+   * ActiveTheme/duplicate lineage never dangles — see routes/api.php.
+   */
+  readonly themes = {
+    list: () => this.request<ApiCollection<Theme>>('/api/v1/themes'),
+
+    get: (themeId: string) => this.request<ApiResource<Theme>>(`/api/v1/themes/${themeId}`),
+
+    create: (data: { name: string; slug: string }) =>
+      this.request<ApiResource<Theme>>('/api/v1/themes', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (themeId: string, data: Partial<{ name: string; status: ThemeStatus }>) =>
+      this.request<ApiResource<Theme>>(`/api/v1/themes/${themeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    /** Publishes the theme's current draft version. */
+    publish: (themeId: string) =>
+      this.request<ApiResource<Theme>>(`/api/v1/themes/${themeId}/publish`, { method: 'POST' }),
+
+    duplicate: (themeId: string) =>
+      this.request<ApiResource<Theme>>(`/api/v1/themes/${themeId}/duplicate`, { method: 'POST' }),
+
+    /** Renders the theme's current *draft* version — never the live one. */
+    preview: (themeId: string, template: ThemeTemplateType) =>
+      this.request<ApiResource<RenderedPage>>(`/api/v1/themes/${themeId}/preview?template=${encodeURIComponent(template)}`),
+
+    versions: (themeId: string) => this.request<ApiCollection<ThemeVersion>>(`/api/v1/themes/${themeId}/versions`),
+  }
+
+  /**
+   * Version-scoped editing. Both `settings.update` and `templates.update`
+   * are rejected server-side for a published version — published versions
+   * are immutable, so only the current draft is editable.
+   */
+  readonly themeVersions = {
+    rollback: (themeVersionId: string) =>
+      this.request<ApiResource<Theme>>(`/api/v1/theme-versions/${themeVersionId}/rollback`, { method: 'POST' }),
+
+    settings: {
+      /** Flat key -> value map, not a resource collection. */
+      list: (themeVersionId: string) =>
+        this.request<ApiResource<Record<string, unknown>>>(`/api/v1/theme-versions/${themeVersionId}/settings`),
+
+      update: (themeVersionId: string, settings: Record<string, unknown>) =>
+        this.request<ApiResource<Record<string, unknown>>>(`/api/v1/theme-versions/${themeVersionId}/settings`, { method: 'PATCH', body: JSON.stringify({ settings }) }),
+    },
+
+    templates: {
+      /** Always nine rows, one per ThemeTemplateType. */
+      list: (themeVersionId: string) =>
+        this.request<ApiCollection<ThemeTemplate>>(`/api/v1/theme-versions/${themeVersionId}/templates`),
+
+      /** Replaces the template's ordered section-instance list wholesale. */
+      update: (themeVersionId: string, type: ThemeTemplateType, sections: unknown[]) =>
+        this.request<ApiResource<ThemeTemplate>>(`/api/v1/theme-versions/${themeVersionId}/templates/${encodeURIComponent(type)}`, { method: 'PATCH', body: JSON.stringify({ sections }) }),
+    },
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')

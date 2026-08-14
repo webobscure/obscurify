@@ -49,7 +49,11 @@ use App\Domain\Storefront\Http\Controllers\StorefrontOrderController;
 use App\Domain\Storefront\Http\Controllers\StorefrontPaymentController;
 use App\Domain\Storefront\Http\Controllers\StorefrontProductController;
 use App\Domain\Storefront\Http\Controllers\StorefrontStoreController;
+use App\Domain\Storefront\Http\Controllers\StorefrontThemeController;
 use App\Domain\Stores\Http\Controllers\StoreController;
+use App\Domain\Themes\Http\Controllers\ThemeController;
+use App\Domain\Themes\Http\Controllers\ThemeSettingController;
+use App\Domain\Themes\Http\Controllers\ThemeTemplateController;
 use App\Domain\Webhooks\Http\Controllers\WebhookDeliveryController;
 use App\Domain\Webhooks\Http\Controllers\WebhookSubscriptionController;
 use Illuminate\Support\Facades\Route;
@@ -191,6 +195,24 @@ Route::prefix('v1')->group(function () {
             Route::get('oauth/authorize', [OAuthController::class, 'show']);
             Route::post('oauth/authorize', [OAuthController::class, 'approve']);
 
+            // Theme Engine + Storefront Rendering (Milestone 13) — see
+            // docs/architecture/themes.md. No destroy: an unwanted theme
+            // is archived via status, never deleted, so ActiveTheme/
+            // DuplicateTheme lineage never dangles.
+            Route::get('themes', [ThemeController::class, 'index']);
+            Route::post('themes', [ThemeController::class, 'store']);
+            Route::get('themes/{theme}', [ThemeController::class, 'show']);
+            Route::patch('themes/{theme}', [ThemeController::class, 'update']);
+            Route::post('themes/{theme}/publish', [ThemeController::class, 'publish']);
+            Route::post('themes/{theme}/duplicate', [ThemeController::class, 'duplicate']);
+            Route::get('themes/{theme}/preview', [ThemeController::class, 'preview']);
+            Route::get('themes/{theme}/versions', [ThemeController::class, 'versions']);
+            Route::post('theme-versions/{themeVersion}/rollback', [ThemeController::class, 'rollback']);
+            Route::get('theme-versions/{themeVersion}/settings', [ThemeSettingController::class, 'index']);
+            Route::patch('theme-versions/{themeVersion}/settings', [ThemeSettingController::class, 'update']);
+            Route::get('theme-versions/{themeVersion}/templates', [ThemeTemplateController::class, 'index']);
+            Route::patch('theme-versions/{themeVersion}/templates/{type}', [ThemeTemplateController::class, 'update']);
+
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
             Route::post('shipments/{shipment}/cancel', [ShipmentController::class, 'cancel']);
@@ -272,6 +294,11 @@ Route::prefix('v1')->group(function () {
     // anonymous; there is no customer auth yet.
     Route::prefix('storefront')->middleware('storefront.tenant')->group(function () {
         Route::get('/store', [StorefrontStoreController::class, 'show']);
+
+        // Every themed page renders through this one endpoint (spec
+        // section 10) — {template} is home/collection/product/cart/
+        // search/404/page/blog (ThemeTemplateType).
+        Route::get('/theme/{template}', [StorefrontThemeController::class, 'render']);
 
         Route::get('/products', [StorefrontProductController::class, 'index']);
         Route::get('/products/{slug}', [StorefrontProductController::class, 'show']);

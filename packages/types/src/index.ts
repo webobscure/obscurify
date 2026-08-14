@@ -997,6 +997,93 @@ export interface AppExtension {
   created_at: string
 }
 
+export type ThemeStatus = 'draft' | 'published' | 'archived'
+export type ThemeVersionStatus = 'draft' | 'published' | 'archived'
+export type ThemeTemplateType
+  = 'home' | 'collection' | 'product' | 'cart' | 'checkout' | 'search' | 'blog' | '404' | 'page'
+
+/** Every ThemeTemplateType case, in the order the backend enum declares them. */
+export const themeTemplateTypes: readonly ThemeTemplateType[] = [
+  'home', 'collection', 'product', 'cart', 'checkout', 'search', 'blog', '404', 'page',
+]
+
+export interface ThemeVersion {
+  id: string
+  theme_id: string
+  created_from_version_id: string | null
+  version_number: number
+  status: ThemeVersionStatus
+  published_at: string | null
+  created_at: string
+}
+
+/**
+ * `is_active` is derived server-side from the store's single ActiveTheme
+ * pointer, not a column — a theme can be `published` (has at least one
+ * frozen version) without being the one currently serving the storefront.
+ */
+export interface Theme {
+  id: string
+  name: string
+  slug: string
+  status: ThemeStatus
+  is_active: boolean
+  versions: ThemeVersion[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ThemeBlockInstance {
+  id: string
+  block_handle: string
+  settings: Record<string, unknown>
+}
+
+export interface ThemeSectionInstance {
+  id: string
+  section_handle: string
+  settings: Record<string, unknown>
+}
+
+/**
+ * A template's stored (unresolved) section list — raw instance overrides,
+ * with no schema defaults merged in. Contrast RenderedSection below.
+ */
+export interface ThemeTemplate {
+  id: string
+  type: ThemeTemplateType
+  name: string
+  sections: (ThemeSectionInstance & { blocks?: ThemeBlockInstance[] })[]
+}
+
+export interface RenderedBlock {
+  id: string | null
+  handle: string
+  settings: Record<string, unknown>
+}
+
+export interface RenderedSection {
+  id: string | null
+  handle: string
+  name: string
+  settings: Record<string, unknown>
+  blocks: RenderedBlock[]
+}
+
+/**
+ * The preview endpoint's payload. camelCase — unlike every other type
+ * here — because ThemeRenderer returns plain readonly PHP DTOs that are
+ * json_encoded directly, not passed through a snake_case JsonResource.
+ */
+export interface RenderedPage {
+  template: ThemeTemplateType
+  sections: RenderedSection[]
+  globalSettings: Record<string, unknown>
+  themeId: string
+  themeVersionId: string
+  isPreview: boolean
+}
+
 export interface ApiResource<T> {
   data: T
 }

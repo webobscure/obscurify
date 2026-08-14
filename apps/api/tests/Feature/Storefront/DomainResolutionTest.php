@@ -1,32 +1,6 @@
 <?php
 
-use App\Domain\Domains\Models\Domain;
-use App\Domain\Stores\Models\Store;
 use App\Models\User;
-use App\Shared\Tenancy\TenantContext;
-
-function domainForStore(Store $store, string $host, array $overrides = []): Domain
-{
-    return app(TenantContext::class)->scope(
-        $store,
-        fn () => Domain::query()->create(['domain' => $host, 'type' => 'primary', 'is_primary' => true, ...$overrides]),
-    );
-}
-
-/**
- * Builds an absolute URL with the given host so Symfony's Request::create()
- * derives HTTP_HOST from the URI itself — passing a bare 'Host' header
- * does NOT work here: Laravel's test client always resolves relative URIs
- * against an absolute base URL first, and Symfony\Component\HttpFoundation\Request::create()
- * unconditionally overwrites HTTP_HOST from any host present in the URI
- * it's given (see Request::create(), the `isset($components['host'])`
- * branch) — so the only reliable way to control the effective request
- * host in a test is to make the URI itself carry it.
- */
-function storefrontUrl(string $host, string $path): string
-{
-    return "http://{$host}{$path}";
-}
 
 beforeEach(function () {
     $this->userA = User::factory()->create();
