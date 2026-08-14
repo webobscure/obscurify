@@ -83,7 +83,19 @@ export const primaryNavigation: NavigationSection[] = [
       { label: 'Payments', to: '/payments', icon: 'payments' },
       { label: 'Promotions', to: '/promotions', icon: 'promotions' },
       { label: 'Apps', to: '/apps', icon: 'apps' },
-      { label: 'Themes', to: '/themes', icon: 'themes' },
+      {
+        label: 'Themes',
+        to: '/themes',
+        icon: 'themes',
+        children: [
+          // Theme Customizer/Section Library/Block Library are all
+          // design-time concerns of the active theme, the same reason
+          // Page Templates hangs off Pages rather than sitting flat.
+          { label: 'Theme Customizer', to: '/theme-customizer', icon: 'themes' },
+          { label: 'Section Library', to: '/section-library', icon: 'themes' },
+          { label: 'Block Library', to: '/block-library', icon: 'themes' },
+        ],
+      },
       {
         label: 'Shipping',
         to: '/shipments',

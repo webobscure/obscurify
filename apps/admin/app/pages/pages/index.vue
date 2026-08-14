@@ -25,7 +25,10 @@
             <td>{{ page.status }}</td>
             <td>{{ page.is_active ? 'Yes' : '—' }}</td>
             <td>{{ page.versions.length }}</td>
-            <td><NuxtLink :to="`/pages/${page.id}`">View</NuxtLink></td>
+            <td>
+              <NuxtLink :to="`/pages/${page.id}`">View</NuxtLink>
+              <NuxtLink :to="`/builder/pages/${page.id}`">Builder</NuxtLink>
+            </td>
           </tr>
         </tbody>
       </table>

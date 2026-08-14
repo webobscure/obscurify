@@ -11,6 +11,11 @@ import type {
   Blog,
   BlogPost,
   BlogPostStatus,
+  BuilderPageState,
+  BuilderPreset,
+  BuilderPresetType,
+  BuilderRevisionRestoreResult,
+  BuilderRevisionSummary,
   Category,
   Collection,
   DiscountCode,
@@ -39,12 +44,16 @@ import type {
   Refund,
   RenderedPage,
   ReturnRequest,
+  SectionInstance,
   SeoMetadata,
   Shipment,
   ShippingMethod,
   ShippingZone,
   Store,
   Theme,
+  ThemeAsset,
+  ThemeAssetType,
+  ThemeCustomizerState,
   ThemeStatus,
   ThemeTemplate,
   ThemeTemplateType,
@@ -706,6 +715,91 @@ export class ApiClient {
 
     remove: (pageTemplateId: string) =>
       this.request<void>(`/api/v1/page-templates/${pageTemplateId}`, { method: 'DELETE' }),
+  }
+
+  /**
+   * Visual Builder (Milestone 15). There is deliberately no per-operation
+   * endpoint (no "move section", no "insert block"): every drag-and-drop
+   * mutation happens against a local reactive array and `pages.update`
+   * saves the resulting document wholesale — see
+   * `App\Domain\Builder\Application\SaveBuilderLayout`.
+   *
+   * `publish`/`duplicate`/`rollback` return the plain CMS `Page` resource
+   * (they are passthroughs to the Milestone 14 actions), *not* the builder
+   * state — reload via `pages.get` afterwards to pick the new draft up.
+   */
+  readonly builder = {
+    pages: {
+      get: (pageId: string) =>
+        this.request<ApiResource<BuilderPageState>>(`/api/v1/builder/pages/${pageId}`),
+
+      /** Replaces the draft's whole section tree, nested blocks included. */
+      update: (pageId: string, sections: SectionInstance[]) =>
+        this.request<ApiResource<BuilderPageState>>(`/api/v1/builder/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify({ sections }) }),
+
+      publish: (pageId: string) =>
+        this.request<ApiResource<Page>>(`/api/v1/builder/pages/${pageId}/publish`, { method: 'POST' }),
+
+      duplicate: (pageId: string) =>
+        this.request<ApiResource<Page>>(`/api/v1/builder/pages/${pageId}/duplicate`, { method: 'POST' }),
+
+      /**
+       * Takes the page id plus the target version in the body, unlike CMS's
+       * own `pageVersions.rollback`, which the version id alone scopes.
+       */
+      rollback: (pageId: string, pageVersionId: string) =>
+        this.request<ApiResource<Page>>(`/api/v1/builder/pages/${pageId}/rollback`, { method: 'POST', body: JSON.stringify({ page_version_id: pageVersionId }) }),
+
+      undo: (pageId: string) =>
+        this.request<ApiResource<BuilderPageState>>(`/api/v1/builder/pages/${pageId}/undo`, { method: 'POST' }),
+
+      redo: (pageId: string) =>
+        this.request<ApiResource<BuilderPageState>>(`/api/v1/builder/pages/${pageId}/redo`, { method: 'POST' }),
+    },
+
+    revisions: {
+      /** Newest first. Every save — autosave included — appends one. */
+      list: (pageId: string) =>
+        this.request<ApiCollection<BuilderRevisionSummary>>(`/api/v1/builder/pages/${pageId}/revisions`),
+
+      /** Returns only `{draft_version_id, sections}` — no undo/redo flags. */
+      restore: (pageId: string, revisionId: string) =>
+        this.request<ApiResource<BuilderRevisionRestoreResult>>(`/api/v1/builder/pages/${pageId}/revisions/${revisionId}/restore`, { method: 'POST' }),
+    },
+
+    presets: {
+      list: (type?: BuilderPresetType) =>
+        this.request<ApiCollection<BuilderPreset>>(`/api/v1/builder/presets${type ? `?type=${encodeURIComponent(type)}` : ''}`),
+    },
+
+    /**
+     * Read-only field metadata plus current values. Saving goes through the
+     * Milestone 13 endpoint `themeVersions.settings.update` with the
+     * `theme_version_id` this returns — there is no builder-side write path.
+     */
+    themeCustomizer: () =>
+      this.request<ApiResource<ThemeCustomizerState>>('/api/v1/builder/theme-customizer'),
+  }
+
+  /**
+   * Scoped to a theme *version* — a merchant's asset library belongs to the
+   * draft they are currently editing, which is the same
+   * `theme_version_id` `builder.themeCustomizer()` returns.
+   */
+  readonly themeAssets = {
+    list: (themeVersionId: string) =>
+      this.request<ApiCollection<ThemeAsset>>(`/api/v1/theme-versions/${themeVersionId}/assets`),
+
+    upload: (themeVersionId: string, file: File, type: ThemeAssetType) => {
+      const form = new FormData()
+      form.set('file', file)
+      form.set('type', type)
+
+      return this.request<ApiResource<ThemeAsset>>(`/api/v1/theme-versions/${themeVersionId}/assets`, { method: 'POST', body: form })
+    },
+
+    remove: (themeAssetId: string) =>
+      this.request<void>(`/api/v1/theme-assets/${themeAssetId}`, { method: 'DELETE' }),
   }
 
   readonly menus = {

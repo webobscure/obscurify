@@ -1223,6 +1223,113 @@ export interface Redirect {
   created_at: string
 }
 
+/**
+ * Visual Builder (Milestone 15). `BlockInstance`/`SectionInstance` are the
+ * *editable* shape the builder mutates client-side and PATCHes back
+ * wholesale — richer than Milestone 13's `ThemeBlockInstance`, which has no
+ * `blocks` at all, because Builder blocks nest recursively (see
+ * `App\Domain\Builder\Support\SerializeSectionInstances`). Both always carry
+ * `blocks`, never optional: the backend serializer emits an empty array
+ * rather than omitting the key.
+ */
+export interface BlockInstance {
+  id: string
+  block_handle: string
+  settings: Record<string, unknown>
+  blocks: BlockInstance[]
+}
+
+export interface SectionInstance {
+  id: string
+  section_handle: string
+  settings: Record<string, unknown>
+  blocks: BlockInstance[]
+}
+
+/**
+ * The canonical editor state, returned identically by builder page
+ * show/update/undo/redo. Treat every response as authoritative and replace
+ * local state with it — the backend re-derives `sections` from the
+ * relational round-trip and silently drops handles the active theme does
+ * not define, so what was sent is not always what is stored.
+ */
+export interface BuilderPageState {
+  id: string
+  title: string
+  slug: string
+  status: PageStatus
+  draft_version_id: string
+  sections: SectionInstance[]
+  can_undo: boolean
+  can_redo: boolean
+}
+
+/**
+ * Restoring a revision returns a *narrower* payload than show/update do —
+ * BuilderRevisionController::restore emits only these two keys, with no
+ * `can_undo`/`can_redo`, so the caller has to re-read the page state to
+ * refresh the undo/redo affordances.
+ */
+export interface BuilderRevisionRestoreResult {
+  draft_version_id: string
+  sections: SectionInstance[]
+}
+
+export interface BuilderRevisionSummary {
+  id: string
+  sequence: number
+  is_current: boolean
+  created_at: string
+}
+
+export type BuilderPresetType = 'section' | 'block'
+
+/** `settings` is the default settings object a new instance is seeded with. */
+export interface BuilderPreset {
+  id: string
+  type: BuilderPresetType
+  handle: string
+  name: string
+  settings: Record<string, unknown>
+}
+
+export type ThemeCustomizerFieldType
+  = 'image' | 'font' | 'color' | 'select' | 'range' | 'boolean' | 'richtext' | 'text' | 'url'
+
+/**
+ * Field metadata only — there is no options list for `select`, and no
+ * min/max for `range`; the admin picks sensible ones per key.
+ */
+export interface ThemeCustomizerField {
+  key: string
+  label: string
+  type: ThemeCustomizerFieldType
+  group: string
+}
+
+/**
+ * `theme_version_id` is the active theme's current *draft* version — both
+ * the settings PATCH and the asset library are scoped to it.
+ */
+export interface ThemeCustomizerState {
+  theme_version_id: string
+  schema: ThemeCustomizerField[]
+  values: Record<string, unknown>
+}
+
+export type ThemeAssetType
+  = 'html_template' | 'vue_component' | 'css' | 'javascript' | 'image' | 'font' | 'svg' | 'json_config'
+
+export interface ThemeAsset {
+  id: string
+  theme_version_id: string
+  type: ThemeAssetType
+  url: string
+  mime_type: string | null
+  size: number | null
+  created_at: string
+}
+
 export interface ApiResource<T> {
   data: T
 }

@@ -12,6 +12,11 @@ use App\Domain\Apps\Http\Controllers\Gateway\ProductGatewayController;
 use App\Domain\Apps\Http\Controllers\Gateway\ShippingGatewayController;
 use App\Domain\Apps\Http\Controllers\InstalledAppController;
 use App\Domain\Apps\Http\Controllers\OAuthController;
+use App\Domain\Builder\Http\Controllers\BuilderPageController;
+use App\Domain\Builder\Http\Controllers\BuilderPresetController;
+use App\Domain\Builder\Http\Controllers\BuilderRevisionController;
+use App\Domain\Builder\Http\Controllers\ThemeAssetController;
+use App\Domain\Builder\Http\Controllers\ThemeCustomizerController;
 use App\Domain\Catalog\Http\Controllers\CategoryController;
 use App\Domain\Catalog\Http\Controllers\CategoryProductController;
 use App\Domain\Catalog\Http\Controllers\ProductController;
@@ -285,6 +290,28 @@ Route::prefix('v1')->group(function () {
             Route::post('redirects', [RedirectController::class, 'store']);
             Route::patch('redirects/{redirect}', [RedirectController::class, 'update']);
             Route::delete('redirects/{redirect}', [RedirectController::class, 'destroy']);
+
+            // Visual Page Builder + Theme Customizer (Milestone 15) — see
+            // docs/architecture/page-builder.md. Builder stores
+            // configuration only; publish/rollback/duplicate below are
+            // thin passthroughs to Cms's own PublishPageVersion/
+            // RollbackPage/DuplicatePage, not reimplementations.
+            Route::get('builder/pages/{page}', [BuilderPageController::class, 'show']);
+            Route::patch('builder/pages/{page}', [BuilderPageController::class, 'update']);
+            Route::post('builder/pages/{page}/publish', [BuilderPageController::class, 'publish']);
+            Route::post('builder/pages/{page}/duplicate', [BuilderPageController::class, 'duplicate']);
+            Route::post('builder/pages/{page}/rollback', [BuilderPageController::class, 'rollback']);
+            Route::post('builder/pages/{page}/undo', [BuilderPageController::class, 'undo']);
+            Route::post('builder/pages/{page}/redo', [BuilderPageController::class, 'redo']);
+            Route::get('builder/pages/{page}/revisions', [BuilderRevisionController::class, 'index']);
+            Route::post('builder/pages/{page}/revisions/{revision}/restore', [BuilderRevisionController::class, 'restore']);
+
+            Route::get('builder/presets', [BuilderPresetController::class, 'index']);
+            Route::get('builder/theme-customizer', [ThemeCustomizerController::class, 'show']);
+
+            Route::get('theme-versions/{themeVersion}/assets', [ThemeAssetController::class, 'index']);
+            Route::post('theme-versions/{themeVersion}/assets', [ThemeAssetController::class, 'store']);
+            Route::delete('theme-assets/{themeAsset}', [ThemeAssetController::class, 'destroy']);
 
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);

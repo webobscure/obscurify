@@ -36,6 +36,7 @@ describe('navigation source of truth', () => {
     '/orders', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
     '/shipments', '/shipping-methods', '/shipping-zones', '/promotions', '/apps', '/themes',
     '/pages', '/page-templates', '/menus', '/blogs', '/authors', '/redirects',
+    '/theme-customizer', '/section-library', '/block-library',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {

@@ -25,6 +25,7 @@
       </p>
 
       <div class="actions">
+        <NuxtLink :to="`/builder/pages/${page.id}`" class="button-link">Open in Builder</NuxtLink>
         <button type="button" :disabled="publishing" @click="handlePublish">
           {{ publishing ? 'Publishing…' : 'Publish draft' }}
         </button>
@@ -308,6 +309,16 @@ watch(pageId, load)
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 0.5rem;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
 }
 
 .grid {

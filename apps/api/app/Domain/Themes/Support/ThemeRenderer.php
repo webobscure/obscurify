@@ -96,26 +96,7 @@ final class ThemeRenderer
         $blockDefsByHandle = ($blocksBySection->get($sectionType->id) ?? collect())->keyBy('handle');
 
         $blocks = collect($instance['blocks'] ?? [])
-            ->map(function (array $blockInstance) use ($blockDefsByHandle) {
-                $blockType = $blockDefsByHandle->get($blockInstance['block_handle'] ?? null);
-
-                if ($blockType === null) {
-                    return null;
-                }
-
-                $defaults = [];
-                foreach ($blockType->schema as $field) {
-                    if (isset($field['id'])) {
-                        $defaults[$field['id']] = $field['default'] ?? null;
-                    }
-                }
-
-                return [
-                    'id' => $blockInstance['id'] ?? null,
-                    'handle' => $blockType->handle,
-                    'settings' => array_merge($defaults, $blockInstance['settings'] ?? []),
-                ];
-            })
+            ->map(fn (array $blockInstance) => $this->resolveBlock($blockInstance, $blockDefsByHandle))
             ->filter()
             ->values()
             ->all();
@@ -127,6 +108,50 @@ final class ThemeRenderer
             settings: $settings,
             blocks: $blocks,
         );
+    }
+
+    /**
+     * A block may itself carry nested child blocks (spec Milestone 15
+     * section 2: "Nested blocks" — e.g. items inside an Accordion/Tabs
+     * block) — resolved the exact same way, recursively, against the
+     * same per-section block-type registry every block on that section
+     * shares (a nested block is still a block *of that section*, not a
+     * separate concept). Non-nested content (every block before this
+     * milestone) is unaffected: an instance with no `blocks` key simply
+     * resolves to `'blocks' => []` here, same as it always implicitly
+     * did.
+     *
+     * @param  array<string, mixed>  $blockInstance
+     * @param  Collection<string, ThemeBlock>  $blockDefsByHandle
+     * @return array{id: string|null, handle: string, settings: array<string, mixed>, blocks: array<int, mixed>}|null
+     */
+    private function resolveBlock(array $blockInstance, Collection $blockDefsByHandle): ?array
+    {
+        $blockType = $blockDefsByHandle->get($blockInstance['block_handle'] ?? null);
+
+        if ($blockType === null) {
+            return null;
+        }
+
+        $defaults = [];
+        foreach ($blockType->schema as $field) {
+            if (isset($field['id'])) {
+                $defaults[$field['id']] = $field['default'] ?? null;
+            }
+        }
+
+        $children = collect($blockInstance['blocks'] ?? [])
+            ->map(fn (array $child) => $this->resolveBlock($child, $blockDefsByHandle))
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'id' => $blockInstance['id'] ?? null,
+            'handle' => $blockType->handle,
+            'settings' => array_merge($defaults, $blockInstance['settings'] ?? []),
+            'blocks' => $children,
+        ];
     }
 
     private function resolveVersion(bool $preview, ?string $previewVersionId): ThemeVersion

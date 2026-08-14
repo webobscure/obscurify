@@ -12,7 +12,10 @@ final readonly class RenderedSection
 {
     /**
      * @param  array<string, mixed>  $settings
-     * @param  array<int, array{id: string|null, handle: string, settings: array<string, mixed>}>  $blocks
+     * @param  array<int, array{id: string|null, handle: string, settings: array<string, mixed>, blocks: array<int, mixed>}>  $blocks
+     *                                                                                                                                 `blocks` nests recursively (Milestone 15: a block may contain
+     *                                                                                                                                 child blocks), so the innermost level is left as `mixed` rather
+     *                                                                                                                                 than a self-referencing docblock type PHPStan can't express.
      */
     public function __construct(
         public ?string $id,
