@@ -1084,6 +1084,145 @@ export interface RenderedPage {
   isPreview: boolean
 }
 
+export type PageStatus = 'draft' | 'published' | 'archived'
+export type PageVersionStatus = 'draft' | 'published' | 'archived'
+
+export interface PageVersion {
+  id: string
+  page_id: string
+  created_from_version_id: string | null
+  version_number: number
+  status: PageVersionStatus
+  published_at: string | null
+  /** Raw section instances — same unresolved shape as ThemeTemplate.sections. */
+  sections: (ThemeSectionInstance & { blocks?: ThemeBlockInstance[] })[]
+  created_at: string
+}
+
+/**
+ * `is_active` means "an ActivePageVersion pointer exists for this page",
+ * i.e. it has been published at least once and is being served. It is
+ * deliberately independent of `status`: PublishPageVersion never writes
+ * the page's own `status` column, so a page can read `draft` while still
+ * being `is_active` — the same split Theme has between `status` and the
+ * store's ActiveTheme pointer.
+ */
+export interface Page {
+  id: string
+  title: string
+  slug: string
+  status: PageStatus
+  is_active: boolean
+  versions: PageVersion[]
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * A reusable preset of section instances. Not versioned and not scoped to
+ * a theme version — `page_template_id` on page creation copies `sections`
+ * in once, it is never stored as a live reference.
+ */
+export interface PageTemplate {
+  id: string
+  name: string
+  sections: (ThemeSectionInstance & { blocks?: ThemeBlockInstance[] })[]
+  created_at: string
+}
+
+/** Shared by page versions and blog posts — the same endpoint shape for both. */
+export interface SeoMetadata {
+  meta_title: string | null
+  meta_description: string | null
+  canonical_url: string | null
+  og_image: string | null
+}
+
+export type MenuItemTargetType = 'url' | 'page' | 'collection' | 'product' | 'blog' | 'blog_post'
+
+/** Every MenuItemTargetType case, in the order the backend enum declares them. */
+export const menuItemTargetTypes: readonly MenuItemTargetType[] = [
+  'url', 'page', 'collection', 'product', 'blog', 'blog_post',
+]
+
+/**
+ * `url` carries the destination only for `target_type: 'url'`; every
+ * other target type resolves `target_id` against its own table instead.
+ */
+export interface MenuItem {
+  id: string
+  menu_id: string
+  parent_id: string | null
+  label: string
+  target_type: MenuItemTargetType
+  target_id: string | null
+  url: string | null
+  position: number
+  /** Absent (not empty) on the create/update responses, which return a bare item. */
+  children?: MenuItem[]
+}
+
+/**
+ * `items` is the fully nested top-level tree, present only on the
+ * show/create/update responses — MenuController::index deliberately does
+ * not build a tree per menu, so a listed menu carries no `items` at all.
+ */
+export interface Menu {
+  id: string
+  name: string
+  handle: string
+  items?: MenuItem[]
+  created_at: string
+  updated_at: string
+}
+
+export interface Author {
+  id: string
+  name: string
+  bio: string | null
+  avatar_path: string | null
+  created_at: string
+}
+
+export interface Blog {
+  id: string
+  title: string
+  slug: string
+  posts_count: number
+  created_at: string
+}
+
+export type BlogPostStatus = 'draft' | 'published' | 'scheduled' | 'archived'
+
+/**
+ * `status` is server-derived on create — a post created with a future
+ * `scheduled_at` comes back `scheduled`, otherwise `draft`, so the create
+ * request never sends one.
+ */
+export interface BlogPost {
+  id: string
+  blog_id: string
+  author: Author | null
+  title: string
+  slug: string
+  excerpt: string | null
+  body: string
+  status: BlogPostStatus
+  published_at: string | null
+  scheduled_at: string | null
+  featured_image_path: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Redirect {
+  id: string
+  from_path: string
+  to_path: string
+  status_code: number
+  created_at: string
+}
+
 export interface ApiResource<T> {
   data: T
 }

@@ -51,6 +51,34 @@ export const primaryNavigation: NavigationSection[] = [
     ],
   },
   {
+    label: 'Content',
+    items: [
+      {
+        label: 'Pages',
+        to: '/pages',
+        icon: 'pages',
+        children: [
+          // Page Templates are a preset library that exists only to seed a
+          // new page's sections — nested for the same reason Locations is
+          // nested under Inventory, not as an arbitrary grouping.
+          { label: 'Page Templates', to: '/page-templates', icon: 'pages' },
+        ],
+      },
+      {
+        label: 'Blogs',
+        to: '/blogs',
+        icon: 'blogs',
+        children: [
+          // Authors exist only to attribute blog posts; they have no
+          // meaning outside a blog, so they hang off it.
+          { label: 'Authors', to: '/authors', icon: 'authors' },
+        ],
+      },
+      { label: 'Menus', to: '/menus', icon: 'menus' },
+      { label: 'Redirects', to: '/redirects', icon: 'redirects' },
+    ],
+  },
+  {
     items: [
       { label: 'Payments', to: '/payments', icon: 'payments' },
       { label: 'Promotions', to: '/promotions', icon: 'promotions' },

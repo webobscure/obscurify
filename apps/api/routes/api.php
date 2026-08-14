@@ -18,6 +18,17 @@ use App\Domain\Catalog\Http\Controllers\ProductController;
 use App\Domain\Catalog\Http\Controllers\ProductOptionController;
 use App\Domain\Catalog\Http\Controllers\ProductOptionValueController;
 use App\Domain\Catalog\Http\Controllers\ProductVariantController;
+use App\Domain\Cms\Http\Controllers\AuthorController;
+use App\Domain\Cms\Http\Controllers\BlogController;
+use App\Domain\Cms\Http\Controllers\BlogPostController;
+use App\Domain\Cms\Http\Controllers\BlogPostSeoController;
+use App\Domain\Cms\Http\Controllers\MenuController;
+use App\Domain\Cms\Http\Controllers\MenuItemController;
+use App\Domain\Cms\Http\Controllers\PageController;
+use App\Domain\Cms\Http\Controllers\PageTemplateController;
+use App\Domain\Cms\Http\Controllers\PageVersionController;
+use App\Domain\Cms\Http\Controllers\PageVersionSeoController;
+use App\Domain\Cms\Http\Controllers\RedirectController;
 use App\Domain\Collections\Http\Controllers\CollectionController;
 use App\Domain\Collections\Http\Controllers\CollectionProductController;
 use App\Domain\Financial\Http\Controllers\FakeRefundOutcomeController;
@@ -41,13 +52,18 @@ use App\Domain\Shipping\Http\Controllers\ShipmentController;
 use App\Domain\Shipping\Http\Controllers\ShippingMethodController;
 use App\Domain\Shipping\Http\Controllers\ShippingWebhookController;
 use App\Domain\Shipping\Http\Controllers\ShippingZoneController;
+use App\Domain\Storefront\Http\Controllers\StorefrontBlogController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCartController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCategoryController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCheckoutController;
 use App\Domain\Storefront\Http\Controllers\StorefrontCollectionController;
+use App\Domain\Storefront\Http\Controllers\StorefrontMenuController;
 use App\Domain\Storefront\Http\Controllers\StorefrontOrderController;
+use App\Domain\Storefront\Http\Controllers\StorefrontPageController;
 use App\Domain\Storefront\Http\Controllers\StorefrontPaymentController;
 use App\Domain\Storefront\Http\Controllers\StorefrontProductController;
+use App\Domain\Storefront\Http\Controllers\StorefrontRedirectController;
+use App\Domain\Storefront\Http\Controllers\StorefrontSitemapController;
 use App\Domain\Storefront\Http\Controllers\StorefrontStoreController;
 use App\Domain\Storefront\Http\Controllers\StorefrontThemeController;
 use App\Domain\Stores\Http\Controllers\StoreController;
@@ -213,6 +229,63 @@ Route::prefix('v1')->group(function () {
             Route::get('theme-versions/{themeVersion}/templates', [ThemeTemplateController::class, 'index']);
             Route::patch('theme-versions/{themeVersion}/templates/{type}', [ThemeTemplateController::class, 'update']);
 
+            // CMS (Milestone 14) — see docs/architecture/cms.md. Pages
+            // follow the exact draft/publish/rollback/duplicate lifecycle
+            // Themes established (ADR-019/ADR-020); no destroy, same
+            // "archive via status, never delete" reasoning. Menus/Blogs/
+            // Authors/Redirects have no versioning invariant to protect,
+            // so they support DELETE like Shipping/Promotions.
+            Route::get('pages', [PageController::class, 'index']);
+            Route::post('pages', [PageController::class, 'store']);
+            Route::get('pages/{page}', [PageController::class, 'show']);
+            Route::patch('pages/{page}', [PageController::class, 'update']);
+            Route::post('pages/{page}/publish', [PageController::class, 'publish']);
+            Route::post('pages/{page}/duplicate', [PageController::class, 'duplicate']);
+            Route::get('pages/{page}/preview', [PageController::class, 'preview']);
+            Route::get('pages/{page}/versions', [PageController::class, 'versions']);
+            Route::post('page-versions/{pageVersion}/rollback', [PageController::class, 'rollback']);
+            Route::patch('page-versions/{pageVersion}/sections', [PageVersionController::class, 'updateSections']);
+            Route::get('page-versions/{pageVersion}/seo', [PageVersionSeoController::class, 'show']);
+            Route::patch('page-versions/{pageVersion}/seo', [PageVersionSeoController::class, 'update']);
+
+            Route::get('page-templates', [PageTemplateController::class, 'index']);
+            Route::post('page-templates', [PageTemplateController::class, 'store']);
+            Route::patch('page-templates/{pageTemplate}', [PageTemplateController::class, 'update']);
+            Route::delete('page-templates/{pageTemplate}', [PageTemplateController::class, 'destroy']);
+
+            Route::get('menus', [MenuController::class, 'index']);
+            Route::post('menus', [MenuController::class, 'store']);
+            Route::get('menus/{menu}', [MenuController::class, 'show']);
+            Route::patch('menus/{menu}', [MenuController::class, 'update']);
+            Route::delete('menus/{menu}', [MenuController::class, 'destroy']);
+            Route::post('menus/{menu}/items', [MenuItemController::class, 'store']);
+            Route::patch('menu-items/{menuItem}', [MenuItemController::class, 'update']);
+            Route::delete('menu-items/{menuItem}', [MenuItemController::class, 'destroy']);
+
+            Route::get('authors', [AuthorController::class, 'index']);
+            Route::post('authors', [AuthorController::class, 'store']);
+            Route::patch('authors/{author}', [AuthorController::class, 'update']);
+            Route::delete('authors/{author}', [AuthorController::class, 'destroy']);
+
+            Route::get('blogs', [BlogController::class, 'index']);
+            Route::post('blogs', [BlogController::class, 'store']);
+            Route::get('blogs/{blog}', [BlogController::class, 'show']);
+            Route::patch('blogs/{blog}', [BlogController::class, 'update']);
+            Route::delete('blogs/{blog}', [BlogController::class, 'destroy']);
+            Route::get('blogs/{blog}/posts', [BlogPostController::class, 'index']);
+            Route::post('blogs/{blog}/posts', [BlogPostController::class, 'store']);
+            Route::get('blog-posts/{blogPost}', [BlogPostController::class, 'show']);
+            Route::patch('blog-posts/{blogPost}', [BlogPostController::class, 'update']);
+            Route::post('blog-posts/{blogPost}/publish', [BlogPostController::class, 'publish']);
+            Route::delete('blog-posts/{blogPost}', [BlogPostController::class, 'destroy']);
+            Route::get('blog-posts/{blogPost}/seo', [BlogPostSeoController::class, 'show']);
+            Route::patch('blog-posts/{blogPost}/seo', [BlogPostSeoController::class, 'update']);
+
+            Route::get('redirects', [RedirectController::class, 'index']);
+            Route::post('redirects', [RedirectController::class, 'store']);
+            Route::patch('redirects/{redirect}', [RedirectController::class, 'update']);
+            Route::delete('redirects/{redirect}', [RedirectController::class, 'destroy']);
+
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
             Route::post('shipments/{shipment}/cancel', [ShipmentController::class, 'cancel']);
@@ -299,6 +372,14 @@ Route::prefix('v1')->group(function () {
         // section 10) — {template} is home/collection/product/cart/
         // search/404/page/blog (ThemeTemplateType).
         Route::get('/theme/{template}', [StorefrontThemeController::class, 'render']);
+
+        // CMS (Milestone 14) — see docs/architecture/cms.md.
+        Route::get('/pages/{slug}', [StorefrontPageController::class, 'show']);
+        Route::get('/blogs/{blogSlug}/posts', [StorefrontBlogController::class, 'index']);
+        Route::get('/blog/posts/{postSlug}', [StorefrontBlogController::class, 'show']);
+        Route::get('/menus/{handle}', [StorefrontMenuController::class, 'show']);
+        Route::get('/redirect', [StorefrontRedirectController::class, 'show']);
+        Route::get('/sitemap.xml', [StorefrontSitemapController::class, 'show']);
 
         Route::get('/products', [StorefrontProductController::class, 'index']);
         Route::get('/products/{slug}', [StorefrontProductController::class, 'show']);

@@ -7,6 +7,10 @@ import type {
   AppliedDiscount,
   AppToken,
   AuthResponse,
+  Author,
+  Blog,
+  BlogPost,
+  BlogPostStatus,
   Category,
   Collection,
   DiscountCode,
@@ -16,7 +20,14 @@ import type {
   InventoryLevel,
   Location,
   Media,
+  Menu,
+  MenuItem,
+  MenuItemTargetType,
   Order,
+  Page,
+  PageStatus,
+  PageTemplate,
+  PageVersion,
   Payment,
   Product,
   ProductOption,
@@ -24,9 +35,11 @@ import type {
   ProductVariant,
   Promotion,
   PromotionUsage,
+  Redirect,
   Refund,
   RenderedPage,
   ReturnRequest,
+  SeoMetadata,
   Shipment,
   ShippingMethod,
   ShippingZone,
@@ -627,6 +640,163 @@ export class ApiClient {
       update: (themeVersionId: string, type: ThemeTemplateType, sections: unknown[]) =>
         this.request<ApiResource<ThemeTemplate>>(`/api/v1/theme-versions/${themeVersionId}/templates/${encodeURIComponent(type)}`, { method: 'PATCH', body: JSON.stringify({ sections }) }),
     },
+  }
+
+  /**
+   * CMS (Milestone 14). A Page carries the same draft/publish/rollback
+   * lifecycle as a Theme, one version at a time — see `themes` above. No
+   * `destroy`: an unwanted page is archived via `update({ status: 'archived' })`.
+   */
+  readonly pages = {
+    list: () => this.request<ApiCollection<Page>>('/api/v1/pages'),
+
+    get: (pageId: string) => this.request<ApiResource<Page>>(`/api/v1/pages/${pageId}`),
+
+    create: (data: { title: string; slug: string; sections?: unknown[]; page_template_id?: string | null }) =>
+      this.request<ApiResource<Page>>('/api/v1/pages', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (pageId: string, data: Partial<{ title: string; status: PageStatus }>) =>
+      this.request<ApiResource<Page>>(`/api/v1/pages/${pageId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    /** Publishes the page's current draft version. */
+    publish: (pageId: string) =>
+      this.request<ApiResource<Page>>(`/api/v1/pages/${pageId}/publish`, { method: 'POST' }),
+
+    duplicate: (pageId: string) =>
+      this.request<ApiResource<Page>>(`/api/v1/pages/${pageId}/duplicate`, { method: 'POST' }),
+
+    /** Renders the page's current *draft* sections against the store's active theme. */
+    preview: (pageId: string) =>
+      this.request<ApiResource<RenderedPage>>(`/api/v1/pages/${pageId}/preview`),
+
+    versions: (pageId: string) => this.request<ApiCollection<PageVersion>>(`/api/v1/pages/${pageId}/versions`),
+  }
+
+  /**
+   * Version-scoped editing. Both `sections` and `seo` are rejected
+   * server-side for a published version — published versions are
+   * immutable, so only the current draft is editable.
+   */
+  readonly pageVersions = {
+    rollback: (pageVersionId: string) =>
+      this.request<ApiResource<Page>>(`/api/v1/page-versions/${pageVersionId}/rollback`, { method: 'POST' }),
+
+    /** Replaces the version's ordered section-instance list wholesale. */
+    updateSections: (pageVersionId: string, sections: unknown[]) =>
+      this.request<ApiResource<PageVersion>>(`/api/v1/page-versions/${pageVersionId}/sections`, { method: 'PATCH', body: JSON.stringify({ sections }) }),
+
+    seo: {
+      /** Returns an all-null record when no SEO row exists yet, never 404. */
+      get: (pageVersionId: string) =>
+        this.request<ApiResource<SeoMetadata>>(`/api/v1/page-versions/${pageVersionId}/seo`),
+
+      update: (pageVersionId: string, data: Partial<SeoMetadata>) =>
+        this.request<ApiResource<SeoMetadata>>(`/api/v1/page-versions/${pageVersionId}/seo`, { method: 'PATCH', body: JSON.stringify(data) }),
+    },
+  }
+
+  readonly pageTemplates = {
+    list: () => this.request<ApiCollection<PageTemplate>>('/api/v1/page-templates'),
+
+    create: (data: { name: string; sections: unknown[] }) =>
+      this.request<ApiResource<PageTemplate>>('/api/v1/page-templates', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (pageTemplateId: string, data: Partial<{ name: string; sections: unknown[] }>) =>
+      this.request<ApiResource<PageTemplate>>(`/api/v1/page-templates/${pageTemplateId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (pageTemplateId: string) =>
+      this.request<void>(`/api/v1/page-templates/${pageTemplateId}`, { method: 'DELETE' }),
+  }
+
+  readonly menus = {
+    /** Listed menus carry no `items` — only `get` builds the nested tree. */
+    list: () => this.request<ApiCollection<Menu>>('/api/v1/menus'),
+
+    get: (menuId: string) => this.request<ApiResource<Menu>>(`/api/v1/menus/${menuId}`),
+
+    create: (data: { name: string; handle: string }) =>
+      this.request<ApiResource<Menu>>('/api/v1/menus', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (menuId: string, data: Partial<{ name: string; handle: string }>) =>
+      this.request<ApiResource<Menu>>(`/api/v1/menus/${menuId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (menuId: string) => this.request<void>(`/api/v1/menus/${menuId}`, { method: 'DELETE' }),
+
+    addItem: (menuId: string, data: { label: string; target_type: MenuItemTargetType; target_id?: string | null; url?: string | null; parent_id?: string | null; position?: number }) =>
+      this.request<ApiResource<MenuItem>>(`/api/v1/menus/${menuId}/items`, { method: 'POST', body: JSON.stringify(data) }),
+  }
+
+  readonly menuItems = {
+    update: (menuItemId: string, data: Partial<{ label: string; target_type: MenuItemTargetType; target_id: string | null; url: string | null; parent_id: string | null; position: number }>) =>
+      this.request<ApiResource<MenuItem>>(`/api/v1/menu-items/${menuItemId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (menuItemId: string) => this.request<void>(`/api/v1/menu-items/${menuItemId}`, { method: 'DELETE' }),
+  }
+
+  readonly authors = {
+    list: () => this.request<ApiCollection<Author>>('/api/v1/authors'),
+
+    create: (data: { name: string; bio?: string | null; avatar_path?: string | null }) =>
+      this.request<ApiResource<Author>>('/api/v1/authors', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (authorId: string, data: Partial<{ name: string; bio: string | null; avatar_path: string | null }>) =>
+      this.request<ApiResource<Author>>(`/api/v1/authors/${authorId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (authorId: string) => this.request<void>(`/api/v1/authors/${authorId}`, { method: 'DELETE' }),
+  }
+
+  readonly blogs = {
+    list: () => this.request<ApiCollection<Blog>>('/api/v1/blogs'),
+
+    get: (blogId: string) => this.request<ApiResource<Blog>>(`/api/v1/blogs/${blogId}`),
+
+    create: (data: { title: string; slug: string }) =>
+      this.request<ApiResource<Blog>>('/api/v1/blogs', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (blogId: string, data: Partial<{ title: string; slug: string }>) =>
+      this.request<ApiResource<Blog>>(`/api/v1/blogs/${blogId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (blogId: string) => this.request<void>(`/api/v1/blogs/${blogId}`, { method: 'DELETE' }),
+
+    posts: (blogId: string) => this.request<ApiCollection<BlogPost>>(`/api/v1/blogs/${blogId}/posts`),
+  }
+
+  /**
+   * `status` is never sent on create — the backend derives `scheduled` vs
+   * `draft` from whether `scheduled_at` is set.
+   */
+  readonly blogPosts = {
+    get: (blogPostId: string) => this.request<ApiResource<BlogPost>>(`/api/v1/blog-posts/${blogPostId}`),
+
+    create: (blogId: string, data: { title: string; slug: string; author_id?: string | null; excerpt?: string | null; body: string; featured_image_path?: string | null; scheduled_at?: string | null }) =>
+      this.request<ApiResource<BlogPost>>(`/api/v1/blogs/${blogId}/posts`, { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (blogPostId: string, data: Partial<{ title: string; slug: string; author_id: string | null; excerpt: string | null; body: string; status: BlogPostStatus; featured_image_path: string | null; scheduled_at: string | null }>) =>
+      this.request<ApiResource<BlogPost>>(`/api/v1/blog-posts/${blogPostId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    publish: (blogPostId: string) =>
+      this.request<ApiResource<BlogPost>>(`/api/v1/blog-posts/${blogPostId}/publish`, { method: 'POST' }),
+
+    remove: (blogPostId: string) => this.request<void>(`/api/v1/blog-posts/${blogPostId}`, { method: 'DELETE' }),
+
+    seo: {
+      get: (blogPostId: string) => this.request<ApiResource<SeoMetadata>>(`/api/v1/blog-posts/${blogPostId}/seo`),
+
+      update: (blogPostId: string, data: Partial<SeoMetadata>) =>
+        this.request<ApiResource<SeoMetadata>>(`/api/v1/blog-posts/${blogPostId}/seo`, { method: 'PATCH', body: JSON.stringify(data) }),
+    },
+  }
+
+  readonly redirects = {
+    list: () => this.request<ApiCollection<Redirect>>('/api/v1/redirects'),
+
+    create: (data: { from_path: string; to_path: string; status_code?: number }) =>
+      this.request<ApiResource<Redirect>>('/api/v1/redirects', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (redirectId: string, data: Partial<{ from_path: string; to_path: string; status_code: number }>) =>
+      this.request<ApiResource<Redirect>>(`/api/v1/redirects/${redirectId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (redirectId: string) => this.request<void>(`/api/v1/redirects/${redirectId}`, { method: 'DELETE' }),
   }
 
   health = () => this.request<{ status: string }>('/api/v1/health')

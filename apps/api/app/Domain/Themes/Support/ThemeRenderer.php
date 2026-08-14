@@ -33,18 +33,44 @@ final class ThemeRenderer
             ->where('type', $type->value)
             ->first();
 
+        return $this->renderVersion($version, $type->value, $template->sections ?? [], $preview);
+    }
+
+    /**
+     * Renders an arbitrary raw section-instance array (e.g. a CMS
+     * PageVersion's own `sections` column) against the store's current
+     * theme — the same section/block type resolution `render()` uses for
+     * a built-in template slot, just fed different instance data. Lets
+     * `App\Domain\Cms` reuse this engine without `ThemeRenderer` ever
+     * needing to know anything about Cms models (Cms depends on Themes,
+     * never the reverse — see docs/architecture/cms.md).
+     *
+     * @param  array<int, array<string, mixed>>  $rawSections
+     */
+    public function renderCmsPage(string $storeId, array $rawSections, bool $preview = false, ?string $previewVersionId = null): RenderedPage
+    {
+        $version = $this->resolveVersion($preview, $previewVersionId);
+
+        return $this->renderVersion($version, ThemeTemplateType::Page->value, $rawSections, $preview);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rawSections
+     */
+    private function renderVersion(ThemeVersion $version, string $template, array $rawSections, bool $preview): RenderedPage
+    {
         $sectionsByHandle = $version->sections()->get()->keyBy('handle');
         $blocksBySection = $version->blocks()->get()->collect()->groupBy('theme_section_id');
         $globalSettings = $version->settings()->get()->pluck('value', 'key')->all();
 
-        $sections = collect($template->sections ?? [])
+        $sections = collect($rawSections)
             ->map(fn (array $instance) => $this->resolveSection($instance, $sectionsByHandle, $blocksBySection))
             ->filter()
             ->values()
             ->all();
 
         return new RenderedPage(
-            template: $type->value,
+            template: $template,
             sections: $sections,
             globalSettings: $globalSettings,
             themeId: $version->theme_id,
