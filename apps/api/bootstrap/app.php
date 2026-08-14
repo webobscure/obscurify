@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Apps\Http\Middleware\AuthenticateAppToken;
+use App\Domain\Apps\Http\Middleware\EnsureAppScope;
 use App\Shared\Tenancy\Http\Middleware\EnsureStorefrontTenantContext;
 use App\Shared\Tenancy\Http\Middleware\EnsureTenantContext;
 use Illuminate\Auth\Middleware\Authorize;
@@ -31,6 +33,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant' => EnsureTenantContext::class,
             'storefront.tenant' => EnsureStorefrontTenantContext::class,
+            'app-token' => AuthenticateAppToken::class,
+            'app-scope' => EnsureAppScope::class,
         ]);
 
         // EnsureTenantContext/EnsureStorefrontTenantContext must run after

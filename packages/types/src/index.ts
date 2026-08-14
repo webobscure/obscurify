@@ -931,6 +931,72 @@ export interface DiscountApplication {
   currency: string
 }
 
+export type AppType = 'private' | 'public'
+export type AppRegistrationStatus = 'active' | 'inactive'
+export type InstalledAppStatus = 'active' | 'uninstalled'
+export type AppTokenType = 'access' | 'refresh'
+export type ExtensionPoint = 'checkout' | 'order' | 'product' | 'customer' | 'admin_navigation' | 'admin_widget' | 'dashboard_card'
+
+/**
+ * Admin-facing App representation (GET/POST /apps). `client_id` is
+ * present once the app's OAuthClient is loaded; `client_secret` is only
+ * ever present in the POST /apps response itself (see AppController) —
+ * shown once, never re-derivable afterward.
+ */
+export interface App {
+  id: string
+  store_id: string | null
+  type: AppType
+  name: string
+  slug: string
+  developer: string | null
+  description: string | null
+  redirect_urls: string[]
+  requested_scopes: string[]
+  status: AppRegistrationStatus
+  client_id?: string
+  client_secret?: string
+  created_at: string
+}
+
+export interface InstalledAppSummary {
+  id: string
+  name: string
+  slug: string
+  developer: string | null
+  type: AppType
+}
+
+export interface InstalledApp {
+  id: string
+  app_id: string
+  app?: InstalledAppSummary
+  status: InstalledAppStatus
+  scopes?: string[]
+  installed_at: string
+  uninstalled_at: string | null
+}
+
+/** Admin visibility only — never includes the token value itself. */
+export interface AppToken {
+  id: string
+  type: AppTokenType
+  scope: string[]
+  rotated_from_id: string | null
+  expires_at: string
+  revoked_at: string | null
+  created_at: string
+}
+
+export interface AppExtension {
+  id: string
+  installed_app_id: string
+  extension_point: ExtensionPoint
+  config: Record<string, unknown>
+  status: AppRegistrationStatus
+  created_at: string
+}
+
 export interface ApiResource<T> {
   data: T
 }

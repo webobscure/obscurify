@@ -2,12 +2,16 @@ import type {
   ApiCollection,
   ApiErrorBody,
   ApiResource,
+  App,
+  AppExtension,
   AppliedDiscount,
+  AppToken,
   AuthResponse,
   Category,
   Collection,
   DiscountCode,
   Fulfillment,
+  InstalledApp,
   InventoryItem,
   InventoryLevel,
   Location,
@@ -441,6 +445,45 @@ export class ApiClient {
 
     update: (discountCodeId: string, data: Partial<{ code: string; usage_limit: number | null; per_customer_limit: number | null; expires_at: string | null; status: string }>) =>
       this.request<ApiResource<DiscountCode>>(`/api/v1/discount-codes/${discountCodeId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  }
+
+  /**
+   * Apps SDK + OAuth + Extension Platform (Milestone 12) — registration
+   * and installation only; the OAuth authorization-code/token exchange
+   * itself is the third-party app's own server's job, not something the
+   * admin SPA drives beyond the one-time consent redirect (not wrapped
+   * here — see docs/architecture/apps.md).
+   */
+  readonly apps = {
+    list: () => this.request<ApiCollection<App>>('/api/v1/apps'),
+
+    get: (appId: string) => this.request<ApiResource<App>>(`/api/v1/apps/${appId}`),
+
+    create: (data: { type?: string; name: string; slug: string; developer?: string | null; description?: string | null; redirect_urls: string[]; requested_scopes?: string[] }) =>
+      this.request<ApiResource<App>>('/api/v1/apps', { method: 'POST', body: JSON.stringify(data) }),
+
+    install: (appId: string) =>
+      this.request<ApiResource<InstalledApp>>(`/api/v1/apps/${appId}/install`, { method: 'POST' }),
+  }
+
+  readonly installedApps = {
+    list: () => this.request<ApiCollection<InstalledApp>>('/api/v1/installed-apps'),
+
+    get: (installedAppId: string) => this.request<ApiResource<InstalledApp>>(`/api/v1/installed-apps/${installedAppId}`),
+
+    uninstall: (installedAppId: string) =>
+      this.request<ApiResource<InstalledApp>>(`/api/v1/installed-apps/${installedAppId}/uninstall`, { method: 'POST' }),
+
+    tokens: (installedAppId: string) =>
+      this.request<ApiCollection<AppToken>>(`/api/v1/installed-apps/${installedAppId}/tokens`),
+
+    webhooks: (installedAppId: string) =>
+      this.request<ApiCollection<{ id: string; name: string; target_url: string; event_types: string[]; status: string }>>(`/api/v1/installed-apps/${installedAppId}/webhooks`),
+  }
+
+  readonly adminExtensions = {
+    list: (point?: string) =>
+      this.request<ApiCollection<AppExtension>>(`/api/v1/admin-extensions${point ? `?point=${point}` : ''}`),
   }
 
   readonly shipments = {

@@ -1,5 +1,17 @@
 <?php
 
+use App\Domain\Apps\Http\Controllers\AdminExtensionsController;
+use App\Domain\Apps\Http\Controllers\AppController;
+use App\Domain\Apps\Http\Controllers\Gateway\AppExtensionGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\AppWebhookGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\CustomerGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\InventoryGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\OrderGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\PaymentGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\ProductGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\ShippingGatewayController;
+use App\Domain\Apps\Http\Controllers\InstalledAppController;
+use App\Domain\Apps\Http\Controllers\OAuthController;
 use App\Domain\Catalog\Http\Controllers\CategoryController;
 use App\Domain\Catalog\Http\Controllers\CategoryProductController;
 use App\Domain\Catalog\Http\Controllers\ProductController;
@@ -156,6 +168,29 @@ Route::prefix('v1')->group(function () {
             Route::get('webhook-subscriptions/{webhookSubscription}/deliveries', [WebhookDeliveryController::class, 'index']);
             Route::post('webhook-deliveries/{webhookDelivery}/retry', [WebhookDeliveryController::class, 'retry']);
 
+            // Apps SDK + OAuth + Extension Platform (Milestone 12) —
+            // architecture only: no marketplace UI, no billing, no app
+            // review, no public publishing. See docs/architecture/apps.md.
+            Route::get('apps', [AppController::class, 'index']);
+            Route::post('apps', [AppController::class, 'store']);
+            Route::get('apps/{app}', [AppController::class, 'show']);
+            Route::post('apps/{app}/install', [AppController::class, 'install']);
+
+            Route::get('installed-apps', [InstalledAppController::class, 'index']);
+            Route::get('installed-apps/{installedApp}', [InstalledAppController::class, 'show']);
+            Route::post('installed-apps/{installedApp}/uninstall', [InstalledAppController::class, 'uninstall']);
+            Route::get('installed-apps/{installedApp}/tokens', [InstalledAppController::class, 'tokens']);
+            Route::get('installed-apps/{installedApp}/webhooks', [InstalledAppController::class, 'webhooks']);
+
+            Route::get('admin-extensions', [AdminExtensionsController::class, 'index']);
+
+            // OAuth consent step — authenticated in the admin (this
+            // group's own auth:sanctum + tenant middleware), unlike
+            // /oauth/token and /oauth/revoke below, which the app's own
+            // server calls with no session at all.
+            Route::get('oauth/authorize', [OAuthController::class, 'show']);
+            Route::post('oauth/authorize', [OAuthController::class, 'approve']);
+
             Route::get('shipments', [ShipmentController::class, 'index']);
             Route::get('shipments/{shipment}', [ShipmentController::class, 'show']);
             Route::post('shipments/{shipment}/cancel', [ShipmentController::class, 'cancel']);
@@ -198,6 +233,15 @@ Route::prefix('v1')->group(function () {
     // Same reasoning as the payments webhook above — see
     // ShippingWebhookController / ProcessShippingWebhook.
     Route::post('shipping/webhooks/{provider}', [ShippingWebhookController::class, 'handle']);
+
+    // OAuth 2.1 token exchange/refresh/revocation — called by a
+    // third-party app's own server (client_id/client_secret in the
+    // body), never by a browser session. Same "no auth/tenant
+    // middleware, resolve tenant from the payload" reasoning as the
+    // provider webhooks above — see ExchangeAuthorizationCode/
+    // RefreshAppToken/RevokeAppToken.
+    Route::post('oauth/token', [OAuthController::class, 'token']);
+    Route::post('oauth/revoke', [OAuthController::class, 'revoke']);
 
     // Dev/test-only fake payment page backend (spec sections 9-12) —
     // registered only when the fake provider itself is enabled (see
@@ -254,4 +298,38 @@ Route::prefix('v1')->group(function () {
         Route::get('/orders/{order}', [StorefrontOrderController::class, 'show']);
         Route::post('/orders/{order}/payments', [StorefrontPaymentController::class, 'store']);
     });
+});
+
+// The Apps SDK REST API gateway (spec section 7: "Introduce: /api/apps/v1")
+// — deliberately its own top-level namespace, sibling to /api/v1, not
+// nested under it: this is a third-party integration surface with its
+// own versioning lifecycle, authenticated by an AppToken bearer token
+// (AuthenticateAppToken) and never by the merchant admin's Sanctum
+// session. Every route additionally requires its own scope
+// (EnsureAppScope) — see docs/architecture/apps.md.
+Route::prefix('apps/v1')->middleware('app-token')->group(function () {
+    Route::get('products', [ProductGatewayController::class, 'index'])->middleware('app-scope:products.read');
+    Route::get('products/{product}', [ProductGatewayController::class, 'show'])->middleware('app-scope:products.read');
+
+    Route::get('orders', [OrderGatewayController::class, 'index'])->middleware('app-scope:orders.read');
+    Route::get('orders/{order}', [OrderGatewayController::class, 'show'])->middleware('app-scope:orders.read');
+
+    Route::get('customers', [CustomerGatewayController::class, 'index'])->middleware('app-scope:customers.read');
+    Route::get('customers/{customer}', [CustomerGatewayController::class, 'show'])->middleware('app-scope:customers.read');
+
+    Route::get('inventory', [InventoryGatewayController::class, 'index'])->middleware('app-scope:inventory.read');
+    Route::post('inventory/{item}/adjust', [InventoryGatewayController::class, 'adjust'])->middleware('app-scope:inventory.write');
+
+    Route::get('payments', [PaymentGatewayController::class, 'index'])->middleware('app-scope:payments.read');
+
+    Route::get('shipping-methods', [ShippingGatewayController::class, 'index'])->middleware('app-scope:shipping.read');
+
+    Route::get('webhooks', [AppWebhookGatewayController::class, 'index'])->middleware('app-scope:webhooks.read');
+    Route::post('webhooks', [AppWebhookGatewayController::class, 'store'])->middleware('app-scope:webhooks.write');
+
+    // Extension-point registration configures the app's own presence
+    // rather than reading store data — no scope required beyond a
+    // valid token (see AppExtensionGatewayController).
+    Route::get('extensions', [AppExtensionGatewayController::class, 'index']);
+    Route::post('extensions', [AppExtensionGatewayController::class, 'store']);
 });
