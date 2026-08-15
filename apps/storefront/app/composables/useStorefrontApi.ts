@@ -8,5 +8,9 @@ import { StorefrontApiClient } from '@obscurify/api-client'
  * call keeps each request's tenant resolution correct.
  */
 export function useStorefrontApi(): StorefrontApiClient {
-  return new StorefrontApiClient({ baseUrl: useStorefrontApiBaseUrl() })
+  return new StorefrontApiClient({
+    baseUrl: useStorefrontApiBaseUrl(),
+    getCustomerToken: () => useCustomerAuth().accessToken.value,
+    onCustomerUnauthorized: () => useCustomerAuth().clearSession(),
+  })
 }

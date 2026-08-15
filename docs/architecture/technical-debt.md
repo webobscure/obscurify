@@ -52,7 +52,7 @@ Compiled from the architecture review in [`review-2026-08.md`](review-2026-08.md
 | TD-44 | Low | Concurrency (§4,12) | A crashed webhook leaves a permanently unclaimable event row | Open |
 | TD-45 | Low | Security (§12) | Media uploads flat/unsegmented per tenant | Open |
 | TD-46 | Info | Module boundaries (§1,8) | Bidirectional Orders↔Payments model coupling — acceptable, note for future extraction | Open (by design) |
-| TD-47 | Low | Tests (§14) | No dedicated Customers-domain test file; coverage only indirect via Checkout | Open |
+| TD-47 | Low | Tests (§14) | No dedicated Customers-domain test file; coverage only indirect via Checkout | Resolved (Milestone 16 — `tests/Feature/Customers/*.php`, 8 files) |
 
 ---
 

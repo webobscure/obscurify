@@ -1362,3 +1362,153 @@ export interface ApiErrorBody {
   error?: string
   errors?: Record<string, string[]>
 }
+
+// ---------------------------------------------------------------------------
+// Customer Accounts + Customer Portal (Milestone 16)
+// ---------------------------------------------------------------------------
+
+export type CustomerStatus = 'active' | 'disabled'
+
+/**
+ * The customer-portal/admin customer representation. Distinct from the
+ * admin Order's embedded `OrderCustomer` (a minimal read-only snapshot) —
+ * this is the full profile, used by both GET /storefront/account (the
+ * customer viewing themselves) and GET /customers/{customer} (admin
+ * management). Never carries a password/credential — that lives on the
+ * backend-only CustomerIdentity, never serialized.
+ */
+export interface Customer {
+  id: string
+  email: string | null
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  status: CustomerStatus
+  verified_at: string | null
+  addresses?: CustomerAddress[]
+  created_at: string
+}
+
+export interface CustomerAddress {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  country_code: string | null
+  region: string | null
+  city: string | null
+  postal_code: string | null
+  address_line1: string | null
+  address_line2: string | null
+  is_default_billing: boolean
+  is_default_shipping: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** One row per logged-in device/browser — see GET/DELETE /account/sessions. */
+export interface CustomerSession {
+  id: string
+  ip_address: string | null
+  user_agent: string | null
+  is_current: boolean
+  last_used_at: string
+  expires_at: string
+  created_at: string
+}
+
+/**
+ * What POST /account/register and POST /account/login return alongside
+ * the Customer — a CustomerAccessToken bearer pair, entirely separate
+ * from the merchant admin's Sanctum `AuthResponse.token`.
+ */
+export interface CustomerAuthResponse {
+  data: Customer
+  access_token: string
+  refresh_token: string
+}
+
+export interface CustomerTokenPair {
+  access_token: string
+  refresh_token: string
+}
+
+/** Same field set as the admin's OrderItem, plus `id`/`product_variant_id` — the portal needs both to reference a line for reorder/return. */
+export interface CustomerOrderItem {
+  id: string
+  product_id: string | null
+  product_variant_id: string | null
+  product_title: string
+  variant_title: string | null
+  sku: string | null
+  unit_price_amount: number
+  quantity: number
+  line_total_amount: number
+  currency: string
+}
+
+/**
+ * The order-history list row (GET /account/orders) — deliberately
+ * lighter than CustomerOrder (no items/payments/shipments/returns/
+ * refunds), matching the backend's CustomerOrderSummaryResource.
+ */
+export interface CustomerOrderSummary {
+  id: string
+  number: number
+  currency: string
+  total_amount: number
+  order_status: OrderStatus
+  financial_status: FinancialStatus
+  fulfillment_status: FulfillmentStatus
+  created_at: string
+}
+
+/**
+ * The full order detail (GET /account/orders/{order}) — spec section 7:
+ * order status, payment status, shipment tracking, return status, and
+ * refund status all in one place. `payments` reuses the storefront's own
+ * StorefrontPayment shape (no authorized/captured internals), while
+ * shipments/returns/refunds reuse the admin-facing Shipment/ReturnRequest/
+ * Refund shapes directly — see CustomerOrderResource's docblock on the
+ * backend for why that's a deliberate simplification, not a leak.
+ */
+export interface CustomerOrder {
+  id: string
+  number: number
+  currency: string
+  items_subtotal_amount: number
+  shipping_amount: number
+  discount_amount: number
+  tax_amount: number
+  total_amount: number
+  order_status: OrderStatus
+  financial_status: FinancialStatus
+  fulfillment_status: FulfillmentStatus
+  items: CustomerOrderItem[]
+  shipping_address: StorefrontAddress | null
+  billing_address: StorefrontAddress | null
+  shipping_line: ShippingLine | null
+  payments: StorefrontPayment[]
+  shipments: Shipment[]
+  returns: ReturnRequest[]
+  refunds: Refund[]
+  created_at: string
+}
+
+/** POST /account/orders/{order}/reorder ("buy again") response. */
+export interface ReorderResult {
+  cart_token: string
+  skipped: Array<{
+    order_item_id: string
+    product_title: string
+    reason: 'no_longer_available' | 'unavailable'
+  }>
+}
+
+/** GET /customers/{customer}/activity — the admin's activity timeline (Milestone 16 spec section 12), backed by the existing OutboxEvent log. */
+export interface CustomerActivityEvent {
+  id: string
+  event_type: string
+  payload: Record<string, unknown>
+  occurred_at: string | null
+}

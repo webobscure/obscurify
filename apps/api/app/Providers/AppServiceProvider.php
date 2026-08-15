@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domain\Apps\Support\CurrentAppContext;
+use App\Domain\Customers\Support\CurrentCustomerContext;
 use App\Domain\Stores\Models\Store;
 use App\Domain\Stores\Policies\StorePolicy;
 use App\Shared\Tenancy\Contracts\StoreCandidateResolver;
@@ -23,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(TenantContext::class);
         $this->app->singleton(CurrentAppContext::class);
+        $this->app->singleton(CurrentCustomerContext::class);
 
         $this->app->bind(StoreCandidateResolver::class, HeaderStoreCandidateResolver::class);
     }
@@ -35,6 +37,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Store::class, StorePolicy::class);
 
         RateLimiter::for('auth', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
+        // Customer-facing auth endpoints (register/login/password
+        // reset/verification resend) — same 5/minute/IP shape as the
+        // merchant-admin 'auth' limiter above, kept as its own named
+        // limiter since the two guards must never share a bucket.
+        RateLimiter::for('customer-auth', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });
 

@@ -83,6 +83,16 @@ function storefrontUrl(string $host, string $path): string
 }
 
 /**
+ * Bearer-auth header for a customer-portal request authenticated by a
+ * CustomerAccessToken (see AuthenticateCustomerToken) — shared across
+ * every tests/Feature/Customers test.
+ */
+function authHeader(string $token): array
+{
+    return ['Authorization' => "Bearer {$token}"];
+}
+
+/**
  * Runs each of the given callables in its own forked OS process, released
  * from a shared starting gate at nearly the same instant, so they
  * genuinely race for the same Postgres row locks — a single PHP process

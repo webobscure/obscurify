@@ -18,6 +18,9 @@ import type {
   BuilderRevisionSummary,
   Category,
   Collection,
+  Customer,
+  CustomerActivityEvent,
+  CustomerAddress,
   DiscountCode,
   Fulfillment,
   InstalledApp,
@@ -325,6 +328,30 @@ export class ApiClient {
     list: (page?: number) => this.request<ApiCollection<Order>>(`/api/v1/orders${page ? `?page=${page}` : ''}`),
 
     get: (orderId: string) => this.request<ApiResource<Order>>(`/api/v1/orders/${orderId}`),
+  }
+
+  /**
+   * Merchant-admin customer management (Milestone 16 spec section 12) —
+   * read-only, see AdminCustomerController's docblock on the backend for
+   * why there is no update action here (profile edits belong to the
+   * customer themselves, via StorefrontApiClient.account).
+   */
+  readonly customers = {
+    list: (page?: number) => this.request<ApiCollection<Customer>>(`/api/v1/customers${page ? `?page=${page}` : ''}`),
+
+    get: (customerId: string) => this.request<ApiResource<Customer>>(`/api/v1/customers/${customerId}`),
+
+    orders: (customerId: string, page?: number) =>
+      this.request<ApiCollection<Order>>(`/api/v1/customers/${customerId}/orders${page ? `?page=${page}` : ''}`),
+
+    returns: (customerId: string, page?: number) =>
+      this.request<ApiCollection<ReturnRequest>>(`/api/v1/customers/${customerId}/returns${page ? `?page=${page}` : ''}`),
+
+    addresses: (customerId: string) =>
+      this.request<ApiCollection<CustomerAddress>>(`/api/v1/customers/${customerId}/addresses`),
+
+    activity: (customerId: string, page?: number) =>
+      this.request<ApiCollection<CustomerActivityEvent>>(`/api/v1/customers/${customerId}/activity${page ? `?page=${page}` : ''}`),
   }
 
   /**

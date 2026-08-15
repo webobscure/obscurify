@@ -3,9 +3,10 @@
  * and SidebarSection.vue. Every `to` here must be a route that actually
  * exists under apps/admin/app/pages; do not add an entry for a feature
  * that has no page yet (spec: "do not add fake pages" / "do not invent
- * missing backend features"). No Customers/Storefront/Categories/
- * Settings/Overview sections — none of those have a real admin page in
- * this app; "/" itself is just a redirect to /stores, not real content.
+ * missing backend features"). No Storefront/Categories/Settings/Overview
+ * sections — none of those have a real admin page in this app; "/" itself
+ * is just a redirect to /stores, not real content. Customers became real
+ * in Milestone 16 (read-only list + detail) and is listed below.
  *
  * `activePattern` decides which item stays highlighted on a nested route
  * (e.g. /products/{id} keeps "Products" active) — a simple path-prefix
@@ -37,6 +38,7 @@ export const primaryNavigation: NavigationSection[] = [
     label: 'Commerce',
     items: [
       { label: 'Orders', to: '/orders', icon: 'orders' },
+      { label: 'Customers', to: '/customers', icon: 'customers' },
       { label: 'Fulfillments', to: '/fulfillments', icon: 'fulfillment' },
       { label: 'Products', to: '/products', icon: 'products' },
       { label: 'Collections', to: '/collections', icon: 'collections' },

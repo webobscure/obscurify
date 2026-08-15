@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $postal_code
  * @property string|null $address_line1
  * @property string|null $address_line2
+ * @property bool $is_default_billing
+ * @property bool $is_default_shipping
  */
 class CustomerAddress extends Model
 {
@@ -49,7 +51,17 @@ class CustomerAddress extends Model
         'postal_code',
         'address_line1',
         'address_line2',
+        'is_default_billing',
+        'is_default_shipping',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_default_billing' => 'boolean',
+            'is_default_shipping' => 'boolean',
+        ];
+    }
 
     /**
      * @return BelongsTo<Store, $this>

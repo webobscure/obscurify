@@ -36,6 +36,12 @@ use App\Domain\Cms\Http\Controllers\PageVersionSeoController;
 use App\Domain\Cms\Http\Controllers\RedirectController;
 use App\Domain\Collections\Http\Controllers\CollectionController;
 use App\Domain\Collections\Http\Controllers\CollectionProductController;
+use App\Domain\Customers\Http\Controllers\AdminCustomerController;
+use App\Domain\Customers\Http\Controllers\CustomerAccountController;
+use App\Domain\Customers\Http\Controllers\CustomerAddressController;
+use App\Domain\Customers\Http\Controllers\CustomerAuthController;
+use App\Domain\Customers\Http\Controllers\CustomerOrderController;
+use App\Domain\Customers\Http\Controllers\CustomerSessionController;
 use App\Domain\Financial\Http\Controllers\FakeRefundOutcomeController;
 use App\Domain\Financial\Http\Controllers\RefundController;
 use App\Domain\Fulfillment\Http\Controllers\FulfillmentController;
@@ -142,6 +148,16 @@ Route::prefix('v1')->group(function () {
             Route::get('orders/{order}', [OrderController::class, 'show']);
             Route::post('orders/{order}/fulfillments', [FulfillmentController::class, 'store']);
             Route::post('orders/{order}/returns', [ReturnController::class, 'store']);
+
+            // Merchant-admin customer management (spec section 12) — read
+            // only, see AdminCustomerController's docblock for why there
+            // is no update action here.
+            Route::get('customers', [AdminCustomerController::class, 'index']);
+            Route::get('customers/{customer}', [AdminCustomerController::class, 'show']);
+            Route::get('customers/{customer}/orders', [AdminCustomerController::class, 'orders']);
+            Route::get('customers/{customer}/returns', [AdminCustomerController::class, 'returns']);
+            Route::get('customers/{customer}/addresses', [AdminCustomerController::class, 'addresses']);
+            Route::get('customers/{customer}/activity', [AdminCustomerController::class, 'activity']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -432,6 +448,42 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/orders/{order}', [StorefrontOrderController::class, 'show']);
         Route::post('/orders/{order}/payments', [StorefrontPaymentController::class, 'store']);
+
+        // Customer accounts (Milestone 16) — its own bearer-token guard
+        // (customer-token/AuthenticateCustomerToken), entirely separate
+        // from the merchant admin's Sanctum session. Register/login/
+        // password/verification endpoints are public but rate-limited
+        // (throttle:customer-auth); everything else requires a valid
+        // CustomerAccessToken. See docs/architecture/customer-accounts.md.
+        Route::prefix('account')->group(function () {
+            Route::post('/register', [CustomerAuthController::class, 'register'])->middleware('throttle:customer-auth');
+            Route::post('/login', [CustomerAuthController::class, 'login'])->middleware('throttle:customer-auth');
+            Route::post('/refresh', [CustomerAuthController::class, 'refresh'])->middleware('throttle:customer-auth');
+            Route::post('/password/forgot', [CustomerAuthController::class, 'forgotPassword'])->middleware('throttle:customer-auth');
+            Route::post('/password/reset', [CustomerAuthController::class, 'resetPassword'])->middleware('throttle:customer-auth');
+            Route::post('/verify-email', [CustomerAuthController::class, 'verifyEmail'])->middleware('throttle:customer-auth');
+
+            Route::middleware('customer-token')->group(function () {
+                Route::post('/logout', [CustomerAuthController::class, 'logout']);
+                Route::post('/verify-email/resend', [CustomerAuthController::class, 'resendVerification']);
+
+                Route::get('/', [CustomerAccountController::class, 'show']);
+                Route::patch('/', [CustomerAccountController::class, 'update']);
+
+                Route::get('/orders', [CustomerOrderController::class, 'index']);
+                Route::get('/orders/{order}', [CustomerOrderController::class, 'show']);
+                Route::post('/orders/{order}/reorder', [CustomerOrderController::class, 'reorder']);
+                Route::post('/orders/{order}/returns', [CustomerOrderController::class, 'storeReturn']);
+
+                Route::get('/addresses', [CustomerAddressController::class, 'index']);
+                Route::post('/addresses', [CustomerAddressController::class, 'store']);
+                Route::patch('/addresses/{address}', [CustomerAddressController::class, 'update']);
+                Route::delete('/addresses/{address}', [CustomerAddressController::class, 'destroy']);
+
+                Route::get('/sessions', [CustomerSessionController::class, 'index']);
+                Route::delete('/sessions/{session}', [CustomerSessionController::class, 'destroy']);
+            });
+        });
     });
 });
 

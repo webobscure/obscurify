@@ -33,7 +33,7 @@ describe('isNavItemActive', () => {
 
 describe('navigation source of truth', () => {
   const realRoutes = new Set([
-    '/orders', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
+    '/orders', '/customers', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
     '/shipments', '/shipping-methods', '/shipping-zones', '/promotions', '/apps', '/themes',
     '/pages', '/page-templates', '/menus', '/blogs', '/authors', '/redirects',
     '/theme-customizer', '/section-library', '/block-library',
@@ -50,10 +50,10 @@ describe('navigation source of truth', () => {
     }
   })
 
-  it('does not include Customers, Storefront, Categories, Settings, or a fake Overview/Dashboard page', () => {
+  it('does not include Storefront, Categories, Settings, or a fake Overview/Dashboard page', () => {
     const allLabels = flattenNavigationItems(primaryNavigation).concat(secondaryNavigation.items).map(i => i.label)
 
-    for (const fake of ['Customers', 'Storefront', 'Categories', 'Settings', 'Dashboard', 'Overview']) {
+    for (const fake of ['Storefront', 'Categories', 'Settings', 'Dashboard', 'Overview']) {
       expect(allLabels).not.toContain(fake)
     }
   })

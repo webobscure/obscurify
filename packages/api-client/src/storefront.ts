@@ -3,7 +3,17 @@ import type {
   ApiErrorBody,
   ApiResource,
   Cart,
+  Customer,
+  CustomerAddress,
+  CustomerAuthResponse,
+  CustomerOrder,
+  CustomerOrderSummary,
+  CustomerSession,
+  CustomerTokenPair,
   FakePaymentInfo,
+  ReorderResult,
+  ReturnReason,
+  ReturnRequest,
   StorefrontCategory,
   StorefrontCheckout,
   StorefrontCollection,
@@ -28,24 +38,49 @@ export interface StorefrontApiClientOptions {
    * composable for how this is derived per-request (SSR and client).
    */
   baseUrl: string
+  /**
+   * A CustomerAccessToken bearer token (Milestone 16) — entirely separate
+   * from the merchant admin's Sanctum token (ApiClientOptions.getToken).
+   * Only the `account` namespace below ever sends this; every other
+   * storefront request stays anonymous/cookie-based exactly as before.
+   */
+  getCustomerToken?: () => string | null | undefined
+  /**
+   * Called whenever an `account`-namespace request comes back 401 — the
+   * access token is stale (expired, revoked, or its session was logged
+   * out elsewhere). The caller should clear local customer auth state.
+   */
+  onCustomerUnauthorized?: () => void
 }
 
 /**
  * Thin, typed HTTP boundary over the public storefront API
  * (/api/v1/storefront/*). Deliberately separate from ApiClient (merchant
- * admin): no bearer token, no X-Store-Id — tenant comes from the
+ * admin): no merchant bearer token, no X-Store-Id — tenant comes from the
  * hostname — and cart requests carry the HttpOnly cart cookie via
- * `credentials: 'include'`, which the admin client never needs.
+ * `credentials: 'include'`, which the admin client never needs. The
+ * `account` namespace (Milestone 16) is the one exception to "no bearer
+ * token": customer accounts authenticate via a CustomerAccessToken bearer
+ * token, not a cookie — see docs/architecture/customer-accounts.md for
+ * why (SPA-style bearer auth, matching the Apps OAuth token pattern,
+ * rather than a stateful PHP session).
  */
 export class StorefrontApiClient {
   constructor(private readonly options: StorefrontApiClientOptions) {}
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, init: RequestInit = {}, opts: { customerAuth?: boolean } = {}): Promise<T> {
     const headers = new Headers(init.headers)
     headers.set('Accept', 'application/json')
 
     if (init.body && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json')
+    }
+
+    if (opts.customerAuth) {
+      const token = this.options.getCustomerToken?.()
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`)
+      }
     }
 
     const response = await fetch(`${this.options.baseUrl}${path}`, {
@@ -61,6 +96,10 @@ export class StorefrontApiClient {
     const body = await response.json().catch(() => ({ message: response.statusText }))
 
     if (!response.ok) {
+      if (response.status === 401 && opts.customerAuth) {
+        this.options.onCustomerUnauthorized?.()
+      }
+
       throw new ApiClientError(response.status, body as ApiErrorBody)
     }
 
@@ -207,6 +246,101 @@ export class StorefrontApiClient {
         headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify({ provider }),
       }),
+  }
+
+  /**
+   * Customer accounts + customer portal (Milestone 16). Register/login/
+   * password/verify-email are anonymous and rate-limited
+   * (throttle:customer-auth on the backend); everything else requires a
+   * valid CustomerAccessToken, sent automatically via
+   * StorefrontApiClientOptions.getCustomerToken.
+   */
+  readonly account = {
+    register: (data: { email: string; password: string; first_name?: string; last_name?: string; phone?: string }) =>
+      this.request<CustomerAuthResponse>('/api/v1/storefront/account/register', { method: 'POST', body: JSON.stringify(data) }),
+
+    login: (data: { email: string; password: string }) =>
+      this.request<CustomerAuthResponse>('/api/v1/storefront/account/login', { method: 'POST', body: JSON.stringify(data) }),
+
+    logout: () =>
+      this.request<void>('/api/v1/storefront/account/logout', { method: 'POST' }, { customerAuth: true }),
+
+    /** Rotates the presented refresh token — the old one becomes unusable the instant this succeeds (single-use rotation). */
+    refresh: (refreshToken: string) =>
+      this.request<ApiResource<CustomerTokenPair>>('/api/v1/storefront/account/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      }),
+
+    forgotPassword: (email: string) =>
+      this.request<{ message: string }>('/api/v1/storefront/account/password/forgot', { method: 'POST', body: JSON.stringify({ email }) }),
+
+    resetPassword: (token: string, password: string) =>
+      this.request<{ message: string }>('/api/v1/storefront/account/password/reset', {
+        method: 'POST',
+        body: JSON.stringify({ token, password }),
+      }),
+
+    verifyEmail: (token: string) =>
+      this.request<ApiResource<Customer>>('/api/v1/storefront/account/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+
+    resendVerification: () =>
+      this.request<{ message: string }>('/api/v1/storefront/account/verify-email/resend', { method: 'POST' }, { customerAuth: true }),
+
+    show: () =>
+      this.request<ApiResource<Customer>>('/api/v1/storefront/account', {}, { customerAuth: true }),
+
+    update: (data: Partial<{ first_name: string | null; last_name: string | null; phone: string | null }>) =>
+      this.request<ApiResource<Customer>>('/api/v1/storefront/account', { method: 'PATCH', body: JSON.stringify(data) }, { customerAuth: true }),
+
+    orders: {
+      list: (page?: number) =>
+        this.request<ApiCollection<CustomerOrderSummary>>(`/api/v1/storefront/account/orders${page ? `?page=${page}` : ''}`, {}, { customerAuth: true }),
+
+      get: (orderId: string) =>
+        this.request<ApiResource<CustomerOrder>>(`/api/v1/storefront/account/orders/${orderId}`, {}, { customerAuth: true }),
+
+      /** "Buy again" — always re-prices live; see ReorderResult.skipped for lines that could not be carried over. */
+      reorder: (orderId: string, cartToken?: string | null) =>
+        this.request<ApiResource<ReorderResult>>(`/api/v1/storefront/account/orders/${orderId}/reorder`, {
+          method: 'POST',
+          body: JSON.stringify({ cart_token: cartToken ?? undefined }),
+        }, { customerAuth: true }),
+
+      requestReturn: (orderId: string, data: { notes?: string; items: { order_item_id: string; quantity: number; reason: ReturnReason; condition?: string; notes?: string }[] }) =>
+        this.request<ApiResource<ReturnRequest>>(`/api/v1/storefront/account/orders/${orderId}/returns`, {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }, { customerAuth: true }),
+    },
+
+    addresses: {
+      list: () =>
+        this.request<ApiCollection<CustomerAddress>>('/api/v1/storefront/account/addresses', {}, { customerAuth: true }),
+
+      create: (data: Partial<CustomerAddress> & { country_code: string; city: string; address_line1: string }) =>
+        this.request<ApiResource<CustomerAddress>>('/api/v1/storefront/account/addresses', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }, { customerAuth: true }),
+
+      update: (addressId: string, data: Partial<CustomerAddress>) =>
+        this.request<ApiResource<CustomerAddress>>(`/api/v1/storefront/account/addresses/${addressId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        }, { customerAuth: true }),
+
+      remove: (addressId: string) =>
+        this.request<void>(`/api/v1/storefront/account/addresses/${addressId}`, { method: 'DELETE' }, { customerAuth: true }),
+    },
+
+    sessions: {
+      list: () =>
+        this.request<ApiCollection<CustomerSession>>('/api/v1/storefront/account/sessions', {}, { customerAuth: true }),
+
+      revoke: (sessionId: string) =>
+        this.request<void>(`/api/v1/storefront/account/sessions/${sessionId}`, { method: 'DELETE' }, { customerAuth: true }),
+    },
   }
 
   /**
