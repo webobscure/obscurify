@@ -25,3 +25,4 @@ node_modules/
 
 # Laravel storage cache used by tooling
 apps/api/storage/phpstan/
+apps/api/test-results/

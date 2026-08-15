@@ -2,6 +2,7 @@
 
 namespace App\Domain\Customers\Application;
 
+use App\Domain\CustomerIntelligence\Application\RecomputeCustomerMetrics;
 use App\Domain\Customers\Enums\CustomerIdentityType;
 use App\Domain\Customers\Enums\CustomerStatus;
 use App\Domain\Customers\Mail\CustomerVerificationMail;
@@ -34,6 +35,7 @@ final class RegisterCustomer
         private readonly RequestEmailVerification $requestEmailVerification,
         private readonly RecordOutboxEvent $recordOutboxEvent,
         private readonly TenantContext $tenantContext,
+        private readonly RecomputeCustomerMetrics $recomputeCustomerMetrics,
     ) {}
 
     /**
@@ -92,6 +94,13 @@ final class RegisterCustomer
                 'store_id' => $customer->store_id,
                 'email' => $customer->email,
             ]);
+
+            // Initializes CustomerMetric (all-zero for a brand new
+            // account, non-zero for a guest-turned-account whose prior
+            // orders just attached) and evaluates initial segment/tag
+            // membership — a customer must never have no CustomerMetric
+            // row at all.
+            $this->recomputeCustomerMetrics->handle($customer->id);
 
             return [$customer, $session, $issued];
         });

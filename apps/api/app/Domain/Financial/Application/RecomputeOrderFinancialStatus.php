@@ -2,6 +2,7 @@
 
 namespace App\Domain\Financial\Application;
 
+use App\Domain\CustomerIntelligence\Application\RecomputeCustomerMetrics;
 use App\Domain\Orders\Enums\FinancialStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Payments\Enums\PaymentStatus;
@@ -25,10 +26,22 @@ final class RecomputeOrderFinancialStatus
 {
     public function __construct(
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly RecomputeCustomerMetrics $recomputeCustomerMetrics,
     ) {}
 
     public function handle(Order $lockedOrder): void
     {
+        // Covers both "OrderPaid" and every refund-driven change spec
+        // section 8 lists as a metrics trigger — captured/refunded
+        // totals can shift here even when the *categorical* financial_status
+        // doesn't (e.g. a second partial refund staying within
+        // PartiallyRefunded), so this always runs, ahead of both early
+        // returns below. See CompleteCheckout's identical call for why
+        // this is a direct call rather than a subscription.
+        if ($lockedOrder->customer_id !== null) {
+            $this->recomputeCustomerMetrics->handle($lockedOrder->customer_id);
+        }
+
         // Voided is never set by this recompute — it represents an
         // explicit merchant override this milestone doesn't build a
         // trigger for, and must never be silently reversed by a payment/

@@ -5,6 +5,7 @@ namespace App\Domain\Checkouts\Application;
 use App\Domain\Checkouts\Enums\CheckoutStatus;
 use App\Domain\Checkouts\Models\Checkout;
 use App\Domain\Checkouts\Models\CheckoutAddress;
+use App\Domain\CustomerIntelligence\Application\RecomputeCustomerMetrics;
 use App\Domain\Customers\Application\FindOrCreateCustomer;
 use App\Domain\Inventory\Application\ReserveInventory;
 use App\Domain\Orders\Application\AllocateOrderNumber;
@@ -64,6 +65,7 @@ final class CompleteCheckout
         private readonly RevalidateShippingQuote $revalidateShippingQuote,
         private readonly BuildPromotionContext $buildPromotionContext,
         private readonly PromotionEngine $promotionEngine,
+        private readonly RecomputeCustomerMetrics $recomputeCustomerMetrics,
     ) {}
 
     public function handle(Checkout $checkout): Order
@@ -310,6 +312,13 @@ final class CompleteCheckout
                 'total_amount' => $order->total_amount,
                 'currency' => $order->currency,
             ]);
+
+            // No internal pub/sub exists to "subscribe" to OrderCreated
+            // (see docs/adr/024-customer-intelligence.md) — called
+            // directly, same as every other cross-domain reaction in
+            // this codebase (e.g. Financial Ledger calling
+            // RecomputeOrderFinancialStatus).
+            $this->recomputeCustomerMetrics->handle($customer->id);
 
             return $order->load(['items', 'shippingAddress', 'billingAddress', 'customer', 'shippingLine']);
         });

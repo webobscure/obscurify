@@ -7,6 +7,28 @@
     </p>
 
     <template v-else>
+      <!-- Admin customer search (spec section 10): tags, groups,
+           segments, metric thresholds — every filter is optional and
+           ANDed together server-side (see AdminCustomerController::index). -->
+      <form class="search" @submit.prevent="load(1)">
+        <input v-model="filters.search" type="text" placeholder="Search email or name…">
+        <select v-model="filters.tag">
+          <option value="">Any tag</option>
+          <option v-for="tag in tags" :key="tag.id" :value="tag.slug">{{ tag.name }}</option>
+        </select>
+        <select v-model="filters.group_id">
+          <option value="">Any group</option>
+          <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+        </select>
+        <select v-model="filters.segment_id">
+          <option value="">Any segment</option>
+          <option v-for="segment in segments" :key="segment.id" :value="segment.id">{{ segment.name }}</option>
+        </select>
+        <input v-model.number="filters.min_total_spent" type="number" placeholder="Min total spent (cents)">
+        <button type="submit">Search</button>
+        <button type="button" @click="handleClear">Clear</button>
+      </form>
+
       <table v-if="customers.length">
         <thead>
           <tr>
@@ -29,7 +51,7 @@
           </tr>
         </tbody>
       </table>
-      <p v-else>No customers yet.</p>
+      <p v-else>No customers match.</p>
 
       <div v-if="meta && meta.last_page > 1" class="pagination">
         <button type="button" :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)">Previous</button>
@@ -43,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ApiCollection, Customer } from '@obscurify/types'
+import type { ApiCollection, Customer, CustomerGroup, CustomerSegment, CustomerTag } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
 type CollectionMeta = NonNullable<ApiCollection<Customer>['meta']>
@@ -53,11 +75,30 @@ const meta = ref<CollectionMeta | null>(null)
 const error = ref<string | null>(null)
 const activeStore = useActiveStore()
 
+const tags = ref<CustomerTag[]>([])
+const groups = ref<CustomerGroup[]>([])
+const segments = ref<CustomerSegment[]>([])
+
+const filters = reactive<{ search: string, tag: string, group_id: string, segment_id: string, min_total_spent: number | null }>({
+  search: '',
+  tag: '',
+  group_id: '',
+  segment_id: '',
+  min_total_spent: null,
+})
+
 async function load(page = 1) {
   if (!activeStore.storeId.value) return
   error.value = null
   try {
-    const response = await useApi().customers.list(page)
+    const response = await useApi().customers.list({
+      page,
+      search: filters.search || undefined,
+      tag: filters.tag || undefined,
+      group_id: filters.group_id || undefined,
+      segment_id: filters.segment_id || undefined,
+      min_total_spent: filters.min_total_spent ?? undefined,
+    })
     customers.value = response.data
     meta.value = response.meta ?? null
   } catch (e) {
@@ -65,11 +106,78 @@ async function load(page = 1) {
   }
 }
 
-onMounted(() => load())
-watch(() => activeStore.storeId.value, () => load())
+function handleClear() {
+  filters.search = ''
+  filters.tag = ''
+  filters.group_id = ''
+  filters.segment_id = ''
+  filters.min_total_spent = null
+  load(1)
+}
+
+async function loadFilterOptions() {
+  if (!activeStore.storeId.value) return
+  try {
+    const api = useApi()
+    const [tagsResponse, groupsResponse, segmentsResponse] = await Promise.all([
+      api.customerTags.list(),
+      api.customerGroups.list(),
+      api.customerSegments.list(),
+    ])
+    tags.value = tagsResponse.data
+    groups.value = groupsResponse.data
+    segments.value = segmentsResponse.data
+  } catch {
+    // Filter dropdowns are a convenience — a failure here shouldn't
+    // block the customer list itself from loading.
+  }
+}
+
+onMounted(() => {
+  load()
+  loadFilterOptions()
+})
+watch(() => activeStore.storeId.value, () => {
+  load()
+  loadFilterOptions()
+})
 </script>
 
 <style scoped>
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.search input,
+.search select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.search button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
 .pagination {
   display: flex;
   align-items: center;

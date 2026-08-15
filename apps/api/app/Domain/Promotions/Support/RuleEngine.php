@@ -2,6 +2,9 @@
 
 namespace App\Domain\Promotions\Support;
 
+use App\Domain\CustomerIntelligence\Enums\SegmentRuleField;
+use App\Domain\CustomerIntelligence\Enums\SegmentRuleOperator;
+use App\Domain\CustomerIntelligence\Support\SegmentMembership;
 use App\Domain\Promotions\Enums\PromotionRuleType;
 use App\Domain\Promotions\Models\Promotion;
 use App\Domain\Promotions\Models\PromotionRule;
@@ -12,9 +15,17 @@ use Illuminate\Support\Carbon;
  * Every rule on a Promotion must pass — no OR-groups, no nesting. Callers
  * must eager-load `rules` on the Promotion before calling passes()
  * (see PromotionEngine).
+ *
+ * The four CustomerGroup/CustomerSegment/CustomerTag/CustomerMetric cases
+ * are the one place this class reaches outside Cart/Checkout data
+ * captured in PromotionContext — always through SegmentMembership, never
+ * a direct query against CustomerIntelligence's own tables (spec section
+ * 9: "No direct SQL coupling").
  */
 final class RuleEngine
 {
+    public function __construct(private readonly SegmentMembership $segmentMembership) {}
+
     public function passes(Promotion $promotion, PromotionContext $context): bool
     {
         foreach ($promotion->rules as $rule) {
@@ -68,6 +79,28 @@ final class RuleEngine
             PromotionRuleType::DateRange => $this->withinDateRange($context->now, $parameters),
 
             PromotionRuleType::UsageLimit => $this->withinUsageLimit($rule, $context, $parameters),
+
+            PromotionRuleType::CustomerGroup => $this->segmentMembership->isCustomerIdInAnyGroup(
+                $context->customerId,
+                $parameters['group_ids'] ?? [],
+            ),
+
+            PromotionRuleType::CustomerSegment => $this->segmentMembership->isCustomerIdInAnySegment(
+                $context->customerId,
+                $parameters['segment_ids'] ?? [],
+            ),
+
+            PromotionRuleType::CustomerTag => $this->segmentMembership->customerIdHasAnyTag(
+                $context->customerId,
+                $parameters['tag_slugs'] ?? [],
+            ),
+
+            PromotionRuleType::CustomerMetric => $this->segmentMembership->evaluateCustomerMetricCondition(
+                $context->customerId,
+                SegmentRuleField::from($parameters['field']),
+                SegmentRuleOperator::from($parameters['operator']),
+                $parameters['value'] ?? null,
+            ),
         };
     }
 

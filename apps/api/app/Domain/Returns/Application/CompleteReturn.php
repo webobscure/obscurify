@@ -2,9 +2,11 @@
 
 namespace App\Domain\Returns\Application;
 
+use App\Domain\CustomerIntelligence\Application\RecomputeCustomerMetrics;
 use App\Domain\Inventory\Enums\InventoryMovementReason;
 use App\Domain\Inventory\Models\InventoryLevel;
 use App\Domain\Inventory\Models\InventoryMovement;
+use App\Domain\Orders\Models\Order;
 use App\Domain\Returns\Enums\ReturnDisposition as ReturnDispositionValue;
 use App\Domain\Returns\Enums\ReturnStatus;
 use App\Domain\Returns\Models\ReturnDisposition;
@@ -47,6 +49,7 @@ final class CompleteReturn
         private readonly ReturnStateMachine $stateMachine,
         private readonly ReturnInventoryContext $inventoryContext,
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly RecomputeCustomerMetrics $recomputeCustomerMetrics,
     ) {}
 
     public function handle(ReturnRequest $returnRequest): ReturnRequest
@@ -82,6 +85,17 @@ final class CompleteReturn
                 'order_id' => $locked->order_id,
                 'store_id' => $locked->store_id,
             ]);
+
+            // Resolved via Order rather than trusting
+            // ReturnRequest.customer_id directly — that column is
+            // nullable (an admin-created return isn't required to set
+            // it), whereas Order.customer_id is always set by
+            // CompleteCheckout.
+            $customerId = Order::query()->find($locked->order_id)?->customer_id;
+
+            if ($customerId !== null) {
+                $this->recomputeCustomerMetrics->handle($customerId);
+            }
 
             return $locked->fresh(['items.inspection', 'items.disposition', 'events']);
         });

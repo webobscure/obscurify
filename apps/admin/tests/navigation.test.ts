@@ -33,7 +33,7 @@ describe('isNavItemActive', () => {
 
 describe('navigation source of truth', () => {
   const realRoutes = new Set([
-    '/orders', '/customers', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
+    '/orders', '/customers', '/customer-groups', '/customer-segments', '/customer-tags', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
     '/shipments', '/shipping-methods', '/shipping-zones', '/promotions', '/apps', '/themes',
     '/pages', '/page-templates', '/menus', '/blogs', '/authors', '/redirects',
     '/theme-customizer', '/section-library', '/block-library',
@@ -63,5 +63,12 @@ describe('navigation source of truth', () => {
 
     expect(inventory?.children).toEqual([{ label: 'Locations', to: '/locations', icon: 'locations' }])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Locations')).toBe(false)
+  })
+
+  it('nests Customer Groups/Segments/Tags under Customers, not as flat top-level items', () => {
+    const customers = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Customers')
+
+    expect(customers?.children?.map(c => c.label)).toEqual(['Customer Groups', 'Customer Segments', 'Customer Tags'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Customer Groups')).toBe(false)
   })
 })

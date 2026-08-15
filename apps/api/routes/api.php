@@ -36,6 +36,9 @@ use App\Domain\Cms\Http\Controllers\PageVersionSeoController;
 use App\Domain\Cms\Http\Controllers\RedirectController;
 use App\Domain\Collections\Http\Controllers\CollectionController;
 use App\Domain\Collections\Http\Controllers\CollectionProductController;
+use App\Domain\CustomerIntelligence\Http\Controllers\CustomerGroupController;
+use App\Domain\CustomerIntelligence\Http\Controllers\CustomerSegmentController;
+use App\Domain\CustomerIntelligence\Http\Controllers\CustomerTagController;
 use App\Domain\Customers\Http\Controllers\AdminCustomerController;
 use App\Domain\Customers\Http\Controllers\CustomerAccountController;
 use App\Domain\Customers\Http\Controllers\CustomerAddressController;
@@ -158,6 +161,38 @@ Route::prefix('v1')->group(function () {
             Route::get('customers/{customer}/returns', [AdminCustomerController::class, 'returns']);
             Route::get('customers/{customer}/addresses', [AdminCustomerController::class, 'addresses']);
             Route::get('customers/{customer}/activity', [AdminCustomerController::class, 'activity']);
+
+            // Customer Intelligence (Milestone 18) — spec section 13's
+            // per-customer endpoints live on AdminCustomerController
+            // alongside the rest of the admin customer detail view;
+            // the standalone group/segment/tag management endpoints are
+            // their own controllers just below. See
+            // docs/architecture/customer-intelligence.md.
+            Route::get('customers/{customer}/metrics', [AdminCustomerController::class, 'metrics']);
+            Route::get('customers/{customer}/metrics/history', [AdminCustomerController::class, 'metricsHistory']);
+            Route::get('customers/{customer}/groups', [AdminCustomerController::class, 'groups']);
+            Route::get('customers/{customer}/segments', [AdminCustomerController::class, 'segments']);
+            Route::get('customers/{customer}/tags', [AdminCustomerController::class, 'tags']);
+            Route::post('customers/{customer}/tags', [CustomerTagController::class, 'assign']);
+            Route::delete('customers/{customer}/tags/{tag}', [CustomerTagController::class, 'remove']);
+
+            Route::get('customer-groups', [CustomerGroupController::class, 'index']);
+            Route::post('customer-groups', [CustomerGroupController::class, 'store']);
+            Route::get('customer-groups/{group}', [CustomerGroupController::class, 'show']);
+            Route::patch('customer-groups/{group}', [CustomerGroupController::class, 'update']);
+            Route::delete('customer-groups/{group}', [CustomerGroupController::class, 'destroy']);
+            Route::post('customer-groups/{group}/members', [CustomerGroupController::class, 'addMember']);
+            Route::delete('customer-groups/{group}/members/{customer}', [CustomerGroupController::class, 'removeMember']);
+
+            Route::get('customer-segments', [CustomerSegmentController::class, 'index']);
+            Route::post('customer-segments', [CustomerSegmentController::class, 'store']);
+            Route::get('customer-segments/{segment}', [CustomerSegmentController::class, 'show']);
+            Route::patch('customer-segments/{segment}', [CustomerSegmentController::class, 'update']);
+            Route::delete('customer-segments/{segment}', [CustomerSegmentController::class, 'destroy']);
+
+            Route::get('customer-tags', [CustomerTagController::class, 'index']);
+            Route::post('customer-tags', [CustomerTagController::class, 'store']);
+            Route::delete('customer-tags/{tag}', [CustomerTagController::class, 'destroy']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);

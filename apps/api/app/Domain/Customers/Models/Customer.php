@@ -2,6 +2,10 @@
 
 namespace App\Domain\Customers\Models;
 
+use App\Domain\CustomerIntelligence\Models\CustomerGroupMember;
+use App\Domain\CustomerIntelligence\Models\CustomerMetric;
+use App\Domain\CustomerIntelligence\Models\CustomerSnapshot;
+use App\Domain\CustomerIntelligence\Models\CustomerTagAssignment;
 use App\Domain\Customers\Enums\CustomerStatus;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Returns\Models\ReturnRequest;
@@ -30,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property string $store_id
  * @property string|null $email
  * @property string|null $phone
+ * @property Carbon|null $date_of_birth
  * @property string|null $first_name
  * @property string|null $last_name
  * @property CustomerStatus $status
@@ -48,6 +53,7 @@ class Customer extends Model
     protected $fillable = [
         'email',
         'phone',
+        'date_of_birth',
         'first_name',
         'last_name',
         'status',
@@ -59,6 +65,7 @@ class Customer extends Model
         return [
             'status' => CustomerStatus::class,
             'verified_at' => 'datetime',
+            'date_of_birth' => 'date',
         ];
     }
 
@@ -124,6 +131,38 @@ class Customer extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(ReturnRequest::class);
+    }
+
+    /**
+     * @return HasOne<CustomerMetric, $this>
+     */
+    public function metric(): HasOne
+    {
+        return $this->hasOne(CustomerMetric::class);
+    }
+
+    /**
+     * @return HasMany<CustomerSnapshot, $this>
+     */
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(CustomerSnapshot::class);
+    }
+
+    /**
+     * @return HasMany<CustomerTagAssignment, $this>
+     */
+    public function tagAssignments(): HasMany
+    {
+        return $this->hasMany(CustomerTagAssignment::class);
+    }
+
+    /**
+     * @return HasMany<CustomerGroupMember, $this>
+     */
+    public function groupMemberships(): HasMany
+    {
+        return $this->hasMany(CustomerGroupMember::class);
     }
 
     public function isVerified(): bool

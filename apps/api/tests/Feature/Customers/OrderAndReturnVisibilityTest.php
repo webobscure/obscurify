@@ -10,7 +10,6 @@ use App\Domain\Payments\Models\Payment;
 use App\Domain\Shipping\Models\Shipment;
 use App\Domain\Shipping\Models\ShipmentItem;
 use App\Models\User;
-use App\Shared\Commerce\Models\OutboxEvent;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 

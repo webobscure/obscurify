@@ -17,7 +17,9 @@
  * exists specifically to support inventory tracking, a real information-
  * architecture choice rather than an arbitrary one. Always rendered
  * expanded — a collapse/expand interaction is future scope (see
- * SidebarSection.vue).
+ * SidebarSection.vue). Customer Groups/Segments/Tags (Milestone 18)
+ * nest under Customers for the identical reason — they exist only to
+ * segment customers, the same relationship Locations has to Inventory.
  */
 export interface NavigationItem {
   label: string
@@ -38,7 +40,16 @@ export const primaryNavigation: NavigationSection[] = [
     label: 'Commerce',
     items: [
       { label: 'Orders', to: '/orders', icon: 'orders' },
-      { label: 'Customers', to: '/customers', icon: 'customers' },
+      {
+        label: 'Customers',
+        to: '/customers',
+        icon: 'customers',
+        children: [
+          { label: 'Customer Groups', to: '/customer-groups', icon: 'customers' },
+          { label: 'Customer Segments', to: '/customer-segments', icon: 'customers' },
+          { label: 'Customer Tags', to: '/customer-tags', icon: 'customers' },
+        ],
+      },
       { label: 'Fulfillments', to: '/fulfillments', icon: 'fulfillment' },
       { label: 'Products', to: '/products', icon: 'products' },
       { label: 'Collections', to: '/collections', icon: 'collections' },

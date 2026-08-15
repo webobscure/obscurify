@@ -21,6 +21,12 @@ import type {
   Customer,
   CustomerActivityEvent,
   CustomerAddress,
+  CustomerGroup,
+  CustomerGroupType,
+  CustomerMetric,
+  CustomerSegment,
+  CustomerSnapshot,
+  CustomerTag,
   DiscountCode,
   Fulfillment,
   InstalledApp,
@@ -48,6 +54,7 @@ import type {
   RenderedPage,
   ReturnRequest,
   SectionInstance,
+  SegmentRuleInput,
   SeoMetadata,
   Shipment,
   ShippingMethod,
@@ -337,7 +344,23 @@ export class ApiClient {
    * customer themselves, via StorefrontApiClient.account).
    */
   readonly customers = {
-    list: (page?: number) => this.request<ApiCollection<Customer>>(`/api/v1/customers${page ? `?page=${page}` : ''}`),
+    /** Search (Milestone 18 spec section 10): tags, groups, segments, metric thresholds — every filter is optional and ANDed together. */
+    list: (params: { page?: number; search?: string; status?: string; tag?: string; group_id?: string; segment_id?: string; min_total_spent?: number; max_total_spent?: number; min_order_count?: number; min_lifetime_value?: number } = {}) => {
+      const query = new URLSearchParams()
+      if (params.page) query.set('page', String(params.page))
+      if (params.search) query.set('search', params.search)
+      if (params.status) query.set('status', params.status)
+      if (params.tag) query.set('tag', params.tag)
+      if (params.group_id) query.set('group_id', params.group_id)
+      if (params.segment_id) query.set('segment_id', params.segment_id)
+      if (params.min_total_spent !== undefined) query.set('min_total_spent', String(params.min_total_spent))
+      if (params.max_total_spent !== undefined) query.set('max_total_spent', String(params.max_total_spent))
+      if (params.min_order_count !== undefined) query.set('min_order_count', String(params.min_order_count))
+      if (params.min_lifetime_value !== undefined) query.set('min_lifetime_value', String(params.min_lifetime_value))
+      const qs = query.toString()
+
+      return this.request<ApiCollection<Customer>>(`/api/v1/customers${qs ? `?${qs}` : ''}`)
+    },
 
     get: (customerId: string) => this.request<ApiResource<Customer>>(`/api/v1/customers/${customerId}`),
 
@@ -352,6 +375,72 @@ export class ApiClient {
 
     activity: (customerId: string, page?: number) =>
       this.request<ApiCollection<CustomerActivityEvent>>(`/api/v1/customers/${customerId}/activity${page ? `?page=${page}` : ''}`),
+
+    /** Milestone 18 — null when RecomputeCustomerMetrics has never run for this customer. */
+    metrics: (customerId: string) => this.request<ApiResource<CustomerMetric | null>>(`/api/v1/customers/${customerId}/metrics`),
+
+    metricsHistory: (customerId: string) =>
+      this.request<ApiCollection<CustomerSnapshot>>(`/api/v1/customers/${customerId}/metrics/history`),
+
+    groups: (customerId: string) => this.request<ApiCollection<CustomerGroup>>(`/api/v1/customers/${customerId}/groups`),
+
+    segments: (customerId: string) => this.request<ApiCollection<CustomerSegment>>(`/api/v1/customers/${customerId}/segments`),
+
+    tags: (customerId: string) => this.request<ApiCollection<CustomerTag>>(`/api/v1/customers/${customerId}/tags`),
+
+    assignTag: (customerId: string, tagId: string) =>
+      this.request<ApiResource<CustomerTag>>(`/api/v1/customers/${customerId}/tags`, { method: 'POST', body: JSON.stringify({ tag_id: tagId }) }),
+
+    removeTag: (customerId: string, tagId: string) =>
+      this.request<void>(`/api/v1/customers/${customerId}/tags/${tagId}`, { method: 'DELETE' }),
+  }
+
+  /**
+   * Customer Groups + Segments + Tags (Milestone 18) — see
+   * docs/architecture/customer-intelligence.md. `rules` on
+   * create/update is the whole tree, always replaced atomically
+   * server-side, never patched incrementally.
+   */
+  readonly customerGroups = {
+    list: () => this.request<ApiCollection<CustomerGroup>>('/api/v1/customer-groups'),
+
+    get: (groupId: string) => this.request<ApiResource<CustomerGroup>>(`/api/v1/customer-groups/${groupId}`),
+
+    create: (data: { name: string; description?: string | null; type: CustomerGroupType; rules?: SegmentRuleInput[] }) =>
+      this.request<ApiResource<CustomerGroup>>('/api/v1/customer-groups', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (groupId: string, data: Partial<{ name: string; description: string | null; status: string; rules: SegmentRuleInput[] }>) =>
+      this.request<ApiResource<CustomerGroup>>(`/api/v1/customer-groups/${groupId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (groupId: string) => this.request<void>(`/api/v1/customer-groups/${groupId}`, { method: 'DELETE' }),
+
+    addMember: (groupId: string, customerId: string) =>
+      this.request<void>(`/api/v1/customer-groups/${groupId}/members`, { method: 'POST', body: JSON.stringify({ customer_id: customerId }) }),
+
+    removeMember: (groupId: string, customerId: string) =>
+      this.request<void>(`/api/v1/customer-groups/${groupId}/members/${customerId}`, { method: 'DELETE' }),
+  }
+
+  readonly customerSegments = {
+    list: () => this.request<ApiCollection<CustomerSegment>>('/api/v1/customer-segments'),
+
+    get: (segmentId: string) => this.request<ApiResource<CustomerSegment>>(`/api/v1/customer-segments/${segmentId}`),
+
+    create: (data: { name: string; description?: string | null; rules?: SegmentRuleInput[] }) =>
+      this.request<ApiResource<CustomerSegment>>('/api/v1/customer-segments', { method: 'POST', body: JSON.stringify(data) }),
+
+    update: (segmentId: string, data: Partial<{ name: string; description: string | null; status: string; rules: SegmentRuleInput[] }>) =>
+      this.request<ApiResource<CustomerSegment>>(`/api/v1/customer-segments/${segmentId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    remove: (segmentId: string) => this.request<void>(`/api/v1/customer-segments/${segmentId}`, { method: 'DELETE' }),
+  }
+
+  readonly customerTags = {
+    list: () => this.request<ApiCollection<CustomerTag>>('/api/v1/customer-tags'),
+
+    create: (name: string) => this.request<ApiResource<CustomerTag>>('/api/v1/customer-tags', { method: 'POST', body: JSON.stringify({ name }) }),
+
+    remove: (tagId: string) => this.request<void>(`/api/v1/customer-tags/${tagId}`, { method: 'DELETE' }),
   }
 
   /**

@@ -54,6 +54,24 @@ final class PlatformEventCatalog
             'PromotionApplied',
             'PromotionRemoved',
             'DiscountCodeRedeemed',
+            // Milestone 16 (Customer Accounts) — never added to this
+            // catalog when that milestone shipped; added here as part of
+            // Milestone 18's own catalog additions below.
+            'CustomerCreated',
+            'CustomerUpdated',
+            'CustomerLoggedIn',
+            'CustomerVerified',
+            'CustomerAddressUpdated',
+            'CustomerOrderViewed',
+            'CustomerReturnRequested',
+            // Milestone 18 (Customer Intelligence) — see
+            // docs/architecture/customer-intelligence.md section 6.
+            'CustomerTagAssigned',
+            'CustomerTagRemoved',
+            'CustomerEnteredSegment',
+            'CustomerLeftSegment',
+            'CustomerBecameVip',
+            'CustomerBecameInactive',
         ];
     }
 }

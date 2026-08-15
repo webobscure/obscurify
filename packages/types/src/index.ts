@@ -1383,6 +1383,7 @@ export interface Customer {
   first_name: string | null
   last_name: string | null
   phone: string | null
+  date_of_birth: string | null
   status: CustomerStatus
   verified_at: string | null
   addresses?: CustomerAddress[]
@@ -1511,4 +1512,141 @@ export interface CustomerActivityEvent {
   event_type: string
   payload: Record<string, unknown>
   occurred_at: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Customer Intelligence (Milestone 18) — Groups, Segments, Tags, Metrics.
+// See docs/architecture/customer-intelligence.md.
+// ---------------------------------------------------------------------------
+
+export type CustomerGroupType = 'manual' | 'dynamic' | 'protected'
+export type CustomerGroupStatus = 'active' | 'archived'
+export type CustomerSegmentStatus = 'active' | 'archived'
+export type SegmentRuleBoolean = 'and' | 'or'
+
+/** Mirrors the backend's SegmentRuleField enum exactly — see that enum's docblock for each field's definition/source. */
+export type SegmentRuleField =
+  | 'total_spent'
+  | 'average_order_value'
+  | 'order_count'
+  | 'refund_count'
+  | 'return_count'
+  | 'return_rate'
+  | 'lifetime_value'
+  | 'days_since_last_order'
+  | 'days_since_registration'
+  | 'country_code'
+  | 'email_verified'
+  | 'date_of_birth'
+  | 'has_tag'
+  | 'in_group'
+
+export type SegmentRuleOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'greater_than'
+  | 'greater_than_or_equal'
+  | 'less_than'
+  | 'less_than_or_equal'
+  | 'contains'
+  | 'starts_with'
+  | 'ends_with'
+  | 'is_true'
+  | 'is_false'
+  | 'in_set'
+  | 'not_in_set'
+  | 'this_month'
+
+/**
+ * One node in a rule tree — either a *group* node (`boolean_operator` +
+ * `children`) or a *condition* node (`field` + `operator`, `value`
+ * optional). Recursive: a group node's own children can themselves be
+ * group nodes, to any depth. See SegmentRuleEngine on the backend.
+ */
+export interface SegmentRule {
+  id: string
+  boolean_operator: SegmentRuleBoolean | null
+  field: SegmentRuleField | null
+  operator: SegmentRuleOperator | null
+  value: unknown
+  position: number
+  children: SegmentRule[]
+}
+
+/**
+ * The write shape for POST/PATCH `rules` — a plain object tree (no `id`,
+ * since the whole tree is replaced atomically server-side on every
+ * write; see ReplaceSegmentRules on the backend).
+ */
+export interface SegmentRuleInput {
+  boolean_operator?: SegmentRuleBoolean
+  field?: SegmentRuleField
+  operator?: SegmentRuleOperator
+  value?: unknown
+  children?: SegmentRuleInput[]
+}
+
+export interface CustomerGroup {
+  id: string
+  name: string
+  description: string | null
+  type: CustomerGroupType
+  status: CustomerGroupStatus
+  member_count?: number
+  rules?: SegmentRule[]
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerSegment {
+  id: string
+  name: string
+  description: string | null
+  status: CustomerSegmentStatus
+  member_count?: number
+  rules?: SegmentRule[]
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerTag {
+  id: string
+  name: string
+  slug: string
+  is_system: boolean
+  assignment_count?: number
+  created_at: string
+}
+
+/** GET /customers/{customer}/metrics — null when RecomputeCustomerMetrics has never run for this customer (no order/registration/update yet). */
+export interface CustomerMetric {
+  total_spent_amount: number
+  average_order_value_amount: number
+  order_count: number
+  refund_count: number
+  return_count: number
+  /** Percentage points (already converted from the backend's stored basis points), e.g. 12.34. */
+  return_rate: number
+  lifetime_value_amount: number
+  currency: string | null
+  first_order_at: string | null
+  last_order_at: string | null
+  days_since_last_order: number | null
+  computed_at: string
+}
+
+/** GET /customers/{customer}/metrics/history — the "Customer Timeline" trend data, one row per background-recomputation snapshot. */
+export interface CustomerSnapshot {
+  id: string
+  metrics: {
+    total_spent_amount: number
+    average_order_value_amount: number
+    order_count: number
+    refund_count: number
+    return_count: number
+    return_rate_bps: number
+    lifetime_value_amount: number
+    currency: string | null
+  }
+  captured_at: string
 }
