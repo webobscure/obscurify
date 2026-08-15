@@ -25,4 +25,12 @@ enum ExtensionPoint: string
     case AdminNavigation = 'admin_navigation';
     case AdminWidget = 'admin_widget';
     case DashboardCard = 'dashboard_card';
+
+    // Milestone 19 (Automation Engine) — spec section 10: apps register
+    // triggers/actions/templates/variables with no core changes, through
+    // this exact existing mechanism. See docs/architecture/automation.md §9.
+    case AutomationTrigger = 'automation_trigger';
+    case AutomationAction = 'automation_action';
+    case AutomationTemplate = 'automation_template';
+    case AutomationVariable = 'automation_variable';
 }

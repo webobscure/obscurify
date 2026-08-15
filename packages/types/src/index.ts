@@ -1650,3 +1650,158 @@ export interface CustomerSnapshot {
   }
   captured_at: string
 }
+
+// --- Automation Engine (Milestone 19) ---
+// See docs/architecture/automation.md and WorkflowRunner on the backend.
+
+export type WorkflowStatus = 'draft' | 'published' | 'disabled' | 'archived'
+export type WorkflowVersionStatus = 'draft' | 'published' | 'archived'
+export type WorkflowConditionBoolean = 'and' | 'or'
+
+export type WorkflowConditionOperator =
+  | 'equals' | 'not_equals'
+  | 'greater_than' | 'greater_than_or_equal' | 'less_than' | 'less_than_or_equal'
+  | 'contains' | 'starts_with' | 'ends_with'
+  | 'is_true' | 'is_false'
+  | 'in_set' | 'not_in_set'
+  | 'in_segment' | 'not_in_segment'
+  | 'in_group' | 'not_in_group'
+  | 'has_tag' | 'not_has_tag'
+
+export type WorkflowActionType =
+  | 'add_customer_tag' | 'remove_customer_tag'
+  | 'add_customer_to_group' | 'remove_customer_from_group'
+  | 'create_discount_code' | 'expire_discount'
+  | 'publish_event' | 'call_app_webhook'
+  | 'create_internal_notification'
+  | 'update_customer_metadata' | 'update_order_metadata'
+  | 'create_task' | 'delay' | 'app_action'
+
+export type DelayType = 'minutes' | 'hours' | 'until_date' | 'until_event'
+
+export type WorkflowExecutionStatus = 'pending' | 'running' | 'waiting' | 'completed' | 'failed' | 'dead_letter'
+export type WorkflowExecutionStepType = 'condition' | 'action'
+export type WorkflowExecutionStepStatus = 'pending' | 'succeeded' | 'failed' | 'skipped' | 'waiting'
+
+/** The write shape for a condition tree node — see ReplaceWorkflowConditions on the backend. */
+export interface WorkflowConditionInput {
+  boolean_operator?: WorkflowConditionBoolean
+  variable_key?: string
+  operator?: WorkflowConditionOperator
+  value?: unknown
+  children?: WorkflowConditionInput[]
+}
+
+/** Recursive read shape — a group node (`boolean_operator` + `children`) or a condition node (`variable_key` + `operator`). */
+export interface WorkflowCondition {
+  id: string
+  boolean_operator: WorkflowConditionBoolean | null
+  variable_key: string | null
+  operator: WorkflowConditionOperator | null
+  value: unknown
+  position: number
+  children: WorkflowCondition[]
+}
+
+export interface WorkflowActionInput {
+  type: WorkflowActionType
+  config?: Record<string, unknown>
+}
+
+export interface WorkflowAction {
+  id: string
+  type: WorkflowActionType
+  config: Record<string, unknown>
+  position: number
+}
+
+export interface WorkflowVersion {
+  id: string
+  version_number: number
+  status: WorkflowVersionStatus
+  trigger: { event_type: string } | null
+  conditions: WorkflowCondition[]
+  actions: WorkflowAction[]
+  created_at: string
+}
+
+export interface Workflow {
+  id: string
+  name: string
+  description: string | null
+  status: WorkflowStatus
+  published_version_id: string | null
+  /** The version relevant to the current view — the editable draft on show/update, the published version after publish/rollback. */
+  version?: WorkflowVersion | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowExecutionStep {
+  id: string
+  workflow_action_id: string | null
+  step_type: WorkflowExecutionStepType
+  status: WorkflowExecutionStepStatus
+  input: Record<string, unknown> | null
+  output: Record<string, unknown> | null
+  error_message: string | null
+  attempts: number
+  position: number
+  started_at: string | null
+  completed_at: string | null
+}
+
+export interface WorkflowExecution {
+  id: string
+  workflow_id: string
+  workflow_version_id: string
+  outbox_event_id: string
+  status: WorkflowExecutionStatus
+  context: Record<string, unknown>
+  depth: number
+  root_execution_id: string | null
+  caused_by_execution_id: string | null
+  attempts: number
+  next_retry_at: string | null
+  next_resume_at: string | null
+  wait_until_event_type: string | null
+  started_at: string | null
+  completed_at: string | null
+  error_message: string | null
+  steps?: WorkflowExecutionStep[]
+  created_at: string
+}
+
+export interface WorkflowTemplateDefinition {
+  trigger?: { event_type: string }
+  conditions?: WorkflowConditionInput[]
+  actions?: WorkflowActionInput[]
+}
+
+export interface WorkflowTemplate {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  category: string | null
+  definition: WorkflowTemplateDefinition
+}
+
+/** GET /automation/variables — the variable-picker catalog (built-ins merged with app-contributed entries). */
+export interface WorkflowVariableCatalogEntry {
+  source: string
+  key: string
+  label: string
+  type: string
+  event_types: string[] | null
+  origin: 'built_in' | 'app'
+  installed_app_id?: string
+}
+
+/** GET /automation/triggers — the trigger-picker catalog. */
+export interface WorkflowTriggerCatalogEntry {
+  event_type: string
+  label: string
+  origin: 'platform' | 'app'
+  installed_app_id?: string
+}

@@ -4,6 +4,7 @@ use App\Domain\Apps\Http\Controllers\AdminExtensionsController;
 use App\Domain\Apps\Http\Controllers\AppController;
 use App\Domain\Apps\Http\Controllers\Gateway\AppExtensionGatewayController;
 use App\Domain\Apps\Http\Controllers\Gateway\AppWebhookGatewayController;
+use App\Domain\Apps\Http\Controllers\Gateway\AutomationEventGatewayController;
 use App\Domain\Apps\Http\Controllers\Gateway\CustomerGatewayController;
 use App\Domain\Apps\Http\Controllers\Gateway\InventoryGatewayController;
 use App\Domain\Apps\Http\Controllers\Gateway\OrderGatewayController;
@@ -12,6 +13,10 @@ use App\Domain\Apps\Http\Controllers\Gateway\ProductGatewayController;
 use App\Domain\Apps\Http\Controllers\Gateway\ShippingGatewayController;
 use App\Domain\Apps\Http\Controllers\InstalledAppController;
 use App\Domain\Apps\Http\Controllers\OAuthController;
+use App\Domain\Automation\Http\Controllers\WorkflowCatalogController;
+use App\Domain\Automation\Http\Controllers\WorkflowController;
+use App\Domain\Automation\Http\Controllers\WorkflowExecutionController;
+use App\Domain\Automation\Http\Controllers\WorkflowTemplateController;
 use App\Domain\Builder\Http\Controllers\BuilderPageController;
 use App\Domain\Builder\Http\Controllers\BuilderPresetController;
 use App\Domain\Builder\Http\Controllers\BuilderRevisionController;
@@ -193,6 +198,30 @@ Route::prefix('v1')->group(function () {
             Route::get('customer-tags', [CustomerTagController::class, 'index']);
             Route::post('customer-tags', [CustomerTagController::class, 'store']);
             Route::delete('customer-tags/{tag}', [CustomerTagController::class, 'destroy']);
+
+            // Automation Engine (Milestone 19) — spec section 12. Nested
+            // under /automation, unlike Customer Intelligence's flat
+            // customer-* routes above, matching the spec's literal
+            // endpoint paths. See docs/architecture/automation.md.
+            Route::get('automation/workflows', [WorkflowController::class, 'index']);
+            Route::post('automation/workflows', [WorkflowController::class, 'store']);
+            Route::get('automation/workflows/{workflow}', [WorkflowController::class, 'show']);
+            Route::patch('automation/workflows/{workflow}', [WorkflowController::class, 'update']);
+            Route::get('automation/workflows/{workflow}/versions', [WorkflowController::class, 'versions']);
+            Route::post('automation/workflows/{workflow}/publish', [WorkflowController::class, 'publish']);
+            Route::post('automation/workflows/{workflow}/disable', [WorkflowController::class, 'disable']);
+            Route::post('automation/workflows/{workflow}/enable', [WorkflowController::class, 'enable']);
+            Route::post('automation/workflows/{workflow}/archive', [WorkflowController::class, 'archive']);
+            Route::post('automation/workflows/{workflow}/rollback', [WorkflowController::class, 'rollback']);
+
+            Route::get('automation/executions', [WorkflowExecutionController::class, 'index']);
+            Route::get('automation/executions/{execution}', [WorkflowExecutionController::class, 'show']);
+
+            Route::get('automation/templates', [WorkflowTemplateController::class, 'index']);
+            Route::post('automation/templates/{template}/instantiate', [WorkflowTemplateController::class, 'instantiate']);
+
+            Route::get('automation/variables', [WorkflowCatalogController::class, 'variables']);
+            Route::get('automation/triggers', [WorkflowCatalogController::class, 'triggers']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -554,4 +583,9 @@ Route::prefix('apps/v1')->middleware('app-token')->group(function () {
     // valid token (see AppExtensionGatewayController).
     Route::get('extensions', [AppExtensionGatewayController::class, 'index']);
     Route::post('extensions', [AppExtensionGatewayController::class, 'store']);
+
+    // Milestone 19 (Automation Engine): lets an app push an event into
+    // this platform's own Platform Event Bus, backing the
+    // AppWebhookReceived trigger — see AutomationEventGatewayController.
+    Route::post('automation/events', [AutomationEventGatewayController::class, 'store'])->middleware('app-scope:automation.write');
 });

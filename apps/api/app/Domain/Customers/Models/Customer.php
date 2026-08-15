@@ -58,6 +58,7 @@ class Customer extends Model
         'last_name',
         'status',
         'verified_at',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -66,6 +67,7 @@ class Customer extends Model
             'status' => CustomerStatus::class,
             'verified_at' => 'datetime',
             'date_of_birth' => 'date',
+            'metadata' => 'array',
         ];
     }
 

@@ -69,6 +69,14 @@ import type {
   ThemeTemplateType,
   ThemeVersion,
   User,
+  Workflow,
+  WorkflowActionInput,
+  WorkflowConditionInput,
+  WorkflowExecution,
+  WorkflowTemplate,
+  WorkflowTriggerCatalogEntry,
+  WorkflowVariableCatalogEntry,
+  WorkflowVersion,
 } from '@obscurify/types'
 
 export class ApiClientError extends Error {
@@ -441,6 +449,61 @@ export class ApiClient {
     create: (name: string) => this.request<ApiResource<CustomerTag>>('/api/v1/customer-tags', { method: 'POST', body: JSON.stringify({ name }) }),
 
     remove: (tagId: string) => this.request<void>(`/api/v1/customer-tags/${tagId}`, { method: 'DELETE' }),
+  }
+
+  /**
+   * Automation Engine (Milestone 19) — see docs/architecture/automation.md.
+   */
+  readonly automation = {
+    workflows: {
+      list: () => this.request<ApiCollection<Workflow>>('/api/v1/automation/workflows'),
+
+      get: (workflowId: string) => this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}`),
+
+      create: (data: { name: string; description?: string | null; trigger?: { event_type: string } | null; conditions?: WorkflowConditionInput[]; actions?: WorkflowActionInput[] }) =>
+        this.request<ApiResource<Workflow>>('/api/v1/automation/workflows', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (workflowId: string, data: Partial<{ name: string; description: string | null; trigger: { event_type: string } | null; conditions: WorkflowConditionInput[]; actions: WorkflowActionInput[] }>) =>
+        this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      versions: (workflowId: string) => this.request<ApiCollection<WorkflowVersion>>(`/api/v1/automation/workflows/${workflowId}/versions`),
+
+      publish: (workflowId: string) => this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}/publish`, { method: 'POST' }),
+
+      disable: (workflowId: string) => this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}/disable`, { method: 'POST' }),
+
+      enable: (workflowId: string) => this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}/enable`, { method: 'POST' }),
+
+      archive: (workflowId: string) => this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}/archive`, { method: 'POST' }),
+
+      rollback: (workflowId: string, versionId: string) =>
+        this.request<ApiResource<Workflow>>(`/api/v1/automation/workflows/${workflowId}/rollback`, { method: 'POST', body: JSON.stringify({ version_id: versionId }) }),
+    },
+
+    executions: {
+      list: (params?: { workflow_id?: string; status?: string; page?: number }) => {
+        const query = new URLSearchParams()
+        if (params?.workflow_id) query.set('workflow_id', params.workflow_id)
+        if (params?.status) query.set('status', params.status)
+        if (params?.page) query.set('page', String(params.page))
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+
+        return this.request<ApiCollection<WorkflowExecution>>(`/api/v1/automation/executions${suffix}`)
+      },
+
+      get: (executionId: string) => this.request<ApiResource<WorkflowExecution>>(`/api/v1/automation/executions/${executionId}`),
+    },
+
+    templates: {
+      list: () => this.request<ApiCollection<WorkflowTemplate>>('/api/v1/automation/templates'),
+
+      instantiate: (templateId: string, name?: string) =>
+        this.request<ApiResource<Workflow>>(`/api/v1/automation/templates/${templateId}/instantiate`, { method: 'POST', body: JSON.stringify({ name }) }),
+    },
+
+    variables: () => this.request<{ data: WorkflowVariableCatalogEntry[] }>('/api/v1/automation/variables'),
+
+    triggers: () => this.request<{ data: WorkflowTriggerCatalogEntry[] }>('/api/v1/automation/triggers'),
   }
 
   /**

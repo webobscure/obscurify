@@ -29,6 +29,7 @@ final class AppScope
             'shipping.read',
             'webhooks.read',
             'webhooks.write',
+            'automation.write',
         ];
     }
 

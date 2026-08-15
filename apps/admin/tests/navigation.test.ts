@@ -37,6 +37,7 @@ describe('navigation source of truth', () => {
     '/shipments', '/shipping-methods', '/shipping-zones', '/promotions', '/apps', '/themes',
     '/pages', '/page-templates', '/menus', '/blogs', '/authors', '/redirects',
     '/theme-customizer', '/section-library', '/block-library',
+    '/automation', '/automation/executions', '/automation/templates',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {
@@ -70,5 +71,12 @@ describe('navigation source of truth', () => {
 
     expect(customers?.children?.map(c => c.label)).toEqual(['Customer Groups', 'Customer Segments', 'Customer Tags'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Customer Groups')).toBe(false)
+  })
+
+  it('nests Executions/Templates under Automation, not as flat top-level items', () => {
+    const automation = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Automation')
+
+    expect(automation?.children?.map(c => c.label)).toEqual(['Executions', 'Templates'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Executions')).toBe(false)
   })
 })

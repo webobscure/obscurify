@@ -72,6 +72,26 @@ final class PlatformEventCatalog
             'CustomerLeftSegment',
             'CustomerBecameVip',
             'CustomerBecameInactive',
+            // Milestone 19 (Automation Engine) — see
+            // docs/architecture/automation.md §3. ProductBackInStock and
+            // InventoryBelowThreshold are recorded for real by
+            // AdjustInventory; AppWebhookReceived is recorded for real by
+            // the apps/v1 automation events gateway
+            // (AutomationEventGatewayController). CustomerEnteredSegment/
+            // CustomerLeftSegment/CustomerBecameVip/CustomerBecameInactive
+            // (above) and OrderCreated/RefundCompleted/ReturnApproved/
+            // ReturnCompleted/CustomerCreated/CustomerUpdated (already in
+            // this catalog) cover the rest of spec section 3's trigger
+            // examples; OrderPaymentConfirmed is this platform's actual
+            // name for the spec's "OrderPaid" example, and PaymentPaid is
+            // its "PaymentSucceeded" example — both already catalogued
+            // above, no new event type needed. OrderCancelled is
+            // catalog-only: no order-cancellation feature exists yet in
+            // this codebase to emit it (see docs/adr/025-automation-engine.md).
+            'ProductBackInStock',
+            'InventoryBelowThreshold',
+            'AppWebhookReceived',
+            'OrderCancelled',
         ];
     }
 }

@@ -73,6 +73,7 @@ class Order extends Model
         'email',
         'phone',
         'cancelled_at',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -88,6 +89,7 @@ class Order extends Model
             'financial_status' => FinancialStatus::class,
             'fulfillment_status' => FulfillmentStatus::class,
             'cancelled_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 

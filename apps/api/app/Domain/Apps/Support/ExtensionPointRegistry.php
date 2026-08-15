@@ -28,6 +28,15 @@ final class ExtensionPointRegistry
             ExtensionPoint::AdminWidget => ['title', 'location'],
             ExtensionPoint::DashboardCard => ['title'],
             ExtensionPoint::Checkout, ExtensionPoint::Order, ExtensionPoint::Product, ExtensionPoint::Customer => [],
+            // Milestone 19: an app-registered automation action must name
+            // itself and where WorkflowActionExecutor should POST to when
+            // the action runs; a trigger/variable just needs to declare
+            // the event_type/label a merchant would see in the picker; a
+            // template is a full portable workflow definition.
+            ExtensionPoint::AutomationAction => ['label', 'target_url'],
+            ExtensionPoint::AutomationTrigger => ['event_type', 'label'],
+            ExtensionPoint::AutomationVariable => ['source', 'key', 'label', 'type'],
+            ExtensionPoint::AutomationTemplate => ['name', 'definition'],
         };
 
         $missing = array_diff($required, array_keys($config));

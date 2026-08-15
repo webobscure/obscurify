@@ -29,6 +29,7 @@ const paths: Record<string, string> = {
   blogs: '<path d="M4 5h11a2 2 0 0 1 2 2v12H6a2 2 0 0 1-2-2z"/><path d="M17 9h1.5a1.5 1.5 0 0 1 1.5 1.5V17a2 2 0 0 1-2 2"/><path d="M7.5 9h6M7.5 12.5h6"/>',
   authors: '<circle cx="9.5" cy="8.5" r="3.5"/><path d="M3.5 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M17.5 7.5h4M19.5 5.5v4"/>',
   redirects: '<path d="M4 17h7a5 5 0 0 0 5-5V7"/><path d="M12.5 10.5L16 7l3.5 3.5"/><circle cx="4" cy="17" r="1.5"/>',
+  automation: '<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>',
   stores: '<path d="M4 9l1-5h14l1 5"/><path d="M4 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0"/><path d="M5 9v10h14V9"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',

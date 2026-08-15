@@ -14,9 +14,16 @@ use App\Shared\Commerce\Models\OutboxEvent;
 final class RecordOutboxEvent
 {
     /**
+     * $causedByWorkflowExecutionId links an event recorded by an
+     * automation action (e.g. "Publish event", or indirectly "Add
+     * customer tag") back to the WorkflowExecution that produced it —
+     * WorkflowLoopGuard reads this chain to detect a workflow that
+     * (directly or transitively) triggers itself. Every other caller
+     * omits it, exactly as before this parameter existed.
+     *
      * @param  array<string, mixed>  $payload
      */
-    public function handle(string $eventType, string $aggregateType, string $aggregateId, array $payload): OutboxEvent
+    public function handle(string $eventType, string $aggregateType, string $aggregateId, array $payload, ?string $causedByWorkflowExecutionId = null): OutboxEvent
     {
         return OutboxEvent::query()->create([
             'event_type' => $eventType,
@@ -24,6 +31,7 @@ final class RecordOutboxEvent
             'aggregate_id' => $aggregateId,
             'payload' => $payload,
             'occurred_at' => now(),
+            'caused_by_workflow_execution_id' => $causedByWorkflowExecutionId,
         ]);
     }
 }

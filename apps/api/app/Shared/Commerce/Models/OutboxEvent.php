@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $occurred_at
  * @property Carbon|null $processed_at
  * @property int $attempts
+ * @property string|null $caused_by_workflow_execution_id
  */
 class OutboxEvent extends Model
 {
@@ -46,6 +47,7 @@ class OutboxEvent extends Model
         'occurred_at',
         'processed_at',
         'attempts',
+        'caused_by_workflow_execution_id',
     ];
 
     protected function casts(): array

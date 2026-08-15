@@ -95,6 +95,18 @@ export const primaryNavigation: NavigationSection[] = [
     items: [
       { label: 'Payments', to: '/payments', icon: 'payments' },
       { label: 'Promotions', to: '/promotions', icon: 'promotions' },
+      {
+        label: 'Automation',
+        to: '/automation',
+        icon: 'automation',
+        children: [
+          // Executions/Templates are both views onto workflows — the
+          // same "hangs off its parent feature" relationship Locations
+          // has to Inventory.
+          { label: 'Executions', to: '/automation/executions', icon: 'automation' },
+          { label: 'Templates', to: '/automation/templates', icon: 'automation' },
+        ],
+      },
       { label: 'Apps', to: '/apps', icon: 'apps' },
       {
         label: 'Themes',

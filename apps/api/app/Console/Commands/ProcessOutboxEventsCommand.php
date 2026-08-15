@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Automation\Application\DispatchWorkflowTriggersForEvent;
 use App\Domain\Stores\Models\Store;
 use App\Domain\Webhooks\Application\DispatchWebhooksForEvent;
 use App\Shared\Commerce\Models\OutboxEvent;
@@ -14,20 +15,25 @@ use Illuminate\Support\Facades\Log;
  * The transactional outbox's asynchronous side (Order + OutboxEvent
  * commit together inside CompleteCheckout etc. — see RecordOutboxEvent
  * — this command is what turns "committed" into "acted on"). Milestone
- * 11 (Platform Events + Webhooks) added the one real subscriber: every
+ * 11 (Platform Events + Webhooks) added the first subscriber: every
  * claimed event is fanned out to matching WebhookSubscriptions via
- * DispatchWebhooksForEvent, inside the same tenant scope and the same
- * row-locked transaction that marks the event processed — so a webhook
- * dispatch and the "processed" flag always commit or roll back together.
+ * DispatchWebhooksForEvent. Milestone 19 (Automation Engine) added a
+ * second, independent subscriber right alongside it —
+ * DispatchWorkflowTriggersForEvent starts a WorkflowExecution for every
+ * Published workflow whose trigger matches this event_type — both run
+ * inside the same tenant scope and the same row-locked transaction that
+ * marks the event processed, so neither subscriber's side effects can
+ * commit without the other (or without the "processed" flag itself).
  */
 class ProcessOutboxEventsCommand extends Command
 {
     protected $signature = 'outbox:process';
 
-    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks';
+    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks and workflow triggers';
 
     public function __construct(
         private readonly DispatchWebhooksForEvent $dispatchWebhooksForEvent,
+        private readonly DispatchWorkflowTriggersForEvent $dispatchWorkflowTriggersForEvent,
         private readonly TenantContext $tenantContext,
     ) {
         parent::__construct();
@@ -60,7 +66,10 @@ class ProcessOutboxEventsCommand extends Command
                 $store = Store::query()->find($event->store_id);
 
                 if ($store !== null) {
-                    $this->tenantContext->scope($store, fn () => $this->dispatchWebhooksForEvent->handle($event));
+                    $this->tenantContext->scope($store, function () use ($event, $store) {
+                        $this->dispatchWebhooksForEvent->handle($event);
+                        $this->dispatchWorkflowTriggersForEvent->handle($event, $store);
+                    });
                 }
 
                 $event->update([
