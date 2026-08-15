@@ -25,6 +25,7 @@ final class ProductResource extends JsonResource
             'description' => $this->description,
             'vendor' => $this->vendor,
             'product_type' => $this->product_type,
+            'tags' => $this->tags ?? [],
             'status' => $this->status->value,
             'seo_title' => $this->seo_title,
             'seo_description' => $this->seo_description,

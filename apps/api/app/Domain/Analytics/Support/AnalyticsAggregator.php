@@ -47,6 +47,9 @@ final class AnalyticsAggregator
         'top_discounts',
         'top_shipping_methods',
         'conversion_rate',
+        'search_count',
+        'zero_result_search_count',
+        'search_click_count',
     ];
 
     /**

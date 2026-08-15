@@ -2031,3 +2031,138 @@ export interface NotificationPreference {
   quiet_hours_end: string | null
   quiet_hours_timezone: string | null
 }
+
+// --- Search & Discovery Platform (Milestone 22) ---
+// See docs/architecture/search.md. The entire platform depends only on
+// SearchProviderContract; `database` is the only registered provider today
+// (meilisearch/typesense/opensearch/elasticsearch are unregistered future
+// codes — see SearchProvider.FUTURE_CODES on the backend).
+
+export type SearchIndexStatus = 'building' | 'ready' | 'stale' | 'failed'
+export type SearchRuleAction = 'boost' | 'hide'
+export type SearchSortOption = 'relevance' | 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'best_selling' | 'most_viewed' | 'manual'
+
+export interface SearchProvider {
+  id: string
+  code: string
+  name: string
+  is_enabled: boolean
+  config: Record<string, unknown> | null
+}
+
+export interface SearchSettings {
+  id: string
+  active_provider_id: string | null
+  active_provider: SearchProvider | null
+  results_per_page: number
+  autocomplete_limit: number
+  typo_tolerance_enabled: boolean
+  synonyms_enabled: boolean
+  facets_enabled: boolean
+}
+
+export interface SearchIndex {
+  id: string
+  status: SearchIndexStatus
+  document_count: number
+  last_full_reindex_at: string | null
+  last_indexed_at: string | null
+  error_message: string | null
+}
+
+export interface SearchSynonym {
+  id: string
+  term: string
+  synonyms: string[]
+  is_bidirectional: boolean
+  locale: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SearchRule {
+  id: string
+  name: string
+  keyword: string | null
+  action: SearchRuleAction
+  product_id: string
+  boost_amount: number | null
+  is_active: boolean
+  position: number
+  created_at: string
+}
+
+export interface PinnedSearchResult {
+  id: string
+  keyword: string
+  product_id: string
+  position: number
+  is_active: boolean
+}
+
+export interface SearchResultItem {
+  product_id: string
+  title: string
+  slug: string
+  description: string | null
+  vendor: string | null
+  product_type: string | null
+  price: {
+    min: number | null
+    max: number | null
+    currency: string | null
+  }
+  thumbnail_url: string | null
+  availability: boolean
+  score: number
+  is_pinned: boolean
+}
+
+export type SearchFacetCounts = Record<string, number>
+
+/** Response shape shared by GET /storefront/search, GET /search-preview, and GET /storefront/search/facets. */
+export interface SearchResponse {
+  data: SearchResultItem[]
+  meta: {
+    total: number
+    page: number
+    per_page: number
+    search_query_id: string
+  }
+  facets: {
+    vendor: SearchFacetCounts
+    product_type: SearchFacetCounts
+    availability: Record<'true' | 'false', number>
+    category: Array<{ id: string; label: string; count: number }>
+    collection: Array<{ id: string; label: string; count: number }>
+    tags: SearchFacetCounts
+    variant_options: Array<{ option: string; value: string; count: number }>
+    price: { min: number | null; max: number | null }
+  }
+}
+
+export interface SearchSuggestionProduct {
+  productId: string
+  title: string
+  thumbnailUrl: string | null
+}
+
+export interface SearchSuggestionsResponse {
+  data: {
+    products: SearchSuggestionProduct[]
+    collections: Array<{ id: string; title: string }>
+    categories: Array<{ id: string; title: string }>
+    popular_queries: string[]
+  }
+}
+
+export interface SearchAnalyticsSummary {
+  total_searches: number
+  total_clicks: number
+  total_conversions: number
+  click_through_rate: number
+  conversion_rate: number
+  popular_searches: Array<{ query: string; count: number }>
+  zero_result_searches: Array<{ query: string; count: number }>
+}

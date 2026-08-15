@@ -16,6 +16,8 @@ import type {
   ReorderResult,
   ReturnReason,
   ReturnRequest,
+  SearchResponse,
+  SearchSuggestionsResponse,
   StorefrontCategory,
   StorefrontCheckout,
   StorefrontCollection,
@@ -138,6 +140,47 @@ export class StorefrontApiClient {
     list: () => this.request<ApiCollection<StorefrontCategory>>('/api/v1/storefront/categories'),
 
     get: (slug: string) => this.request<ApiResource<StorefrontCategory>>(`/api/v1/storefront/categories/${slug}`),
+  }
+
+  /**
+   * Search & Discovery Platform (Milestone 22) — see
+   * docs/architecture/search.md. `reindex` is deliberately NOT exposed
+   * here: an unauthenticated reindex trigger is a real DoS/operational
+   * risk, so it lives only under the admin surface (index.ts).
+   */
+  readonly search = {
+    index: (params: { q?: string; filters?: Record<string, unknown>; sort?: string; page?: number; per_page?: number; session_id?: string } = {}) => {
+      const query = new URLSearchParams()
+      if (params.q) query.set('q', params.q)
+      if (params.filters) query.set('filters', JSON.stringify(params.filters))
+      if (params.sort) query.set('sort', params.sort)
+      if (params.page) query.set('page', String(params.page))
+      if (params.per_page) query.set('per_page', String(params.per_page))
+      if (params.session_id) query.set('session_id', params.session_id)
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+
+      return this.request<SearchResponse>(`/api/v1/storefront/search${suffix}`)
+    },
+
+    suggestions: (q: string) =>
+      this.request<SearchSuggestionsResponse>(`/api/v1/storefront/search/suggestions?q=${encodeURIComponent(q)}`),
+
+    facets: (params: { q?: string; filters?: Record<string, unknown> } = {}) => {
+      const query = new URLSearchParams()
+      if (params.q) query.set('q', params.q)
+      if (params.filters) query.set('filters', JSON.stringify(params.filters))
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+
+      return this.request<{ facets: SearchResponse['facets'] }>(`/api/v1/storefront/search/facets${suffix}`)
+    },
+
+    popular: () => this.request<{ data: string[] }>('/api/v1/storefront/search/popular'),
+
+    click: (data: { search_query_id?: string; product_id: string; position?: number }) =>
+      this.request<{ data: { recorded: boolean } }>('/api/v1/storefront/search/click', { method: 'POST', body: JSON.stringify(data) }),
+
+    recordConversion: (data: { search_query_id: string; product_id: string; order_id: string }) =>
+      this.request<{ data: { recorded: boolean } }>('/api/v1/storefront/search/conversions', { method: 'POST', body: JSON.stringify(data) }),
   }
 
   readonly cart = {

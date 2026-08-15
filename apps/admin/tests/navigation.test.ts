@@ -40,6 +40,7 @@ describe('navigation source of truth', () => {
     '/automation', '/automation/executions', '/automation/templates',
     '/analytics', '/analytics/reports', '/analytics/saved-reports',
     '/notifications', '/notifications/templates', '/notifications/channels', '/notifications/providers', '/notifications/deliveries',
+    '/search', '/search/synonyms', '/search/rules', '/search/pinned', '/search/settings', '/search/analytics',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {
@@ -94,5 +95,12 @@ describe('navigation source of truth', () => {
 
     expect(notifications?.children?.map(c => c.label)).toEqual(['Templates', 'Channels', 'Providers', 'Delivery Log'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Delivery Log')).toBe(false)
+  })
+
+  it('nests Synonyms/Rules & Ranking/Pinned Products/Settings/Analytics under Search, not as flat top-level items', () => {
+    const search = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Search')
+
+    expect(search?.children?.map(c => c.label)).toEqual(['Synonyms', 'Rules & Ranking', 'Pinned Products', 'Search Settings', 'Search Analytics'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Synonyms')).toBe(false)
   })
 })

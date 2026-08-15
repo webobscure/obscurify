@@ -4,6 +4,7 @@ use App\Providers\AppServiceProvider;
 use App\Providers\HorizonServiceProvider;
 use App\Providers\NotificationServiceProvider;
 use App\Providers\PaymentServiceProvider;
+use App\Providers\SearchServiceProvider;
 use App\Providers\ShippingServiceProvider;
 
 return [
@@ -12,4 +13,5 @@ return [
     PaymentServiceProvider::class,
     ShippingServiceProvider::class,
     NotificationServiceProvider::class,
+    SearchServiceProvider::class,
 ];

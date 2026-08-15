@@ -3,10 +3,13 @@
 namespace App\Domain\Catalog\Application;
 
 use App\Domain\Catalog\Models\Category;
+use App\Shared\Commerce\Application\RecordOutboxEvent;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateCategory
 {
+    public function __construct(private readonly RecordOutboxEvent $recordOutboxEvent) {}
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -17,6 +20,8 @@ final class UpdateCategory
         }
 
         $category->update($data);
+
+        $this->recordOutboxEvent->handle('CategoryUpdated', 'Category', $category->id, ['category_id' => $category->id]);
 
         return $category;
     }

@@ -81,6 +81,15 @@ use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
 use App\Domain\Promotions\Http\Controllers\DiscountCodeController;
 use App\Domain\Promotions\Http\Controllers\PromotionController;
 use App\Domain\Returns\Http\Controllers\ReturnController;
+use App\Domain\Search\Http\Controllers\PinnedSearchResultController;
+use App\Domain\Search\Http\Controllers\SearchAnalyticsController;
+use App\Domain\Search\Http\Controllers\SearchIndexController;
+use App\Domain\Search\Http\Controllers\SearchPreviewController;
+use App\Domain\Search\Http\Controllers\SearchProviderController;
+use App\Domain\Search\Http\Controllers\SearchRuleController;
+use App\Domain\Search\Http\Controllers\SearchSettingsController;
+use App\Domain\Search\Http\Controllers\SearchSynonymController;
+use App\Domain\Search\Http\Controllers\StorefrontSearchController;
 use App\Domain\Shipping\Http\Controllers\FakeShipmentOutcomeController;
 use App\Domain\Shipping\Http\Controllers\ShipmentController;
 use App\Domain\Shipping\Http\Controllers\ShippingMethodController;
@@ -303,6 +312,38 @@ Route::prefix('v1')->group(function () {
             // customer-self route lives under /account below.
             Route::get('customers/{customer}/notification-preferences', [AdminNotificationPreferenceController::class, 'show']);
             Route::patch('customers/{customer}/notification-preferences', [AdminNotificationPreferenceController::class, 'update']);
+
+            // Search & Discovery Platform (Milestone 22) — spec section
+            // 15. See docs/architecture/search.md.
+            Route::get('search-synonyms', [SearchSynonymController::class, 'index']);
+            Route::post('search-synonyms', [SearchSynonymController::class, 'store']);
+            Route::patch('search-synonyms/{searchSynonym}', [SearchSynonymController::class, 'update']);
+            Route::delete('search-synonyms/{searchSynonym}', [SearchSynonymController::class, 'destroy']);
+
+            Route::get('search-rules', [SearchRuleController::class, 'index']);
+            Route::post('search-rules', [SearchRuleController::class, 'store']);
+            Route::patch('search-rules/{searchRule}', [SearchRuleController::class, 'update']);
+            Route::delete('search-rules/{searchRule}', [SearchRuleController::class, 'destroy']);
+
+            Route::get('pinned-search-results', [PinnedSearchResultController::class, 'index']);
+            Route::post('pinned-search-results', [PinnedSearchResultController::class, 'store']);
+            Route::patch('pinned-search-results/{pinnedSearchResult}', [PinnedSearchResultController::class, 'update']);
+            Route::delete('pinned-search-results/{pinnedSearchResult}', [PinnedSearchResultController::class, 'destroy']);
+
+            Route::get('search-providers', [SearchProviderController::class, 'index']);
+            Route::post('search-providers', [SearchProviderController::class, 'store']);
+            Route::patch('search-providers/{searchProvider}', [SearchProviderController::class, 'update']);
+            Route::delete('search-providers/{searchProvider}', [SearchProviderController::class, 'destroy']);
+
+            Route::get('search-settings', [SearchSettingsController::class, 'show']);
+            Route::patch('search-settings', [SearchSettingsController::class, 'update']);
+
+            Route::get('search-index', [SearchIndexController::class, 'show']);
+            Route::post('search-index/reindex', [SearchIndexController::class, 'reindex']);
+
+            Route::get('search-analytics', [SearchAnalyticsController::class, 'show']);
+
+            Route::get('search-preview', [SearchPreviewController::class, 'show']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -571,6 +612,16 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/products', [StorefrontProductController::class, 'index']);
         Route::get('/products/{slug}', [StorefrontProductController::class, 'show']);
+
+        // Search & Discovery Platform (Milestone 22) — spec section 14.
+        // POST /search/reindex is deliberately NOT here — see
+        // SearchIndexController's own docblock.
+        Route::get('/search', [StorefrontSearchController::class, 'index']);
+        Route::get('/search/suggestions', [StorefrontSearchController::class, 'suggestions']);
+        Route::get('/search/facets', [StorefrontSearchController::class, 'facets']);
+        Route::get('/search/popular', [StorefrontSearchController::class, 'popular']);
+        Route::post('/search/click', [StorefrontSearchController::class, 'click']);
+        Route::post('/search/conversions', [StorefrontSearchController::class, 'conversions']);
 
         Route::get('/collections', [StorefrontCollectionController::class, 'index']);
         Route::get('/collections/{slug}', [StorefrontCollectionController::class, 'show']);

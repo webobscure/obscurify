@@ -123,6 +123,25 @@ export const primaryNavigation: NavigationSection[] = [
         ],
       },
       {
+        label: 'Search',
+        to: '/search',
+        icon: 'search',
+        children: [
+          // Synonyms/Rules/Pinned Products/Settings/Analytics are all
+          // configuration or read surfaces of the Search & Discovery
+          // Platform itself — the same "hangs off its parent feature"
+          // relationship Templates/Channels/Providers has to
+          // Notifications. Ranking has no distinct page: it's the same
+          // Rules resource sorted by position (see Rules.vue), and
+          // Reindex lives on the Dashboard itself.
+          { label: 'Synonyms', to: '/search/synonyms', icon: 'search' },
+          { label: 'Rules & Ranking', to: '/search/rules', icon: 'search' },
+          { label: 'Pinned Products', to: '/search/pinned', icon: 'search' },
+          { label: 'Search Settings', to: '/search/settings', icon: 'search' },
+          { label: 'Search Analytics', to: '/search/analytics', icon: 'search' },
+        ],
+      },
+      {
         label: 'Automation',
         to: '/automation',
         icon: 'automation',

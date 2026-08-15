@@ -80,6 +80,6 @@ it('updates and deletes a widget', function () {
 it('lists the metric catalog', function () {
     $response = $this->actingAs($this->user, 'sanctum')->getJson('/api/v1/analytics/metrics', tenantHeader($this->store));
 
-    $response->assertOk()->assertJsonCount(19, 'data');
+    $response->assertOk()->assertJsonCount(22, 'data');
     expect(collect($response->json('data'))->pluck('key'))->toContain('gross_revenue', 'top_products', 'inventory_value');
 });

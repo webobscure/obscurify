@@ -101,8 +101,14 @@ class SeedE2EStorefrontCommand extends Command
                 ['on_hand' => 50, 'reserved' => 0],
             );
 
-            if ($level->on_hand < 10) {
-                $level->update(['on_hand' => 50]);
+            // Every checkout-flow e2e spec reserves real stock against this
+            // one shared fixture; comparing on_hand alone (as before) let
+            // reserved climb in lockstep with each replenish and silently
+            // leave zero available (on_hand - reserved) once enough specs
+            // had run — replenish based on availability and reset both
+            // columns so this fixture always has real headroom.
+            if (($level->on_hand - $level->reserved) < 10) {
+                $level->update(['on_hand' => 50, 'reserved' => 0]);
             }
 
             // Matches the US/Testville address every checkout/payment/

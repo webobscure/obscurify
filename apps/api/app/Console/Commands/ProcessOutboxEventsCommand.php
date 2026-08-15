@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\Analytics\Support\AnalyticsProjector;
 use App\Domain\Automation\Application\DispatchWorkflowTriggersForEvent;
 use App\Domain\Notifications\Application\DispatchNotificationsForEvent;
+use App\Domain\Search\Application\SearchIndexingSubscriber;
 use App\Domain\Stores\Models\Store;
 use App\Domain\Webhooks\Application\DispatchWebhooksForEvent;
 use App\Shared\Commerce\Models\OutboxEvent;
@@ -24,22 +25,25 @@ use Illuminate\Support\Facades\Log;
  * Platform) added a third — AnalyticsProjector normalizes the event
  * into Analytics' own append-only log. Milestone 21 (Notification
  * Center) added a fourth — DispatchNotificationsForEvent fans the
- * event out to any matching NotificationEvent routing rules. All four
- * run inside the same tenant scope and the same row-locked transaction
- * that marks the event processed, so none of their side effects can
- * commit without the others (or without the "processed" flag itself).
+ * event out to any matching NotificationEvent routing rules. Milestone
+ * 22 (Search & Discovery) added a fifth — SearchIndexingSubscriber
+ * dispatches incremental reindex jobs. All five run inside the same
+ * tenant scope and the same row-locked transaction that marks the
+ * event processed, so none of their side effects can commit without
+ * the others (or without the "processed" flag itself).
  */
 class ProcessOutboxEventsCommand extends Command
 {
     protected $signature = 'outbox:process';
 
-    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks, workflow triggers, analytics projections, and notifications';
+    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks, workflow triggers, analytics projections, notifications, and search indexing';
 
     public function __construct(
         private readonly DispatchWebhooksForEvent $dispatchWebhooksForEvent,
         private readonly DispatchWorkflowTriggersForEvent $dispatchWorkflowTriggersForEvent,
         private readonly AnalyticsProjector $analyticsProjector,
         private readonly DispatchNotificationsForEvent $dispatchNotificationsForEvent,
+        private readonly SearchIndexingSubscriber $searchIndexingSubscriber,
         private readonly TenantContext $tenantContext,
     ) {
         parent::__construct();
@@ -77,6 +81,7 @@ class ProcessOutboxEventsCommand extends Command
                         $this->dispatchWorkflowTriggersForEvent->handle($event, $store);
                         $this->analyticsProjector->project($event);
                         $this->dispatchNotificationsForEvent->handle($event, $store);
+                        $this->searchIndexingSubscriber->handle($event, $store);
                     });
                 }
 

@@ -7,6 +7,7 @@ use App\Domain\Catalog\Models\Product;
 use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Catalog\Models\ProductVariantOptionValue;
 use App\Domain\Inventory\Models\InventoryItem;
+use App\Shared\Commerce\Application\RecordOutboxEvent;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -14,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 final class CreateProductVariant
 {
     use ResolvesVariantOptionValues;
+
+    public function __construct(private readonly RecordOutboxEvent $recordOutboxEvent) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -33,7 +36,7 @@ final class CreateProductVariant
         $data['status'] ??= ProductStatus::Active->value;
 
         try {
-            return DB::transaction(function () use ($product, $data, $signature, $optionValueIds) {
+            $variant = DB::transaction(function () use ($product, $data, $signature, $optionValueIds) {
                 // product_id is always taken from the tenant-scoped
                 // route-bound Product, never accepted from client input.
                 $variant = ProductVariant::query()->create([
@@ -60,6 +63,10 @@ final class CreateProductVariant
 
                 return $variant;
             });
+
+            $this->recordOutboxEvent->handle('VariantUpdated', 'Product', $product->id, ['product_id' => $product->id, 'variant_id' => $variant->id]);
+
+            return $variant;
         } catch (UniqueConstraintViolationException $e) {
             throw ValidationException::withMessages([
                 'option_value_ids' => 'A variant with this combination of options already exists.',

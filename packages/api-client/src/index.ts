@@ -73,7 +73,16 @@ import type {
   ReportExport,
   ReportType,
   ReturnRequest,
+  PinnedSearchResult,
   SavedReport,
+  SearchAnalyticsSummary,
+  SearchIndex,
+  SearchProvider,
+  SearchResponse,
+  SearchRule,
+  SearchSettings,
+  SearchSuggestionsResponse,
+  SearchSynonym,
   SectionInstance,
   SegmentRuleInput,
   SeoMetadata,
@@ -704,6 +713,100 @@ export class ApiClient {
 
       update: (customerId: string, data: Partial<Omit<NotificationPreference, 'id' | 'customer_id'>>) =>
         this.request<ApiResource<NotificationPreference>>(`/api/v1/customers/${customerId}/notification-preferences`, { method: 'PATCH', body: JSON.stringify(data) }),
+    },
+  }
+
+  /**
+   * Search & Discovery Platform (Milestone 22) — see
+   * docs/architecture/search.md. Customer-facing search lives under
+   * StorefrontApiClient.search instead — see storefront.ts.
+   */
+  readonly search = {
+    /** Admin "try a search" preview — reuses the exact same ExecuteSearch pipeline the storefront hits. */
+    preview: (params: { q?: string; sort?: string; page?: number; per_page?: number } = {}) => {
+      const query = new URLSearchParams()
+      if (params.q) query.set('q', params.q)
+      if (params.sort) query.set('sort', params.sort)
+      if (params.page) query.set('page', String(params.page))
+      if (params.per_page) query.set('per_page', String(params.per_page))
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+
+      return this.request<SearchResponse>(`/api/v1/search-preview${suffix}`)
+    },
+
+    index: {
+      get: () => this.request<ApiResource<SearchIndex>>('/api/v1/search-index'),
+
+      reindex: (productIds?: string[]) =>
+        this.request<ApiResource<SearchIndex>>('/api/v1/search-index/reindex', {
+          method: 'POST',
+          body: JSON.stringify(productIds ? { product_ids: productIds } : {}),
+        }),
+    },
+
+    settings: {
+      get: () => this.request<ApiResource<SearchSettings>>('/api/v1/search-settings'),
+
+      update: (data: Partial<{ active_provider_id: string | null; results_per_page: number; autocomplete_limit: number; typo_tolerance_enabled: boolean; synonyms_enabled: boolean; facets_enabled: boolean }>) =>
+        this.request<ApiResource<SearchSettings>>('/api/v1/search-settings', { method: 'PATCH', body: JSON.stringify(data) }),
+    },
+
+    providers: {
+      list: () => this.request<ApiCollection<SearchProvider>>('/api/v1/search-providers'),
+
+      create: (data: { code: string; name: string; is_enabled?: boolean; config?: Record<string, unknown> }) =>
+        this.request<ApiResource<SearchProvider>>('/api/v1/search-providers', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (providerId: string, data: Partial<{ name: string; is_enabled: boolean; config: Record<string, unknown> }>) =>
+        this.request<ApiResource<SearchProvider>>(`/api/v1/search-providers/${providerId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (providerId: string) => this.request<void>(`/api/v1/search-providers/${providerId}`, { method: 'DELETE' }),
+    },
+
+    synonyms: {
+      list: () => this.request<ApiCollection<SearchSynonym>>('/api/v1/search-synonyms'),
+
+      create: (data: { term: string; synonyms: string[]; is_bidirectional?: boolean; locale?: string | null; is_active?: boolean }) =>
+        this.request<ApiResource<SearchSynonym>>('/api/v1/search-synonyms', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (synonymId: string, data: Partial<{ term: string; synonyms: string[]; is_bidirectional: boolean; locale: string | null; is_active: boolean }>) =>
+        this.request<ApiResource<SearchSynonym>>(`/api/v1/search-synonyms/${synonymId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (synonymId: string) => this.request<void>(`/api/v1/search-synonyms/${synonymId}`, { method: 'DELETE' }),
+    },
+
+    /** Backs both the "Search Rules" (boost/hide) and "Ranking" admin views — the same resource, sorted by position. */
+    rules: {
+      list: () => this.request<ApiCollection<SearchRule>>('/api/v1/search-rules'),
+
+      create: (data: { name: string; keyword?: string | null; action: 'boost' | 'hide'; product_id: string; boost_amount?: number | null; is_active?: boolean; position?: number }) =>
+        this.request<ApiResource<SearchRule>>('/api/v1/search-rules', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (ruleId: string, data: Partial<{ name: string; keyword: string | null; action: 'boost' | 'hide'; product_id: string; boost_amount: number | null; is_active: boolean; position: number }>) =>
+        this.request<ApiResource<SearchRule>>(`/api/v1/search-rules/${ruleId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (ruleId: string) => this.request<void>(`/api/v1/search-rules/${ruleId}`, { method: 'DELETE' }),
+    },
+
+    pinnedResults: {
+      list: () => this.request<ApiCollection<PinnedSearchResult>>('/api/v1/pinned-search-results'),
+
+      create: (data: { keyword: string; product_id: string; position?: number; is_active?: boolean }) =>
+        this.request<ApiResource<PinnedSearchResult>>('/api/v1/pinned-search-results', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (pinnedId: string, data: Partial<{ keyword: string; product_id: string; position: number; is_active: boolean }>) =>
+        this.request<ApiResource<PinnedSearchResult>>(`/api/v1/pinned-search-results/${pinnedId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (pinnedId: string) => this.request<void>(`/api/v1/pinned-search-results/${pinnedId}`, { method: 'DELETE' }),
+    },
+
+    analytics: (params?: { from?: string; to?: string }) => {
+      const query = new URLSearchParams()
+      if (params?.from) query.set('from', params.from)
+      if (params?.to) query.set('to', params.to)
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+
+      return this.request<ApiResource<SearchAnalyticsSummary>>(`/api/v1/search-analytics${suffix}`)
     },
   }
 

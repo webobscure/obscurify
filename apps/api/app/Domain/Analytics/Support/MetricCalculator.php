@@ -48,6 +48,9 @@ final class MetricCalculator
             'top_discounts' => $this->discountLeaderboard($storeId, $day),
             'top_shipping_methods' => $this->shippingLeaderboard($storeId, $day),
             'conversion_rate' => ['value' => null, 'count' => null, 'breakdown' => null],
+            'search_count' => $this->count($storeId, $day, 'SearchPerformed'),
+            'zero_result_search_count' => $this->zeroResultSearchCount($storeId, $day),
+            'search_click_count' => $this->count($storeId, $day, 'SearchResultClicked'),
             default => ['value' => null, 'count' => null, 'breakdown' => null],
         };
     }
@@ -103,6 +106,24 @@ final class MetricCalculator
     private function count(string $storeId, Carbon $day, string $eventType): array
     {
         $count = $this->dayQuery($storeId, $day, $eventType)->count();
+
+        return ['value' => $count, 'count' => $count, 'breakdown' => null];
+    }
+
+    /**
+     * Search Analytics (Milestone 22, spec section 12: "Integrate with
+     * Analytics Platform") — `result_count` lives in the projected
+     * `AnalyticsEvent.payload`, not a dedicated column, matching how
+     * every other event-specific field this domain doesn't have a
+     * first-class column for is stored (see AnalyticsProjector).
+     *
+     * @return array{value: int, count: int, breakdown: null}
+     */
+    private function zeroResultSearchCount(string $storeId, Carbon $day): array
+    {
+        $count = $this->dayQuery($storeId, $day, 'SearchPerformed')
+            ->whereRaw("(payload->>'result_count')::int = 0")
+            ->count();
 
         return ['value' => $count, 'count' => $count, 'breakdown' => null];
     }

@@ -109,6 +109,30 @@ final class PlatformEventCatalog
             'InventoryChanged',
             'WorkflowExecuted',
             'WorkflowExecutionFailed',
+            // Milestone 22 (Search & Discovery Platform) — see
+            // docs/architecture/search.md §4. All fired with
+            // aggregate_type=Product, aggregate_id=the product's id
+            // (even PriceChanged/VariantUpdated, which technically
+            // originate on a variant) — the search index operates at
+            // product granularity, so every one of these reduces to
+            // "reindex this product," and standardizing the aggregate
+            // keeps SearchIndexingSubscriber trivial (see ADR-028).
+            // CollectionUpdated/CategoryUpdated are the one exception:
+            // aggregate_type=Collection/Category, since facet labels for
+            // those are resolved live rather than reindexed per product.
+            'ProductCreated',
+            'ProductUpdated',
+            'ProductDeleted',
+            'VariantUpdated',
+            'PriceChanged',
+            'VisibilityChanged',
+            'CollectionUpdated',
+            'CategoryUpdated',
+            // Search analytics (spec section 12: "Integrate with
+            // Analytics Platform") — see docs/architecture/analytics.md
+            // §8 and AnalyticsProjector.
+            'SearchPerformed',
+            'SearchResultClicked',
         ];
     }
 }

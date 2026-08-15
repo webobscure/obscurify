@@ -4,6 +4,7 @@ namespace App\Domain\Catalog\Application;
 
 use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Catalog\Models\ProductVariantOptionValue;
+use App\Shared\Commerce\Application\RecordOutboxEvent;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -11,6 +12,8 @@ use Illuminate\Validation\ValidationException;
 final class UpdateProductVariant
 {
     use ResolvesVariantOptionValues;
+
+    public function __construct(private readonly RecordOutboxEvent $recordOutboxEvent) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -26,8 +29,10 @@ final class UpdateProductVariant
             $data['option_signature'] = $this->signature($optionValueIds);
         }
 
+        $priceChanged = array_key_exists('price_amount', $data) && $data['price_amount'] !== $variant->price_amount;
+
         try {
-            return DB::transaction(function () use ($variant, $data, $hasOptionValues, $optionValueIds) {
+            $variant = DB::transaction(function () use ($variant, $data, $hasOptionValues, $optionValueIds) {
                 $variant->update($data);
 
                 if ($hasOptionValues) {
@@ -48,5 +53,13 @@ final class UpdateProductVariant
                 'option_value_ids' => 'A variant with this combination of options already exists.',
             ]);
         }
+
+        $this->recordOutboxEvent->handle('VariantUpdated', 'Product', $variant->product_id, ['product_id' => $variant->product_id, 'variant_id' => $variant->id]);
+
+        if ($priceChanged) {
+            $this->recordOutboxEvent->handle('PriceChanged', 'Product', $variant->product_id, ['product_id' => $variant->product_id, 'variant_id' => $variant->id]);
+        }
+
+        return $variant;
     }
 }

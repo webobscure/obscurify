@@ -34,6 +34,10 @@ final class StoreProductRequest extends FormRequest
                     ->where('store_id', app(TenantContext::class)->storeId()),
             ],
             'description' => ['sometimes', 'nullable', 'string'],
+            'vendor' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'product_type' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'tags' => ['sometimes', 'nullable', 'array'],
+            'tags.*' => ['string', 'max:255'],
             'status' => ['sometimes', new Enum(ProductStatus::class)],
         ];
     }

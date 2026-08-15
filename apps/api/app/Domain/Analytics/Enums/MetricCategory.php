@@ -9,4 +9,5 @@ enum MetricCategory: string
     case Customers = 'customers';
     case Inventory = 'inventory';
     case Leaderboard = 'leaderboard';
+    case Search = 'search';
 }

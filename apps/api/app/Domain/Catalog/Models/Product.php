@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $description
  * @property string|null $vendor
  * @property string|null $product_type
+ * @property array<int, string>|null $tags
  * @property ProductStatus $status
  * @property string|null $seo_title
  * @property string|null $seo_description
@@ -45,6 +46,7 @@ class Product extends Model
         'description',
         'vendor',
         'product_type',
+        'tags',
         'status',
         'seo_title',
         'seo_description',
@@ -54,6 +56,7 @@ class Product extends Model
     {
         return [
             'status' => ProductStatus::class,
+            'tags' => 'array',
         ];
     }
 

@@ -49,6 +49,6 @@ it('lets two simultaneous aggregation runs for the same store and day both succe
 
     app(TenantContext::class)->scope($this->store, function () use ($day) {
         expect(AnalyticsSnapshot::query()->where('metric_key', 'gross_revenue')->where('period_date', $day->toDateString())->count())->toBe(1);
-        expect(AnalyticsSnapshot::query()->where('period_date', $day->toDateString())->count())->toBe(19);
+        expect(AnalyticsSnapshot::query()->where('period_date', $day->toDateString())->count())->toBe(22);
     });
 });

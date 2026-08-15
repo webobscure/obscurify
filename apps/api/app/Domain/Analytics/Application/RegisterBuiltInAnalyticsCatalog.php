@@ -40,6 +40,7 @@ final class RegisterBuiltInAnalyticsCatalog
         $customers = MetricCategory::Customers->value;
         $inventory = MetricCategory::Inventory->value;
         $leaderboard = MetricCategory::Leaderboard->value;
+        $search = MetricCategory::Search->value;
 
         $currency = MetricUnit::Currency->value;
         $count = MetricUnit::Count->value;
@@ -72,6 +73,9 @@ final class RegisterBuiltInAnalyticsCatalog
             ['key' => 'top_collections', 'label' => 'Top Collections', 'description' => 'Collections ranked by revenue that day.', 'category' => $leaderboard, 'unit' => $currency, 'calculation' => $leaderboardCalc],
             ['key' => 'top_discounts', 'label' => 'Top Discounts', 'description' => 'Discounts ranked by amount applied that day.', 'category' => $leaderboard, 'unit' => $currency, 'calculation' => $leaderboardCalc],
             ['key' => 'top_shipping_methods', 'label' => 'Top Shipping Methods', 'description' => 'Shipping methods ranked by revenue that day.', 'category' => $leaderboard, 'unit' => $currency, 'calculation' => $leaderboardCalc],
+            ['key' => 'search_count', 'label' => 'Searches', 'description' => 'Searches performed.', 'category' => $search, 'unit' => $count, 'calculation' => $countCalc],
+            ['key' => 'zero_result_search_count', 'label' => 'Zero-Result Searches', 'description' => 'Searches that returned no results.', 'category' => $search, 'unit' => $count, 'calculation' => $countCalc],
+            ['key' => 'search_click_count', 'label' => 'Search Clicks', 'description' => 'Products clicked from a search result.', 'category' => $search, 'unit' => $count, 'calculation' => $countCalc],
         ];
     }
 }

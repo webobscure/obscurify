@@ -47,6 +47,8 @@ final class AnalyticsProjector
         'InventoryChanged',
         'WorkflowExecuted',
         'WorkflowExecutionFailed',
+        'SearchPerformed',
+        'SearchResultClicked',
     ];
 
     public function __construct(private readonly AnalyticsAggregator $aggregator) {}
@@ -64,6 +66,8 @@ final class AnalyticsProjector
             'CustomerCreated' => $this->claim($event, customerId: $event->aggregate_id),
             'RefundCompleted' => $this->claim($event, amount: $this->intPayload($event, 'amount')),
             'PromotionApplied' => $this->claim($event, amount: $this->intPayload($event, 'discount_amount')),
+            'SearchPerformed' => $this->claim($event, payload: ['result_count' => $this->intPayload($event, 'result_count') ?? 0]),
+            'SearchResultClicked' => $this->claim($event, payload: ['product_id' => $event->payload['product_id'] ?? null]),
             default => $this->claim($event),
         };
     }

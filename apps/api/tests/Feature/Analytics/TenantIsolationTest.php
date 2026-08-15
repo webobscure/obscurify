@@ -76,7 +76,7 @@ it('the metric catalog is a global catalog visible identically to every store', 
     $listA = $this->actingAs($this->userA, 'sanctum')->getJson('/api/v1/analytics/metrics', tenantHeader($this->storeA));
     $listB = $this->actingAs($this->userB, 'sanctum')->getJson('/api/v1/analytics/metrics', tenantHeader($this->storeB));
 
-    expect($listA->json('data'))->toHaveCount(19);
+    expect($listA->json('data'))->toHaveCount(22);
     expect(collect($listA->json('data'))->pluck('key')->sort()->values())
         ->toEqual(collect($listB->json('data'))->pluck('key')->sort()->values());
 });
