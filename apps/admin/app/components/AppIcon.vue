@@ -31,6 +31,7 @@ const paths: Record<string, string> = {
   redirects: '<path d="M4 17h7a5 5 0 0 0 5-5V7"/><path d="M12.5 10.5L16 7l3.5 3.5"/><circle cx="4" cy="17" r="1.5"/>',
   automation: '<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>',
   analytics: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  notifications: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   stores: '<path d="M4 9l1-5h14l1 5"/><path d="M4 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0"/><path d="M5 9v10h14V9"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',

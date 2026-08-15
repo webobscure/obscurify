@@ -1673,7 +1673,8 @@ export type WorkflowActionType =
   | 'add_customer_to_group' | 'remove_customer_from_group'
   | 'create_discount_code' | 'expire_discount'
   | 'publish_event' | 'call_app_webhook'
-  | 'create_internal_notification'
+  | 'send_email_notification' | 'send_sms_notification' | 'send_push_notification'
+  | 'send_in_app_notification' | 'send_webhook_notification'
   | 'update_customer_metadata' | 'update_order_metadata'
   | 'create_task' | 'delay' | 'app_action'
 
@@ -1909,4 +1910,124 @@ export interface ReportExport {
   recurrence: ExportRecurrence | null
   completed_at: string | null
   download_url: string | null
+}
+
+// --- Notification Center + Omnichannel Messaging (Milestone 21) ---
+// See docs/architecture/notifications.md and NotificationDispatcher on the backend.
+
+export type NotificationChannelType = 'email' | 'sms' | 'push' | 'in_app' | 'webhook'
+export type NotificationStatus = 'pending' | 'delivered' | 'failed' | 'partially_delivered'
+// 'sending' is a transient claim marker (SendNotificationDeliveryJob's guarded
+// UPDATE) — never a status a caller sets, but it can appear briefly in a read.
+export type NotificationDeliveryStatus = 'pending' | 'sending' | 'succeeded' | 'failed' | 'exhausted' | 'suppressed'
+export type NotificationRecipientType = 'customer' | 'ad_hoc'
+export type NotificationTriggerSource = 'platform_event' | 'automation' | 'admin' | 'apps_sdk' | 'scheduled'
+
+export interface NotificationTemplate {
+  id: string
+  key: string | null
+  name: string
+  channel: NotificationChannelType
+  locale: string
+  subject: string | null
+  body_text: string
+  body_html: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationProvider {
+  id: string
+  code: string
+  name: string
+  is_enabled: boolean
+  config: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface NotificationChannel {
+  id: string
+  channel: NotificationChannelType
+  provider_id: string | null
+  provider: NotificationProvider | null
+  is_enabled: boolean
+}
+
+export interface NotificationEvent {
+  id: string
+  event_type: string
+  channel: NotificationChannelType
+  template_id: string
+  template: NotificationTemplate | null
+  is_enabled: boolean
+}
+
+/** GET /notifications (list view) — omits body/recipients/deliveries. */
+export interface NotificationSummary {
+  id: string
+  channel: NotificationChannelType
+  event_type: string | null
+  subject: string | null
+  triggered_by: NotificationTriggerSource
+  status: NotificationStatus
+  created_at: string
+}
+
+export interface NotificationRecipient {
+  id: string
+  notification_id: string
+  recipient_type: NotificationRecipientType
+  customer_id: string | null
+  address: string | null
+  read_at: string | null
+  notification: NotificationSummary | null
+}
+
+export interface NotificationDelivery {
+  id: string
+  notification_id: string
+  recipient_id: string
+  channel: NotificationChannelType
+  provider_id: string | null
+  status: NotificationDeliveryStatus
+  attempt_count: number
+  last_attempted_at: string | null
+  next_retry_at: string | null
+  delivered_at: string | null
+  error_message: string | null
+  created_at: string
+}
+
+/** GET /notifications/{notification} (detail view). */
+export interface Notification {
+  id: string
+  template_id: string | null
+  channel: NotificationChannelType
+  event_type: string | null
+  subject: string | null
+  body_text: string
+  body_html: string | null
+  related_type: string | null
+  related_id: string | null
+  workflow_execution_id: string | null
+  triggered_by: NotificationTriggerSource
+  status: NotificationStatus
+  recipients: NotificationRecipient[]
+  deliveries: NotificationDelivery[]
+  created_at: string
+}
+
+export interface NotificationPreference {
+  id: string
+  customer_id: string
+  email_enabled: boolean
+  sms_enabled: boolean
+  push_enabled: boolean
+  marketing_opt_in: boolean
+  transactional_only: boolean
+  quiet_hours_start: string | null
+  quiet_hours_end: string | null
+  quiet_hours_timezone: string | null
 }

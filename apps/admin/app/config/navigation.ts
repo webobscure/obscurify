@@ -108,6 +108,21 @@ export const primaryNavigation: NavigationSection[] = [
         ],
       },
       {
+        label: 'Notifications',
+        to: '/notifications',
+        icon: 'notifications',
+        children: [
+          // Templates/Channels/Providers/Delivery Log are all
+          // configuration or read surfaces of the Notification Center
+          // itself — the same "hangs off its parent feature"
+          // relationship Reports/Saved Reports has to Analytics.
+          { label: 'Templates', to: '/notifications/templates', icon: 'notifications' },
+          { label: 'Channels', to: '/notifications/channels', icon: 'notifications' },
+          { label: 'Providers', to: '/notifications/providers', icon: 'notifications' },
+          { label: 'Delivery Log', to: '/notifications/deliveries', icon: 'notifications' },
+        ],
+      },
+      {
         label: 'Automation',
         to: '/automation',
         icon: 'automation',

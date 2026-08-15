@@ -11,6 +11,8 @@ import type {
   CustomerSession,
   CustomerTokenPair,
   FakePaymentInfo,
+  NotificationPreference,
+  NotificationRecipient,
   ReorderResult,
   ReturnReason,
   ReturnRequest,
@@ -340,6 +342,31 @@ export class StorefrontApiClient {
 
       revoke: (sessionId: string) =>
         this.request<void>(`/api/v1/storefront/account/sessions/${sessionId}`, { method: 'DELETE' }, { customerAuth: true }),
+    },
+
+    /**
+     * Notification Center + Omnichannel Messaging (Milestone 21) —
+     * `/account/notifications` (spec section 10). Read/unread state
+     * lives on the recipient row, not the notification itself — see
+     * NotificationRecipient.
+     */
+    notifications: {
+      list: (page?: number) =>
+        this.request<ApiCollection<NotificationRecipient>>(`/api/v1/storefront/account/notifications${page ? `?page=${page}` : ''}`, {}, { customerAuth: true }),
+
+      markRead: (notificationRecipientId: string) =>
+        this.request<ApiResource<NotificationRecipient>>(`/api/v1/storefront/account/notifications/${notificationRecipientId}/read`, { method: 'PATCH' }, { customerAuth: true }),
+    },
+
+    notificationPreferences: {
+      show: () =>
+        this.request<ApiResource<NotificationPreference>>('/api/v1/storefront/account/notification-preferences', {}, { customerAuth: true }),
+
+      update: (data: Partial<Omit<NotificationPreference, 'id' | 'customer_id'>>) =>
+        this.request<ApiResource<NotificationPreference>>('/api/v1/storefront/account/notification-preferences', {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        }, { customerAuth: true }),
     },
   }
 

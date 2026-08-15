@@ -12,7 +12,7 @@ it('creates a workflow as a draft with exactly one version', function () {
         'name' => 'Welcome Flow',
         'trigger' => ['event_type' => 'CustomerCreated'],
         'conditions' => [],
-        'actions' => [['type' => 'create_internal_notification', 'config' => ['title' => 'Hi']]],
+        'actions' => [['type' => 'send_in_app_notification', 'config' => ['body_text' => 'Hi']]],
     ], tenantHeader($this->store));
 
     $response->assertCreated()

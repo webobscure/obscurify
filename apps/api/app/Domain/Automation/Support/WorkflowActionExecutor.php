@@ -5,7 +5,6 @@ namespace App\Domain\Automation\Support;
 use App\Domain\Apps\Enums\ExtensionPoint;
 use App\Domain\Apps\Models\AppExtension;
 use App\Domain\Automation\Enums\WorkflowActionType;
-use App\Domain\Automation\Models\InternalNotification;
 use App\Domain\Automation\Models\Task;
 use App\Domain\Automation\Models\WorkflowAction;
 use App\Domain\Automation\Models\WorkflowExecution;
@@ -16,11 +15,18 @@ use App\Domain\CustomerIntelligence\Application\RemoveCustomerTag;
 use App\Domain\CustomerIntelligence\Models\CustomerGroup;
 use App\Domain\CustomerIntelligence\Models\CustomerTag;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Notifications\Application\NotificationDispatcher;
+use App\Domain\Notifications\Enums\NotificationChannelType;
+use App\Domain\Notifications\Enums\NotificationTriggerSource;
+use App\Domain\Notifications\Models\NotificationTemplate;
+use App\Domain\Notifications\Support\NotificationDispatchRequest;
+use App\Domain\Notifications\Support\NotificationRecipientInput;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Promotions\Application\CreateDiscountCode;
 use App\Domain\Promotions\Enums\DiscountCodeStatus;
 use App\Domain\Promotions\Models\DiscountCode;
 use App\Domain\Promotions\Models\Promotion;
+use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Application\RecordOutboxEvent;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -34,9 +40,9 @@ use Throwable;
  * service directly (Customer Intelligence's tag/group actions, exactly
  * as Promotions already reuses SegmentMembership — no new business
  * logic reinvented here) or is a small, self-contained side effect
- * (Task/InternalNotification, both new in this milestone since nothing
- * comparable existed). `AppAction` is the Apps SDK escape hatch (spec
- * section 10) — no core change needed for a new one, only a new
+ * (Task; the five Send*Notification actions delegate to Milestone 21's
+ * NotificationDispatcher). `AppAction` is the Apps SDK escape hatch
+ * (spec section 10) — no core change needed for a new one, only a new
  * AppExtension row at ExtensionPoint::AutomationAction.
  *
  * Config values may reference an earlier action's own output within the
@@ -54,6 +60,7 @@ final class WorkflowActionExecutor
         private readonly RemoveCustomerFromGroup $removeCustomerFromGroup,
         private readonly CreateDiscountCode $createDiscountCode,
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly NotificationDispatcher $notificationDispatcher,
     ) {}
 
     /**
@@ -74,7 +81,11 @@ final class WorkflowActionExecutor
             WorkflowActionType::ExpireDiscount => $this->expireDiscountAction($config),
             WorkflowActionType::PublishEvent => $this->publishEventAction($config, $execution),
             WorkflowActionType::CallAppWebhook => $this->httpAction($config['target_url'] ?? null, $context, $config['payload'] ?? [], $execution),
-            WorkflowActionType::CreateInternalNotification => $this->createInternalNotificationAction($config, $context, $execution),
+            WorkflowActionType::SendEmailNotification => $this->sendNotificationAction(NotificationChannelType::Email, $config, $context, $execution),
+            WorkflowActionType::SendSmsNotification => $this->sendNotificationAction(NotificationChannelType::Sms, $config, $context, $execution),
+            WorkflowActionType::SendPushNotification => $this->sendNotificationAction(NotificationChannelType::Push, $config, $context, $execution),
+            WorkflowActionType::SendInAppNotification => $this->sendNotificationAction(NotificationChannelType::InApp, $config, $context, $execution),
+            WorkflowActionType::SendWebhookNotification => $this->sendNotificationAction(NotificationChannelType::Webhook, $config, $context, $execution),
             WorkflowActionType::UpdateCustomerMetadata => $this->updateCustomerMetadataAction($config, $context),
             WorkflowActionType::UpdateOrderMetadata => $this->updateOrderMetadataAction($config, $context),
             WorkflowActionType::CreateTask => $this->createTaskAction($config, $context, $execution),
@@ -236,30 +247,57 @@ final class WorkflowActionExecutor
     }
 
     /**
+     * Shared by all five Send*Notification action types (spec section
+     * 8) — the channel is fixed per action type, everything else
+     * (template vs. literal content, recipient) comes from config.
+     * `to` overrides the default recipient address resolution (the
+     * triggering customer's own email/phone) — required for Webhook,
+     * since that channel has no customer-facing address at all.
+     *
      * @param  array<string, mixed>  $config
      * @param  array<string, mixed>  $context
      * @return array<string, mixed>
      */
-    private function createInternalNotificationAction(array $config, array $context, WorkflowExecution $execution): array
+    private function sendNotificationAction(NotificationChannelType $channel, array $config, array $context, WorkflowExecution $execution): array
     {
-        $title = $config['title'] ?? null;
+        $template = isset($config['template_id']) ? NotificationTemplate::query()->find($config['template_id']) : null;
+        $subject = is_string($config['subject'] ?? null) ? $config['subject'] : null;
+        $bodyText = is_string($config['body_text'] ?? null) ? $config['body_text'] : null;
+        $bodyHtml = is_string($config['body_html'] ?? null) ? $config['body_html'] : null;
 
-        if (! is_string($title) || $title === '') {
-            throw new RuntimeException('The "Create internal notification" action requires a title.');
+        if ($template === null && $bodyText === null) {
+            throw new RuntimeException('This action requires either a template_id or a body_text.');
         }
+
+        $customerId = Arr::get($context, 'customer.id');
+        $addressOverride = is_string($config['to'] ?? null) ? $config['to'] : null;
+
+        $recipient = match (true) {
+            is_string($customerId) => NotificationRecipientInput::customer($customerId, $addressOverride),
+            $addressOverride !== null => NotificationRecipientInput::adHoc($addressOverride),
+            default => throw new RuntimeException('This action requires a customer in context, or an explicit "to" address.'),
+        };
 
         [$relatedType, $relatedId] = $this->resolveRelated($context);
 
-        $notification = InternalNotification::query()->create([
-            'title' => $title,
-            'body' => $config['body'] ?? null,
-            'level' => $config['level'] ?? 'info',
-            'related_type' => $relatedType,
-            'related_id' => $relatedId,
-            'workflow_execution_id' => $execution->id,
-        ]);
+        $notification = $this->notificationDispatcher->dispatch(
+            Store::query()->findOrFail($execution->store_id),
+            new NotificationDispatchRequest(
+                channel: $channel,
+                triggeredBy: NotificationTriggerSource::Automation,
+                recipients: [$recipient],
+                context: $context,
+                template: $template,
+                subject: $subject,
+                bodyText: $bodyText,
+                bodyHtml: $bodyHtml,
+                relatedType: $relatedType,
+                relatedId: $relatedId,
+                workflowExecutionId: $execution->id,
+            ),
+        );
 
-        return ['internal_notification_id' => $notification->id];
+        return ['notification_id' => $notification->id];
     }
 
     /**

@@ -39,6 +39,7 @@ describe('navigation source of truth', () => {
     '/theme-customizer', '/section-library', '/block-library',
     '/automation', '/automation/executions', '/automation/templates',
     '/analytics', '/analytics/reports', '/analytics/saved-reports',
+    '/notifications', '/notifications/templates', '/notifications/channels', '/notifications/providers', '/notifications/deliveries',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {
@@ -86,5 +87,12 @@ describe('navigation source of truth', () => {
 
     expect(analytics?.children?.map(c => c.label)).toEqual(['Reports', 'Saved Reports'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Reports')).toBe(false)
+  })
+
+  it('nests Templates/Channels/Providers/Delivery Log under Notifications, not as flat top-level items', () => {
+    const notifications = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Notifications')
+
+    expect(notifications?.children?.map(c => c.label)).toEqual(['Templates', 'Channels', 'Providers', 'Delivery Log'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Delivery Log')).toBe(false)
   })
 })

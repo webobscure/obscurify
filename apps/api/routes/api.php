@@ -65,6 +65,15 @@ use App\Domain\Locations\Http\Controllers\LocationController;
 use App\Domain\Media\Http\Controllers\MediaController;
 use App\Domain\Media\Http\Controllers\ProductMediaController;
 use App\Domain\Media\Http\Controllers\ProductVariantMediaController;
+use App\Domain\Notifications\Http\Controllers\AdminNotificationPreferenceController;
+use App\Domain\Notifications\Http\Controllers\CustomerNotificationController;
+use App\Domain\Notifications\Http\Controllers\CustomerNotificationPreferenceController;
+use App\Domain\Notifications\Http\Controllers\NotificationChannelController;
+use App\Domain\Notifications\Http\Controllers\NotificationController;
+use App\Domain\Notifications\Http\Controllers\NotificationDeliveryController;
+use App\Domain\Notifications\Http\Controllers\NotificationEventController;
+use App\Domain\Notifications\Http\Controllers\NotificationProviderController;
+use App\Domain\Notifications\Http\Controllers\NotificationTemplateController;
 use App\Domain\Orders\Http\Controllers\OrderController;
 use App\Domain\Payments\Http\Controllers\FakePaymentOutcomeController;
 use App\Domain\Payments\Http\Controllers\PaymentController;
@@ -259,6 +268,41 @@ Route::prefix('v1')->group(function () {
             Route::get('analytics/exports/{export}/download', [ReportExportController::class, 'download']);
 
             Route::get('analytics/metrics', [MetricDefinitionController::class, 'index']);
+
+            // Notification Center + Omnichannel Messaging (Milestone 21)
+            // — spec section 11. See docs/architecture/notifications.md.
+            Route::get('notifications', [NotificationController::class, 'index']);
+            Route::post('notifications', [NotificationController::class, 'store']);
+            Route::get('notifications/{notification}', [NotificationController::class, 'show']);
+
+            Route::get('notification-templates', [NotificationTemplateController::class, 'index']);
+            Route::post('notification-templates', [NotificationTemplateController::class, 'store']);
+            Route::get('notification-templates/{notificationTemplate}', [NotificationTemplateController::class, 'show']);
+            Route::patch('notification-templates/{notificationTemplate}', [NotificationTemplateController::class, 'update']);
+            Route::delete('notification-templates/{notificationTemplate}', [NotificationTemplateController::class, 'destroy']);
+
+            Route::get('notification-channels', [NotificationChannelController::class, 'index']);
+            Route::patch('notification-channels/{notificationChannel}', [NotificationChannelController::class, 'update']);
+
+            Route::get('notification-providers', [NotificationProviderController::class, 'index']);
+            Route::post('notification-providers', [NotificationProviderController::class, 'store']);
+            Route::patch('notification-providers/{notificationProvider}', [NotificationProviderController::class, 'update']);
+            Route::delete('notification-providers/{notificationProvider}', [NotificationProviderController::class, 'destroy']);
+
+            Route::get('notification-events', [NotificationEventController::class, 'index']);
+            Route::post('notification-events', [NotificationEventController::class, 'store']);
+            Route::patch('notification-events/{notificationEvent}', [NotificationEventController::class, 'update']);
+            Route::delete('notification-events/{notificationEvent}', [NotificationEventController::class, 'destroy']);
+
+            // "Delivery Log" / "Failed Deliveries" / "Retry Queue" are all
+            // this same list, filtered by ?status= (spec section 9).
+            Route::get('notification-deliveries', [NotificationDeliveryController::class, 'index']);
+            Route::post('notification-deliveries/{notificationDelivery}/retry', [NotificationDeliveryController::class, 'retry']);
+
+            // Admin-on-behalf-of-a-customer preferences — the
+            // customer-self route lives under /account below.
+            Route::get('customers/{customer}/notification-preferences', [AdminNotificationPreferenceController::class, 'show']);
+            Route::patch('customers/{customer}/notification-preferences', [AdminNotificationPreferenceController::class, 'update']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -583,6 +627,14 @@ Route::prefix('v1')->group(function () {
 
                 Route::get('/sessions', [CustomerSessionController::class, 'index']);
                 Route::delete('/sessions/{session}', [CustomerSessionController::class, 'destroy']);
+
+                // Notification Center + Omnichannel Messaging (Milestone
+                // 21) — spec section 10: /account/notifications.
+                Route::get('/notifications', [CustomerNotificationController::class, 'index']);
+                Route::patch('/notifications/{notificationRecipient}/read', [CustomerNotificationController::class, 'markRead']);
+
+                Route::get('/notification-preferences', [CustomerNotificationPreferenceController::class, 'show']);
+                Route::patch('/notification-preferences', [CustomerNotificationPreferenceController::class, 'update']);
             });
         });
     });

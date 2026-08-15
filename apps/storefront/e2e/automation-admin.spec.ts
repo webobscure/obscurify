@@ -61,11 +61,11 @@ test('manages a workflow end to end from the admin, and uses a starter template'
   await conditionNode.locator('select').nth(1).selectOption('greater_than')
   await conditionNode.locator('input[type="text"]').nth(1).fill('50000')
 
-  // Action: create an internal notification.
+  // Action: send an in-app notification.
   await page.getByRole('button', { name: '+ Action' }).click()
   const actionNode = page.locator('.action').first()
-  await actionNode.locator('select').selectOption('create_internal_notification')
-  await actionNode.getByLabel('Title').fill('High value order came in')
+  await actionNode.locator('select').selectOption('send_in_app_notification')
+  await actionNode.getByLabel('Body', { exact: true }).fill('High value order came in')
 
   // Save, then wait for the actual PATCH to resolve before reloading —
   // otherwise the reload aborts the in-flight request client-side (the
@@ -79,7 +79,7 @@ test('manages a workflow end to end from the admin, and uses a starter template'
 
   await expect(page.locator('select').first()).toHaveValue('CustomerCreated')
   await expect(page.locator('.node').first().locator('input[type="text"]').first()).toHaveValue('order.total_amount')
-  await expect(page.locator('.action').first().getByLabel('Title')).toHaveValue('High value order came in')
+  await expect(page.locator('.action').first().getByLabel('Body', { exact: true })).toHaveValue('High value order came in')
 
   // Publish.
   await Promise.all([

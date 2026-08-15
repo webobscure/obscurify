@@ -128,7 +128,7 @@ final class RegisterBuiltInAutomationCatalog
                     'trigger' => ['event_type' => 'CustomerCreated'],
                     'conditions' => [],
                     'actions' => [
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'New customer registered', 'body' => 'A new customer just created an account.']],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => 'New customer registered: a new customer just created an account.']],
                     ],
                 ],
             ],
@@ -141,7 +141,7 @@ final class RegisterBuiltInAutomationCatalog
                     'trigger' => ['event_type' => 'CustomerBecameVip'],
                     'conditions' => [],
                     'actions' => [
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'New VIP customer', 'body' => 'A customer just reached VIP status.']],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => 'New VIP customer: a customer just reached VIP status.']],
                         ['type' => 'create_discount_code', 'config' => ['promotion_id' => null, 'code_prefix' => 'VIP']],
                     ],
                 ],
@@ -155,7 +155,7 @@ final class RegisterBuiltInAutomationCatalog
                     'trigger' => ['event_type' => 'InventoryBelowThreshold'],
                     'conditions' => [],
                     'actions' => [
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'Low stock alert', 'body' => 'An item has fallen below its restock threshold.']],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => 'Low stock alert: an item has fallen below its restock threshold.']],
                         ['type' => 'create_task', 'config' => ['title' => 'Reorder stock', 'description' => 'Review and reorder this low-stock item.']],
                     ],
                 ],
@@ -170,7 +170,7 @@ final class RegisterBuiltInAutomationCatalog
                     'conditions' => [],
                     'actions' => [
                         ['type' => 'delay', 'config' => ['delay_type' => 'hours', 'value' => 2]],
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'Payment failed', 'body' => "A customer's payment failed a couple of hours ago — consider following up."]],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => "Payment failed: a customer's payment failed a couple of hours ago — consider following up."]],
                     ],
                 ],
             ],
@@ -197,7 +197,7 @@ final class RegisterBuiltInAutomationCatalog
                     'trigger' => ['event_type' => 'RefundCompleted'],
                     'conditions' => [],
                     'actions' => [
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'Refund completed', 'body' => 'A refund was just completed.']],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => 'Refund completed: a refund was just completed.']],
                     ],
                 ],
             ],
@@ -212,7 +212,7 @@ final class RegisterBuiltInAutomationCatalog
                         ['variable_key' => 'order.total_amount', 'operator' => 'greater_than', 'value' => 50000],
                     ],
                     'actions' => [
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'High value order', 'body' => 'A high-value order just came in.']],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => 'High value order: a high-value order just came in.']],
                         ['type' => 'create_task', 'config' => ['title' => 'White-glove follow-up', 'description' => 'Consider personally following up with this customer.']],
                     ],
                 ],
@@ -226,7 +226,7 @@ final class RegisterBuiltInAutomationCatalog
                     'trigger' => ['event_type' => 'ProductBackInStock'],
                     'conditions' => [],
                     'actions' => [
-                        ['type' => 'create_internal_notification', 'config' => ['title' => 'Back in stock', 'body' => 'An item is back in stock.']],
+                        ['type' => 'send_in_app_notification', 'config' => ['body_text' => 'Back in stock: an item is back in stock.']],
                     ],
                 ],
             ],

@@ -7,6 +7,13 @@ namespace App\Domain\Automation\Enums;
  * escape hatch for an app-registered action (config references the
  * contributing AppExtension; see WorkflowActionExecutor and spec
  * section 10: "Future actions should plug in through Apps SDK").
+ *
+ * Milestone 21 (Notification Center) replaced `CreateInternalNotification`
+ * with five real notification actions (spec section 8: "Replace the
+ * minimal InternalNotification action with real notification
+ * actions") — each creates a real Notification via NotificationDispatcher
+ * instead of a dead-end, unreadable inbox row. `SendInAppNotification`
+ * is its direct successor.
  */
 enum WorkflowActionType: string
 {
@@ -18,7 +25,11 @@ enum WorkflowActionType: string
     case ExpireDiscount = 'expire_discount';
     case PublishEvent = 'publish_event';
     case CallAppWebhook = 'call_app_webhook';
-    case CreateInternalNotification = 'create_internal_notification';
+    case SendEmailNotification = 'send_email_notification';
+    case SendSmsNotification = 'send_sms_notification';
+    case SendPushNotification = 'send_push_notification';
+    case SendInAppNotification = 'send_in_app_notification';
+    case SendWebhookNotification = 'send_webhook_notification';
     case UpdateCustomerMetadata = 'update_customer_metadata';
     case UpdateOrderMetadata = 'update_order_metadata';
     case CreateTask = 'create_task';

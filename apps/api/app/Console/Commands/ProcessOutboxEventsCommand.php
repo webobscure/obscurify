@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domain\Analytics\Support\AnalyticsProjector;
 use App\Domain\Automation\Application\DispatchWorkflowTriggersForEvent;
+use App\Domain\Notifications\Application\DispatchNotificationsForEvent;
 use App\Domain\Stores\Models\Store;
 use App\Domain\Webhooks\Application\DispatchWebhooksForEvent;
 use App\Shared\Commerce\Models\OutboxEvent;
@@ -21,21 +22,24 @@ use Illuminate\Support\Facades\Log;
  * DispatchWebhooksForEvent. Milestone 19 (Automation Engine) added a
  * second — DispatchWorkflowTriggersForEvent. Milestone 20 (Analytics
  * Platform) added a third — AnalyticsProjector normalizes the event
- * into Analytics' own append-only log. All three run inside the same
- * tenant scope and the same row-locked transaction that marks the
- * event processed, so none of their side effects can commit without
- * the others (or without the "processed" flag itself).
+ * into Analytics' own append-only log. Milestone 21 (Notification
+ * Center) added a fourth — DispatchNotificationsForEvent fans the
+ * event out to any matching NotificationEvent routing rules. All four
+ * run inside the same tenant scope and the same row-locked transaction
+ * that marks the event processed, so none of their side effects can
+ * commit without the others (or without the "processed" flag itself).
  */
 class ProcessOutboxEventsCommand extends Command
 {
     protected $signature = 'outbox:process';
 
-    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks, workflow triggers, and analytics projections';
+    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks, workflow triggers, analytics projections, and notifications';
 
     public function __construct(
         private readonly DispatchWebhooksForEvent $dispatchWebhooksForEvent,
         private readonly DispatchWorkflowTriggersForEvent $dispatchWorkflowTriggersForEvent,
         private readonly AnalyticsProjector $analyticsProjector,
+        private readonly DispatchNotificationsForEvent $dispatchNotificationsForEvent,
         private readonly TenantContext $tenantContext,
     ) {
         parent::__construct();
@@ -72,6 +76,7 @@ class ProcessOutboxEventsCommand extends Command
                         $this->dispatchWebhooksForEvent->handle($event);
                         $this->dispatchWorkflowTriggersForEvent->handle($event, $store);
                         $this->analyticsProjector->project($event);
+                        $this->dispatchNotificationsForEvent->handle($event, $store);
                     });
                 }
 

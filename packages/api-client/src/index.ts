@@ -43,6 +43,17 @@ import type {
   MenuItem,
   MenuItemTargetType,
   MetricDefinition,
+  Notification,
+  NotificationChannel,
+  NotificationChannelType,
+  NotificationDelivery,
+  NotificationDeliveryStatus,
+  NotificationEvent,
+  NotificationPreference,
+  NotificationProvider,
+  NotificationStatus,
+  NotificationSummary,
+  NotificationTemplate,
   Order,
   Page,
   PageStatus,
@@ -603,6 +614,97 @@ export class ApiClient {
     },
 
     metrics: () => this.request<ApiCollection<MetricDefinition>>('/api/v1/analytics/metrics'),
+  }
+
+  /**
+   * Notification Center + Omnichannel Messaging (Milestone 21) — see
+   * docs/architecture/notifications.md. Customer-facing preferences and
+   * history live under StorefrontApiClient.account instead — see
+   * storefront.ts.
+   */
+  readonly notifications = {
+    list: (params?: { status?: NotificationDeliveryStatus | NotificationStatus; channel?: NotificationChannelType; page?: number }) => {
+      const query = new URLSearchParams()
+      if (params?.status) query.set('status', params.status)
+      if (params?.channel) query.set('channel', params.channel)
+      if (params?.page) query.set('page', String(params.page))
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+
+      return this.request<ApiCollection<NotificationSummary>>(`/api/v1/notifications${suffix}`)
+    },
+
+    get: (notificationId: string) => this.request<ApiResource<Notification>>(`/api/v1/notifications/${notificationId}`),
+
+    create: (data: { channel: NotificationChannelType; customer_id?: string; address?: string; template_id?: string; subject?: string; body_text?: string; body_html?: string }) =>
+      this.request<ApiResource<Notification>>('/api/v1/notifications', { method: 'POST', body: JSON.stringify(data) }),
+
+    templates: {
+      list: () => this.request<ApiCollection<NotificationTemplate>>('/api/v1/notification-templates'),
+
+      get: (templateId: string) => this.request<ApiResource<NotificationTemplate>>(`/api/v1/notification-templates/${templateId}`),
+
+      create: (data: { key?: string | null; name: string; channel: NotificationChannelType; locale?: string; subject?: string | null; body_text: string; body_html?: string | null; is_active?: boolean }) =>
+        this.request<ApiResource<NotificationTemplate>>('/api/v1/notification-templates', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (templateId: string, data: Partial<{ key: string | null; name: string; channel: NotificationChannelType; locale: string; subject: string | null; body_text: string; body_html: string | null; is_active: boolean }>) =>
+        this.request<ApiResource<NotificationTemplate>>(`/api/v1/notification-templates/${templateId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (templateId: string) => this.request<void>(`/api/v1/notification-templates/${templateId}`, { method: 'DELETE' }),
+    },
+
+    channels: {
+      list: () => this.request<ApiCollection<NotificationChannel>>('/api/v1/notification-channels'),
+
+      update: (channelId: string, data: Partial<{ provider_id: string | null; is_enabled: boolean }>) =>
+        this.request<ApiResource<NotificationChannel>>(`/api/v1/notification-channels/${channelId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    },
+
+    providers: {
+      list: () => this.request<ApiCollection<NotificationProvider>>('/api/v1/notification-providers'),
+
+      create: (data: { code: string; name: string; is_enabled?: boolean; config?: Record<string, unknown> }) =>
+        this.request<ApiResource<NotificationProvider>>('/api/v1/notification-providers', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (providerId: string, data: Partial<{ name: string; is_enabled: boolean; config: Record<string, unknown> }>) =>
+        this.request<ApiResource<NotificationProvider>>(`/api/v1/notification-providers/${providerId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (providerId: string) => this.request<void>(`/api/v1/notification-providers/${providerId}`, { method: 'DELETE' }),
+    },
+
+    events: {
+      list: () => this.request<ApiCollection<NotificationEvent>>('/api/v1/notification-events'),
+
+      create: (data: { event_type: string; channel: NotificationChannelType; template_id: string; is_enabled?: boolean }) =>
+        this.request<ApiResource<NotificationEvent>>('/api/v1/notification-events', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (eventId: string, data: Partial<{ event_type: string; channel: NotificationChannelType; template_id: string; is_enabled: boolean }>) =>
+        this.request<ApiResource<NotificationEvent>>(`/api/v1/notification-events/${eventId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (eventId: string) => this.request<void>(`/api/v1/notification-events/${eventId}`, { method: 'DELETE' }),
+    },
+
+    /** Backs the "Delivery Log" / "Failed Deliveries" / "Retry Queue" admin views — all three are this same list, filtered by ?status=. */
+    deliveries: {
+      list: (params?: { status?: NotificationDeliveryStatus; page?: number }) => {
+        const query = new URLSearchParams()
+        if (params?.status) query.set('status', params.status)
+        if (params?.page) query.set('page', String(params.page))
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+
+        return this.request<ApiCollection<NotificationDelivery>>(`/api/v1/notification-deliveries${suffix}`)
+      },
+
+      retry: (deliveryId: string) =>
+        this.request<ApiResource<NotificationDelivery>>(`/api/v1/notification-deliveries/${deliveryId}/retry`, { method: 'POST' }),
+    },
+
+    /** Admin-on-behalf-of-a-customer preferences — the customer-self route lives under StorefrontApiClient.account. */
+    preferences: {
+      get: (customerId: string) => this.request<ApiResource<NotificationPreference>>(`/api/v1/customers/${customerId}/notification-preferences`),
+
+      update: (customerId: string, data: Partial<Omit<NotificationPreference, 'id' | 'customer_id'>>) =>
+        this.request<ApiResource<NotificationPreference>>(`/api/v1/customers/${customerId}/notification-preferences`, { method: 'PATCH', body: JSON.stringify(data) }),
+    },
   }
 
   /**

@@ -47,6 +47,8 @@
             <NuxtLink to="/account/orders">Order history</NuxtLink>
             &middot;
             <NuxtLink to="/account/addresses">Addresses</NuxtLink>
+            &middot;
+            <NuxtLink to="/account/notifications">Notifications</NuxtLink>
           </p>
         </section>
 

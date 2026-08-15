@@ -47,9 +47,11 @@
         </template>
 
         <!-- Notifications / tasks -->
-        <template v-else-if="action.type === 'create_internal_notification'">
-          <label>Title<input type="text" :value="cfg(action, 'title')" @input="setConfig(index, 'title', ($event.target as HTMLInputElement).value)"></label>
-          <label>Body<input type="text" :value="cfg(action, 'body')" @input="setConfig(index, 'body', ($event.target as HTMLInputElement).value)"></label>
+        <template v-else-if="['send_email_notification', 'send_sms_notification', 'send_push_notification', 'send_in_app_notification', 'send_webhook_notification'].includes(action.type)">
+          <label>Template ID (optional)<input type="text" :value="cfg(action, 'template_id')" @input="setConfig(index, 'template_id', ($event.target as HTMLInputElement).value)"></label>
+          <label v-if="action.type === 'send_email_notification'">Subject<input type="text" :value="cfg(action, 'subject')" @input="setConfig(index, 'subject', ($event.target as HTMLInputElement).value)"></label>
+          <label>Body<input type="text" :value="cfg(action, 'body_text')" @input="setConfig(index, 'body_text', ($event.target as HTMLInputElement).value)"></label>
+          <label>To (optional override — required for webhook)<input type="text" :value="cfg(action, 'to')" @input="setConfig(index, 'to', ($event.target as HTMLInputElement).value)"></label>
         </template>
         <template v-else-if="action.type === 'create_task'">
           <label>Title<input type="text" :value="cfg(action, 'title')" @input="setConfig(index, 'title', ($event.target as HTMLInputElement).value)"></label>
@@ -121,7 +123,11 @@ const ACTION_TYPES: Array<{ value: WorkflowActionType, label: string }> = [
   { value: 'expire_discount', label: 'Expire discount' },
   { value: 'publish_event', label: 'Publish event' },
   { value: 'call_app_webhook', label: 'Call installed app webhook' },
-  { value: 'create_internal_notification', label: 'Create internal notification' },
+  { value: 'send_email_notification', label: 'Send email notification' },
+  { value: 'send_sms_notification', label: 'Send SMS notification' },
+  { value: 'send_push_notification', label: 'Send push notification' },
+  { value: 'send_in_app_notification', label: 'Send in-app notification' },
+  { value: 'send_webhook_notification', label: 'Send webhook notification' },
   { value: 'update_customer_metadata', label: 'Update customer metadata' },
   { value: 'update_order_metadata', label: 'Update order metadata' },
   { value: 'create_task', label: 'Create task' },
@@ -185,7 +191,7 @@ function remove(index: number) {
 }
 
 function addAction() {
-  emit('update', [...props.actions, { type: 'create_internal_notification', config: {} }])
+  emit('update', [...props.actions, { type: 'send_in_app_notification', config: {} }])
 }
 </script>
 
