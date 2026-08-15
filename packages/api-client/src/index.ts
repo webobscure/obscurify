@@ -27,7 +27,12 @@ import type {
   CustomerSegment,
   CustomerSnapshot,
   CustomerTag,
+  Dashboard,
+  DashboardWidget,
+  DashboardWidgetType,
   DiscountCode,
+  ExportFormat,
+  ExportRecurrence,
   Fulfillment,
   InstalledApp,
   InventoryItem,
@@ -37,6 +42,7 @@ import type {
   Menu,
   MenuItem,
   MenuItemTargetType,
+  MetricDefinition,
   Order,
   Page,
   PageStatus,
@@ -52,7 +58,11 @@ import type {
   Redirect,
   Refund,
   RenderedPage,
+  Report,
+  ReportExport,
+  ReportType,
   ReturnRequest,
+  SavedReport,
   SectionInstance,
   SegmentRuleInput,
   SeoMetadata,
@@ -68,7 +78,9 @@ import type {
   ThemeTemplate,
   ThemeTemplateType,
   ThemeVersion,
+  TimeDimension,
   User,
+  WidgetData,
   Workflow,
   WorkflowActionInput,
   WorkflowConditionInput,
@@ -504,6 +516,93 @@ export class ApiClient {
     variables: () => this.request<{ data: WorkflowVariableCatalogEntry[] }>('/api/v1/automation/variables'),
 
     triggers: () => this.request<{ data: WorkflowTriggerCatalogEntry[] }>('/api/v1/automation/triggers'),
+  }
+
+  /**
+   * Analytics Platform (Milestone 20) — see docs/architecture/analytics.md.
+   */
+  readonly analytics = {
+    dashboards: {
+      default: () => this.request<ApiResource<Dashboard>>('/api/v1/analytics/dashboard'),
+
+      list: () => this.request<ApiCollection<Dashboard>>('/api/v1/analytics/dashboards'),
+
+      get: (dashboardId: string) => this.request<ApiResource<Dashboard>>(`/api/v1/analytics/dashboards/${dashboardId}`),
+
+      create: (data: { name: string; is_default?: boolean }) =>
+        this.request<ApiResource<Dashboard>>('/api/v1/analytics/dashboards', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (dashboardId: string, data: Partial<{ name: string; is_default: boolean }>) =>
+        this.request<ApiResource<Dashboard>>(`/api/v1/analytics/dashboards/${dashboardId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (dashboardId: string) => this.request<void>(`/api/v1/analytics/dashboards/${dashboardId}`, { method: 'DELETE' }),
+    },
+
+    widgets: {
+      all: (dashboardId?: string) =>
+        this.request<ApiCollection<DashboardWidget>>(`/api/v1/analytics/widgets${dashboardId ? `?dashboard_id=${dashboardId}` : ''}`),
+
+      list: (dashboardId: string) => this.request<ApiCollection<DashboardWidget>>(`/api/v1/analytics/dashboards/${dashboardId}/widgets`),
+
+      create: (dashboardId: string, data: { type: DashboardWidgetType; title: string; config?: Record<string, unknown>; position?: number }) =>
+        this.request<ApiResource<DashboardWidget>>(`/api/v1/analytics/dashboards/${dashboardId}/widgets`, { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (widgetId: string, data: Partial<{ type: DashboardWidgetType; title: string; config: Record<string, unknown>; position: number }>) =>
+        this.request<ApiResource<DashboardWidget>>(`/api/v1/analytics/widgets/${widgetId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (widgetId: string) => this.request<void>(`/api/v1/analytics/widgets/${widgetId}`, { method: 'DELETE' }),
+
+      data: (widgetId: string, params?: { time_dimension?: TimeDimension; from?: string; to?: string }) => {
+        const query = new URLSearchParams()
+        if (params?.time_dimension) query.set('time_dimension', params.time_dimension)
+        if (params?.from) query.set('from', params.from)
+        if (params?.to) query.set('to', params.to)
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+
+        return this.request<{ data: WidgetData | null }>(`/api/v1/analytics/widgets/${widgetId}/data${suffix}`)
+      },
+
+      drillDown: (widgetId: string, params?: { time_dimension?: TimeDimension; from?: string; to?: string; page?: number }) => {
+        const query = new URLSearchParams()
+        if (params?.time_dimension) query.set('time_dimension', params.time_dimension)
+        if (params?.from) query.set('from', params.from)
+        if (params?.to) query.set('to', params.to)
+        if (params?.page) query.set('page', String(params.page))
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+
+        return this.request<ApiCollection<Record<string, unknown>>>(`/api/v1/analytics/widgets/${widgetId}/drill-down${suffix}`)
+      },
+    },
+
+    reports: {
+      list: () => this.request<ApiCollection<Report>>('/api/v1/analytics/reports'),
+
+      get: (reportId: string) => this.request<ApiResource<Report>>(`/api/v1/analytics/reports/${reportId}`),
+
+      create: (data: { report_type: ReportType; filters?: Record<string, unknown>; columns?: string[]; saved_report_id?: string }) =>
+        this.request<ApiResource<Report>>('/api/v1/analytics/reports', { method: 'POST', body: JSON.stringify(data) }),
+    },
+
+    savedReports: {
+      list: () => this.request<ApiCollection<SavedReport>>('/api/v1/analytics/saved-reports'),
+
+      create: (data: { name: string; report_type: ReportType; filters?: Record<string, unknown>; columns?: string[] }) =>
+        this.request<ApiResource<SavedReport>>('/api/v1/analytics/saved-reports', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (savedReportId: string, data: Partial<{ name: string; filters: Record<string, unknown>; columns: string[] }>) =>
+        this.request<ApiResource<SavedReport>>(`/api/v1/analytics/saved-reports/${savedReportId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (savedReportId: string) => this.request<void>(`/api/v1/analytics/saved-reports/${savedReportId}`, { method: 'DELETE' }),
+    },
+
+    exports: {
+      create: (reportId: string, data: { format: ExportFormat; scheduled_at?: string | null; recurrence?: ExportRecurrence | null }) =>
+        this.request<ApiResource<ReportExport>>(`/api/v1/analytics/reports/${reportId}/exports`, { method: 'POST', body: JSON.stringify(data) }),
+
+      downloadUrl: (exportId: string) => `/api/v1/analytics/exports/${exportId}/download`,
+    },
+
+    metrics: () => this.request<ApiCollection<MetricDefinition>>('/api/v1/analytics/metrics'),
   }
 
   /**

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Analytics\Support\AnalyticsProjector;
 use App\Domain\Automation\Application\DispatchWorkflowTriggersForEvent;
 use App\Domain\Stores\Models\Store;
 use App\Domain\Webhooks\Application\DispatchWebhooksForEvent;
@@ -18,22 +19,23 @@ use Illuminate\Support\Facades\Log;
  * 11 (Platform Events + Webhooks) added the first subscriber: every
  * claimed event is fanned out to matching WebhookSubscriptions via
  * DispatchWebhooksForEvent. Milestone 19 (Automation Engine) added a
- * second, independent subscriber right alongside it —
- * DispatchWorkflowTriggersForEvent starts a WorkflowExecution for every
- * Published workflow whose trigger matches this event_type — both run
- * inside the same tenant scope and the same row-locked transaction that
- * marks the event processed, so neither subscriber's side effects can
- * commit without the other (or without the "processed" flag itself).
+ * second — DispatchWorkflowTriggersForEvent. Milestone 20 (Analytics
+ * Platform) added a third — AnalyticsProjector normalizes the event
+ * into Analytics' own append-only log. All three run inside the same
+ * tenant scope and the same row-locked transaction that marks the
+ * event processed, so none of their side effects can commit without
+ * the others (or without the "processed" flag itself).
  */
 class ProcessOutboxEventsCommand extends Command
 {
     protected $signature = 'outbox:process';
 
-    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks and workflow triggers';
+    protected $description = 'Process unprocessed outbox events and dispatch matching webhooks, workflow triggers, and analytics projections';
 
     public function __construct(
         private readonly DispatchWebhooksForEvent $dispatchWebhooksForEvent,
         private readonly DispatchWorkflowTriggersForEvent $dispatchWorkflowTriggersForEvent,
+        private readonly AnalyticsProjector $analyticsProjector,
         private readonly TenantContext $tenantContext,
     ) {
         parent::__construct();
@@ -69,6 +71,7 @@ class ProcessOutboxEventsCommand extends Command
                     $this->tenantContext->scope($store, function () use ($event, $store) {
                         $this->dispatchWebhooksForEvent->handle($event);
                         $this->dispatchWorkflowTriggersForEvent->handle($event, $store);
+                        $this->analyticsProjector->project($event);
                     });
                 }
 

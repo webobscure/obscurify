@@ -1805,3 +1805,108 @@ export interface WorkflowTriggerCatalogEntry {
   origin: 'platform' | 'app'
   installed_app_id?: string
 }
+
+// --- Analytics Platform (Milestone 20) ---
+// See docs/architecture/analytics.md and AnalyticsAggregator on the backend.
+
+export type DashboardWidgetType = 'line_chart' | 'bar_chart' | 'pie_chart' | 'metric_card' | 'table' | 'leaderboard'
+
+export type ReportType =
+  | 'orders' | 'products' | 'customers' | 'inventory' | 'shipping'
+  | 'payments' | 'returns' | 'promotions' | 'automation_executions'
+
+export type ReportStatus = 'pending' | 'completed' | 'failed'
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf'
+export type ExportStatus = 'pending' | 'completed' | 'failed'
+export type ExportRecurrence = 'daily' | 'weekly' | 'monthly'
+export type TimeDimension = 'today' | 'yesterday' | 'last_7_days' | 'last_30_days' | 'month' | 'quarter' | 'year' | 'custom'
+export type MetricCategory = 'revenue' | 'orders' | 'customers' | 'inventory' | 'leaderboard'
+export type MetricUnit = 'currency' | 'count' | 'percentage' | 'ratio'
+export type MetricCalculation = 'sum' | 'count' | 'average' | 'derived' | 'leaderboard' | 'gauge' | 'placeholder'
+
+/** GET /analytics/metrics — the widget/report builder's metric picker. */
+export interface MetricDefinition {
+  key: string
+  label: string
+  description: string | null
+  category: MetricCategory
+  unit: MetricUnit
+  calculation: MetricCalculation
+}
+
+export interface DashboardWidget {
+  id: string
+  dashboard_id: string
+  type: DashboardWidgetType
+  title: string
+  /** Always includes `metric_key`; `time_dimension` optionally overrides the dashboard's own default range for this widget. */
+  config: { metric_key?: string, time_dimension?: TimeDimension } & Record<string, unknown>
+  position: number
+}
+
+export interface Dashboard {
+  id: string
+  name: string
+  is_default: boolean
+  widgets?: DashboardWidget[]
+  created_at: string
+  updated_at: string
+}
+
+export interface WidgetDataSeriesPoint {
+  date: string
+  value: number | null
+  count: number | null
+}
+
+export interface WidgetBreakdownEntry {
+  label: string
+  value: number
+}
+
+/** GET /analytics/widgets/{widget}/data — the computed data behind one widget. */
+export interface WidgetData {
+  metric_key: string
+  from: string
+  to: string
+  /** For a gauge metric (e.g. inventory_value) this is the latest day's reading, not a sum across the range. */
+  total: number | null
+  series: WidgetDataSeriesPoint[]
+  breakdown: Record<string, WidgetBreakdownEntry> | null
+}
+
+export interface Report {
+  id: string
+  saved_report_id: string | null
+  report_type: ReportType
+  filters: Record<string, unknown>
+  columns: string[]
+  status: ReportStatus
+  result: Array<Record<string, unknown>> | null
+  row_count: number | null
+  error_message: string | null
+  generated_at: string | null
+  created_at: string
+}
+
+export interface SavedReport {
+  id: string
+  name: string
+  report_type: ReportType
+  filters: Record<string, unknown>
+  columns: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ReportExport {
+  id: string
+  report_id: string
+  format: ExportFormat
+  status: ExportStatus
+  file_size: number | null
+  scheduled_at: string | null
+  recurrence: ExportRecurrence | null
+  completed_at: string | null
+  download_url: string | null
+}

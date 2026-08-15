@@ -11,6 +11,7 @@ use App\Domain\Automation\Models\WorkflowAction;
 use App\Domain\Automation\Models\WorkflowExecution;
 use App\Domain\Automation\Models\WorkflowExecutionStep;
 use App\Domain\Automation\Models\WorkflowVersion;
+use App\Shared\Commerce\Application\RecordOutboxEvent;
 use Illuminate\Support\Carbon;
 use Throwable;
 
@@ -46,6 +47,7 @@ final class WorkflowRunner
     public function __construct(
         private readonly WorkflowConditionEvaluator $conditionEvaluator,
         private readonly WorkflowActionExecutor $actionExecutor,
+        private readonly RecordOutboxEvent $recordOutboxEvent,
     ) {}
 
     public function run(string $workflowExecutionId): void
@@ -85,6 +87,7 @@ final class WorkflowRunner
 
         if ($version === null) {
             $execution->update(['status' => WorkflowExecutionStatus::DeadLetter->value, 'error_message' => 'Workflow version no longer exists.', 'completed_at' => now()]);
+            $this->recordTerminalEvent($execution, 'WorkflowExecutionFailed');
 
             return;
         }
@@ -92,6 +95,7 @@ final class WorkflowRunner
         if (! $this->hasConditionStep($execution)) {
             if (! $this->evaluateConditions($execution, $version)) {
                 $execution->update(['status' => WorkflowExecutionStatus::Completed->value, 'completed_at' => now()]);
+                $this->recordTerminalEvent($execution, 'WorkflowExecuted');
 
                 return;
             }
@@ -171,6 +175,7 @@ final class WorkflowRunner
         }
 
         $execution->update(['status' => WorkflowExecutionStatus::Completed->value, 'completed_at' => now()]);
+        $this->recordTerminalEvent($execution, 'WorkflowExecuted');
     }
 
     /**
@@ -263,6 +268,29 @@ final class WorkflowRunner
             'status' => $exhausted ? WorkflowExecutionStatus::DeadLetter->value : WorkflowExecutionStatus::Failed->value,
             'next_retry_at' => $exhausted ? null : now()->addSeconds(self::BACKOFF_SECONDS[$attempt - 1] ?? 3600),
             'completed_at' => $exhausted ? now() : null,
+        ]);
+
+        if ($exhausted) {
+            $this->recordTerminalEvent($execution, 'WorkflowExecutionFailed');
+        }
+    }
+
+    /**
+     * Backs the Automation Executions report/aggregation source (spec
+     * section 8: "WorkflowExecuted") — fired once, when an execution
+     * reaches a genuinely terminal state (Completed or DeadLetter — a
+     * transient Failed awaiting retry is not terminal). Analytics is
+     * the primary consumer, but any future subscriber to the Platform
+     * Event Bus can react to it too, the same as every other event.
+     */
+    private function recordTerminalEvent(WorkflowExecution $execution, string $eventType): void
+    {
+        $this->recordOutboxEvent->handle($eventType, 'WorkflowExecution', $execution->id, [
+            'workflow_execution_id' => $execution->id,
+            'workflow_id' => $execution->workflow_id,
+            'store_id' => $execution->store_id,
+            'status' => $execution->status->value,
+            'attempts' => $execution->attempts,
         ]);
     }
 

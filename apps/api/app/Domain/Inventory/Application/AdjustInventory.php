@@ -80,6 +80,19 @@ final class AdjustInventory
                 'created_by' => $createdBy,
             ]);
 
+            // General-purpose "something moved" event (Milestone 20,
+            // Analytics) — fired on every adjustment, unlike the two
+            // threshold-crossing events below which only fire when stock
+            // crosses a specific boundary.
+            $this->recordOutboxEvent->handle('InventoryChanged', 'InventoryItem', $item->id, [
+                'inventory_item_id' => $item->id,
+                'location_id' => $location->id,
+                'store_id' => $item->store_id,
+                'quantity_delta' => $data['quantity_delta'],
+                'on_hand' => $newOnHand,
+                'reason' => $data['reason'],
+            ]);
+
             $this->recordThresholdCrossingEvents($item, $location, $previousOnHand, $newOnHand);
 
             return $level;

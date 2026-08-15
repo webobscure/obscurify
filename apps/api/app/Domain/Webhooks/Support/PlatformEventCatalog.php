@@ -92,6 +92,23 @@ final class PlatformEventCatalog
             'InventoryBelowThreshold',
             'AppWebhookReceived',
             'OrderCancelled',
+            // Shipment status-transition events (Milestone 8, Shipping) —
+            // ProcessShippingWebhook has recorded these for real since
+            // that milestone shipped, but (like Milestone 16's customer
+            // events) they were never added to this catalog until
+            // Milestone 20 needed ShipmentDelivered as an analytics
+            // aggregation source.
+            'ShipmentAccepted',
+            'ShipmentInTransit',
+            'ShipmentOutForDelivery',
+            'ShipmentDelivered',
+            'ShipmentDeliveryException',
+            'ShipmentFailed',
+            // Milestone 20 (Analytics Platform) — see
+            // docs/architecture/analytics.md §8.
+            'InventoryChanged',
+            'WorkflowExecuted',
+            'WorkflowExecutionFailed',
         ];
     }
 }

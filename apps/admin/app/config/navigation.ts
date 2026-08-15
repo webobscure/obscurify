@@ -96,6 +96,18 @@ export const primaryNavigation: NavigationSection[] = [
       { label: 'Payments', to: '/payments', icon: 'payments' },
       { label: 'Promotions', to: '/promotions', icon: 'promotions' },
       {
+        label: 'Analytics',
+        to: '/analytics',
+        icon: 'analytics',
+        children: [
+          // Reports/Saved Reports are both views onto the analytics
+          // pipeline's report builder — the same "hangs off its parent
+          // feature" relationship Executions/Templates has to Automation.
+          { label: 'Reports', to: '/analytics/reports', icon: 'analytics' },
+          { label: 'Saved Reports', to: '/analytics/saved-reports', icon: 'analytics' },
+        ],
+      },
+      {
         label: 'Automation',
         to: '/automation',
         icon: 'automation',

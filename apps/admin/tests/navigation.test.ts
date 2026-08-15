@@ -38,6 +38,7 @@ describe('navigation source of truth', () => {
     '/pages', '/page-templates', '/menus', '/blogs', '/authors', '/redirects',
     '/theme-customizer', '/section-library', '/block-library',
     '/automation', '/automation/executions', '/automation/templates',
+    '/analytics', '/analytics/reports', '/analytics/saved-reports',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {
@@ -78,5 +79,12 @@ describe('navigation source of truth', () => {
 
     expect(automation?.children?.map(c => c.label)).toEqual(['Executions', 'Templates'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Executions')).toBe(false)
+  })
+
+  it('nests Reports/Saved Reports under Analytics, not as flat top-level items', () => {
+    const analytics = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Analytics')
+
+    expect(analytics?.children?.map(c => c.label)).toEqual(['Reports', 'Saved Reports'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Reports')).toBe(false)
   })
 })

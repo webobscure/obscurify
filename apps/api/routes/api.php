@@ -1,5 +1,11 @@
 <?php
 
+use App\Domain\Analytics\Http\Controllers\DashboardController;
+use App\Domain\Analytics\Http\Controllers\DashboardWidgetController;
+use App\Domain\Analytics\Http\Controllers\MetricDefinitionController;
+use App\Domain\Analytics\Http\Controllers\ReportController;
+use App\Domain\Analytics\Http\Controllers\ReportExportController;
+use App\Domain\Analytics\Http\Controllers\SavedReportController;
 use App\Domain\Apps\Http\Controllers\AdminExtensionsController;
 use App\Domain\Apps\Http\Controllers\AppController;
 use App\Domain\Apps\Http\Controllers\Gateway\AppExtensionGatewayController;
@@ -222,6 +228,37 @@ Route::prefix('v1')->group(function () {
 
             Route::get('automation/variables', [WorkflowCatalogController::class, 'variables']);
             Route::get('automation/triggers', [WorkflowCatalogController::class, 'triggers']);
+
+            // Analytics Platform (Milestone 20) — spec section 11. See
+            // docs/architecture/analytics.md.
+            Route::get('analytics/dashboard', [DashboardController::class, 'default']);
+            Route::get('analytics/dashboards', [DashboardController::class, 'index']);
+            Route::post('analytics/dashboards', [DashboardController::class, 'store']);
+            Route::get('analytics/dashboards/{dashboard}', [DashboardController::class, 'show']);
+            Route::patch('analytics/dashboards/{dashboard}', [DashboardController::class, 'update']);
+            Route::delete('analytics/dashboards/{dashboard}', [DashboardController::class, 'destroy']);
+
+            Route::get('analytics/widgets', [DashboardWidgetController::class, 'all']);
+            Route::get('analytics/dashboards/{dashboard}/widgets', [DashboardWidgetController::class, 'index']);
+            Route::post('analytics/dashboards/{dashboard}/widgets', [DashboardWidgetController::class, 'store']);
+            Route::patch('analytics/widgets/{widget}', [DashboardWidgetController::class, 'update']);
+            Route::delete('analytics/widgets/{widget}', [DashboardWidgetController::class, 'destroy']);
+            Route::get('analytics/widgets/{widget}/data', [DashboardWidgetController::class, 'data']);
+            Route::get('analytics/widgets/{widget}/drill-down', [DashboardWidgetController::class, 'drillDown']);
+
+            Route::get('analytics/reports', [ReportController::class, 'index']);
+            Route::post('analytics/reports', [ReportController::class, 'store']);
+            Route::get('analytics/reports/{report}', [ReportController::class, 'show']);
+            Route::post('analytics/reports/{report}/exports', [ReportExportController::class, 'store']);
+
+            Route::get('analytics/saved-reports', [SavedReportController::class, 'index']);
+            Route::post('analytics/saved-reports', [SavedReportController::class, 'store']);
+            Route::patch('analytics/saved-reports/{savedReport}', [SavedReportController::class, 'update']);
+            Route::delete('analytics/saved-reports/{savedReport}', [SavedReportController::class, 'destroy']);
+
+            Route::get('analytics/exports/{export}/download', [ReportExportController::class, 'download']);
+
+            Route::get('analytics/metrics', [MetricDefinitionController::class, 'index']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
