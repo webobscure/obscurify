@@ -7,6 +7,7 @@ use App\Domain\Customers\Application\ReorderFromOrder;
 use App\Domain\Customers\Application\RequestCustomerReturn;
 use App\Domain\Customers\Http\Requests\StoreCustomerReturnRequest;
 use App\Domain\Customers\Http\Resources\CustomerOrderResource;
+use App\Domain\Customers\Http\Resources\CustomerOrderSummaryResource;
 use App\Domain\Customers\Support\CurrentCustomerContext;
 use App\Domain\Orders\Models\Order;
 use App\Domain\Returns\Http\Resources\ReturnResource;
@@ -26,7 +27,7 @@ final class CustomerOrderController extends Controller
             ->orderByDesc('created_at')
             ->paginate((int) $request->integer('per_page', 20));
 
-        return CustomerOrderResource::collection($orders)->response();
+        return CustomerOrderSummaryResource::collection($orders)->response();
     }
 
     public function show(

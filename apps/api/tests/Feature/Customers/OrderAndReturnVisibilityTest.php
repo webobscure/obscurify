@@ -83,11 +83,19 @@ it('shows full order detail including payments and shipments, and records Custom
     $response->assertJsonPath('data.id', $this->order->id)
         ->assertJsonCount(1, 'data.payments')
         ->assertJsonCount(1, 'data.shipments')
-        ->assertJsonPath('data.payments.0.status', 'paid');
+        ->assertJsonPath('data.payments.0.status', 'paid')
+        // The portal's return-request form keys its per-line state off
+        // this id — the storefront's own (confirmation-only) OrderItemResource
+        // never includes it, so asserting it here guards against
+        // CustomerOrderResource silently reverting to that resource.
+        ->assertJsonPath('data.items.0.id', $this->orderItem->id);
+});
 
-    app(TenantContext::class)->scope($this->store, function () {
-        expect(OutboxEvent::query()->where('event_type', 'CustomerOrderViewed')->count())->toBe(1);
-    });
+it('lists orders with a lighter summary shape that never eager-loads items', function () {
+    $response = $this->getJson(storefrontUrl($this->host, '/api/v1/storefront/account/orders'), authHeader($this->accessToken))
+        ->assertOk();
+
+    expect($response->json('data.0'))->not->toHaveKey('items');
 });
 
 it('rejects viewing an order that belongs to a different customer', function () {

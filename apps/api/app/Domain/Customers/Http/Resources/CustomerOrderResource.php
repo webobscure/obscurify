@@ -8,7 +8,6 @@ use App\Domain\Promotions\Http\Resources\DiscountApplicationResource;
 use App\Domain\Returns\Http\Resources\ReturnResource;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Storefront\Http\Resources\OrderAddressResource;
-use App\Domain\Storefront\Http\Resources\OrderItemResource;
 use App\Domain\Storefront\Http\Resources\PaymentResource;
 use App\Domain\Storefront\Http\Resources\StorefrontShippingLineResource;
 use Illuminate\Http\Request;
@@ -19,9 +18,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * StorefrontOrderConfirmationResource shows plus payment status,
  * shipment tracking, return status, and refund status (spec section 7).
  * Reuses the existing admin ShipmentResource/ReturnResource/RefundResource
- * and the storefront's own PaymentResource/OrderItemResource/
- * OrderAddressResource as-is rather than duplicating them — none of
- * those expose anything beyond what the order's own owner should see.
+ * and the storefront's own PaymentResource/OrderAddressResource as-is
+ * rather than duplicating them — none of those expose anything beyond
+ * what the order's own owner should see. Items are the one exception:
+ * CustomerOrderItemResource (not the storefront's own OrderItemResource)
+ * on purpose, since reorder/return both need to reference a specific
+ * line by `id`, which the storefront's confirmation-only resource never
+ * includes.
  *
  * Callers must eager-load items/shippingAddress/billingAddress/
  * shippingLine/discountApplications/payments/shipments/returns/refunds
@@ -50,7 +53,7 @@ final class CustomerOrderResource extends JsonResource
             'order_status' => $this->order_status->value,
             'financial_status' => $this->financial_status->value,
             'fulfillment_status' => $this->fulfillment_status->value,
-            'items' => OrderItemResource::collection($this->items),
+            'items' => CustomerOrderItemResource::collection($this->items),
             'discount_applications' => DiscountApplicationResource::collection($this->whenLoaded('discountApplications')),
             'shipping_address' => $this->shippingAddress ? new OrderAddressResource($this->shippingAddress) : null,
             'billing_address' => $this->billingAddress ? new OrderAddressResource($this->billingAddress) : null,
