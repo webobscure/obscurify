@@ -1381,3 +1381,6 @@ export class ApiClient {
 
 export { StorefrontApiClient } from './storefront'
 export type { StorefrontApiClientOptions, StorefrontCollectionShowResponse } from './storefront'
+
+export { StorefrontGraphQLClient } from './storefront-graphql'
+export type { StorefrontGraphQLClientOptions } from './storefront-graphql'

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -80,6 +81,25 @@ function domainForStore(Store $store, string $host, array $overrides = []): Doma
 function storefrontUrl(string $host, string $path): string
 {
     return "http://{$host}{$path}";
+}
+
+/**
+ * POSTs a GraphQL document to the single public endpoint (Milestone
+ * 23) — `$host` resolves the storefront tenant exactly like every
+ * other storefront request (see EnsureStorefrontTenantContext); pass
+ * `tenantHeader($store)` in `$headers` instead for a merchant-authenticated
+ * request (GraphQLAuthenticator prefers the Sanctum guard over hostname
+ * resolution — see that class's own docblock).
+ *
+ * @param  array<string, mixed>  $variables
+ * @param  array<string, string>  $headers
+ */
+function graphqlRequest(string $host, string $query, array $variables = [], array $headers = []): TestResponse
+{
+    return test()->postJson(storefrontUrl($host, '/api/graphql'), array_filter([
+        'query' => $query,
+        'variables' => $variables,
+    ], fn ($v) => $v !== []), $headers);
 }
 
 /**

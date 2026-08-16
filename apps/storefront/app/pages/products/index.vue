@@ -11,6 +11,10 @@
           <option value="price_desc">Price: high to low</option>
         </select>
       </label>
+      <span class="transport-toggle" data-testid="transport-toggle">
+        <NuxtLink :to="{ query: { ...route.query, transport: 'rest' } }" :class="{ active: transport === 'rest' }">REST</NuxtLink>
+        <NuxtLink :to="{ query: { ...route.query, transport: 'graphql' } }" :class="{ active: transport === 'graphql' }">GraphQL</NuxtLink>
+      </span>
     </form>
 
     <p v-if="pending">Loading…</p>
@@ -42,19 +46,34 @@ const page = ref(Number(route.query.page ?? 1))
 const collection = computed(() => route.query.collection as string | undefined)
 const category = computed(() => route.query.category as string | undefined)
 
+/**
+ * Milestone 23 (spec section 9): proof that the storefront can switch
+ * from REST to GraphQL without touching business logic — the only
+ * thing this toggle changes is which client resolves `.products.list()`,
+ * because StorefrontGraphQLClient returns the identical
+ * ApiCollection<StorefrontProduct> shape StorefrontApiClient does (see
+ * that class's own docblock). Every line below this — sort, pagination,
+ * the template — is unaware which transport served the data.
+ */
+const transport = computed(() => (route.query.transport === 'graphql' ? 'graphql' : 'rest'))
+
 watch([sort, page], ([newSort, newPage]) => {
   router.replace({ query: { ...route.query, sort: newSort, page: newPage === 1 ? undefined : newPage } })
 })
 
 const { data, pending } = await useAsyncData(
   'products-listing',
-  () => useStorefrontApi().products.list({
-    sort: sort.value as 'newest' | 'price_asc' | 'price_desc',
-    page: page.value,
-    collection: collection.value,
-    category: category.value,
-  }),
-  { watch: [sort, page, collection, category] },
+  () => {
+    const client = transport.value === 'graphql' ? useStorefrontGraphQL() : useStorefrontApi()
+
+    return client.products.list({
+      sort: sort.value as 'newest' | 'price_asc' | 'price_desc',
+      page: page.value,
+      collection: collection.value,
+      category: category.value,
+    })
+  },
+  { watch: [sort, page, collection, category, transport] },
 )
 
 const products = computed(() => data.value?.data ?? [])
@@ -69,6 +88,26 @@ useSeoMeta({
 <style scoped>
 .filters {
   margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.transport-toggle {
+  display: inline-flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.transport-toggle a {
+  color: #888;
+  text-decoration: none;
+}
+
+.transport-toggle a.active {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .product-grid {

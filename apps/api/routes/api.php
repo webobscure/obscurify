@@ -59,6 +59,8 @@ use App\Domain\Customers\Http\Controllers\CustomerSessionController;
 use App\Domain\Financial\Http\Controllers\FakeRefundOutcomeController;
 use App\Domain\Financial\Http\Controllers\RefundController;
 use App\Domain\Fulfillment\Http\Controllers\FulfillmentController;
+use App\Domain\GraphQL\Http\Controllers\GraphQLController;
+use App\Domain\GraphQL\Http\Controllers\GraphQLPlaygroundController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Inventory\Http\Controllers\InventoryController;
 use App\Domain\Locations\Http\Controllers\LocationController;
@@ -690,6 +692,15 @@ Route::prefix('v1')->group(function () {
         });
     });
 });
+
+// The public GraphQL API (Milestone 23) — deliberately its own
+// top-level namespace, sibling to /api/v1 and /api/apps/v1, not nested
+// under either: it serves all four actor types (guest/customer/
+// merchant/app) through one endpoint, resolving auth and tenant itself
+// (GraphQLAuthenticator) rather than through route middleware — see
+// docs/architecture/graphql.md.
+Route::post('graphql', [GraphQLController::class, 'handle']);
+Route::get('graphql/playground', [GraphQLPlaygroundController::class, 'show']);
 
 // The Apps SDK REST API gateway (spec section 7: "Introduce: /api/apps/v1")
 // — deliberately its own top-level namespace, sibling to /api/v1, not

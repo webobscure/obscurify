@@ -1,6 +1,7 @@
 <?php
 
 use App\Providers\AppServiceProvider;
+use App\Providers\GraphQLServiceProvider;
 use App\Providers\HorizonServiceProvider;
 use App\Providers\NotificationServiceProvider;
 use App\Providers\PaymentServiceProvider;
@@ -14,4 +15,5 @@ return [
     ShippingServiceProvider::class,
     NotificationServiceProvider::class,
     SearchServiceProvider::class,
+    GraphQLServiceProvider::class,
 ];
