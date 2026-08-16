@@ -52,7 +52,9 @@ test('manages a workflow end to end from the admin, and uses a starter template'
   await expect(page.locator('.status-row .badge')).toHaveText('draft')
 
   // Trigger.
-  await page.locator('select').first().selectOption('CustomerCreated')
+  // Scoped to `main`: the topbar's own language-switcher <select>
+  // (Milestone 26) is also a select, sitting outside `main`.
+  await page.getByRole('main').locator('select').first().selectOption('CustomerCreated')
 
   // Condition: order.total_amount greater_than 50000.
   await page.getByRole('button', { name: '+ Condition' }).click()
@@ -77,7 +79,7 @@ test('manages a workflow end to end from the admin, and uses a starter template'
   await page.reload()
   await page.waitForLoadState('networkidle')
 
-  await expect(page.locator('select').first()).toHaveValue('CustomerCreated')
+  await expect(page.getByRole('main').locator('select').first()).toHaveValue('CustomerCreated')
   await expect(page.locator('.node').first().locator('input[type="text"]').first()).toHaveValue('order.total_amount')
   await expect(page.locator('.action').first().getByLabel('Body', { exact: true })).toHaveValue('High value order came in')
 
@@ -113,7 +115,7 @@ test('manages a workflow end to end from the admin, and uses a starter template'
   await page.waitForURL(/\/automation\/.+/)
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.status-row .badge')).toHaveText('draft')
-  await expect(page.locator('select').first()).toHaveValue('CustomerCreated')
+  await expect(page.getByRole('main').locator('select').first()).toHaveValue('CustomerCreated')
 
   // Execution history page renders without error.
   await page.goto(`${ADMIN_BASE}/automation/executions`)

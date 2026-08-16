@@ -68,7 +68,9 @@ test('creates a theme, edits its draft template, publishes it, rolls back, and p
   await v1Row.getByRole('button', { name: 'Roll back to this' }).click()
   await expect(page.getByRole('row', { name: 'Serving the storefront' })).toContainText('Yes')
 
-  await page.getByRole('combobox').selectOption('home')
+  // Scoped to `main`: the topbar's own language-switcher <select>
+  // (Milestone 26) is also a combobox, sitting outside `main`.
+  await page.getByRole('main').getByRole('combobox').selectOption('home')
   await page.getByRole('button', { name: 'Render preview' }).click()
   await expect(page.getByText('hero')).toBeVisible()
   await expect(page.getByText('E2E Sale')).toBeVisible()

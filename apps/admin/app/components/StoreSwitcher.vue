@@ -5,12 +5,12 @@
       class="trigger"
       aria-haspopup="listbox"
       :aria-expanded="open"
-      aria-label="Switch store"
+      :aria-label="t('chrome.switch_store')"
       @click="toggle"
     >
       <span class="icon"><AppIcon name="stores" /></span>
       <span class="label">
-        <strong>{{ activeStore.store.value?.name ?? 'Select a store' }}</strong>
+        <strong>{{ activeStore.store.value?.name ?? t('chrome.select_a_store') }}</strong>
         <small v-if="activeStore.store.value">
           {{ activeStore.store.value.slug }}
           <span class="status" :class="statusClass">{{ activeStore.store.value.status }}</span>
@@ -19,7 +19,7 @@
       <AppIcon name="chevron" class="chev" :class="{ open }" />
     </button>
 
-    <ul v-if="open" class="menu" role="listbox" aria-label="Stores">
+    <ul v-if="open" class="menu" role="listbox" :aria-label="t('nav.stores')">
       <li v-for="store in stores" :key="store.id">
         <button
           type="button"
@@ -32,9 +32,9 @@
           <span class="slug">{{ store.slug }}</span>
         </button>
       </li>
-      <li v-if="!stores.length" class="empty">No stores yet.</li>
+      <li v-if="!stores.length" class="empty">{{ t('chrome.no_stores_yet') }}</li>
       <li class="manage">
-        <NuxtLink to="/stores" @click="open = false">Manage stores</NuxtLink>
+        <NuxtLink to="/stores" @click="open = false">{{ t('chrome.manage_stores') }}</NuxtLink>
       </li>
     </ul>
   </div>
@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import type { Store } from '@obscurify/types'
 
+const { t } = useI18n()
 const activeStore = useActiveStore()
 const stores = ref<Store[]>([])
 const open = ref(false)

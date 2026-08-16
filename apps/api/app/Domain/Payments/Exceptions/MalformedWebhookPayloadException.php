@@ -10,7 +10,7 @@ final class MalformedWebhookPayloadException extends RuntimeException
 {
     public static function make(string $reason): self
     {
-        return new self("Malformed webhook payload: {$reason}");
+        return new self(__('payments.malformed_webhook_payload', ['reason' => $reason]));
     }
 
     public function render(Request $request): JsonResponse

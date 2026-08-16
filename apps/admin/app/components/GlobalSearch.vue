@@ -1,27 +1,27 @@
 <template>
   <div class="search">
-    <button type="button" class="trigger" aria-label="Open navigation search (Cmd+K)" @click="openPalette">
+    <button type="button" class="trigger" :aria-label="t('chrome.open_navigation_search')" @click="openPalette">
       <AppIcon name="search" />
-      <span class="placeholder">Search products, orders, collections…</span>
+      <span class="placeholder">{{ t('chrome.search_placeholder') }}</span>
       <kbd>{{ shortcutLabel }}</kbd>
     </button>
 
     <Teleport to="body">
       <div v-if="open" class="overlay" @click.self="close">
-        <div class="palette" role="dialog" aria-modal="true" aria-label="Navigation search">
+        <div class="palette" role="dialog" aria-modal="true" :aria-label="t('chrome.navigation_search_dialog')">
           <input
             ref="inputRef"
             v-model="query"
             type="text"
-            placeholder="Search products, orders, collections…"
+            :placeholder="t('chrome.search_placeholder')"
             @keydown.esc="close"
             @keydown.enter="filtered.length && go(filtered[0]!)"
           >
           <ul>
             <li v-for="item in filtered" :key="item.to">
-              <button type="button" @click="go(item)">{{ item.label }}</button>
+              <button type="button" @click="go(item)">{{ t(item.labelKey) }}</button>
             </li>
-            <li v-if="!filtered.length" class="empty">No matching pages.</li>
+            <li v-if="!filtered.length" class="empty">{{ t('common.no_matching_pages') }}</li>
           </ul>
         </div>
       </div>
@@ -44,6 +44,8 @@ const allItems: NavigationItem[] = [
   ...secondaryNavigation.items,
 ]
 
+const { t } = useI18n()
+
 const open = ref(false)
 const query = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -54,7 +56,7 @@ const shortcutLabel = computed(() => (import.meta.client && /Mac|iPhone|iPad/.te
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return allItems
-  return allItems.filter(item => item.label.toLowerCase().includes(q))
+  return allItems.filter(item => t(item.labelKey).toLowerCase().includes(q))
 })
 
 async function openPalette() {

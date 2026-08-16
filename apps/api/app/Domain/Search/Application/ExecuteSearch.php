@@ -22,6 +22,7 @@ use App\Domain\Search\Support\SearchTextNormalizer;
 use App\Domain\Search\Support\SynonymExpander;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Application\RecordOutboxEvent;
+use App\Shared\Localization\LocaleContext;
 use Illuminate\Support\Collection;
 
 /**
@@ -52,6 +53,7 @@ final class ExecuteSearch
         private readonly SearchRankingEngine $rankingEngine,
         private readonly SearchFacetBuilder $facetBuilder,
         private readonly RecordOutboxEvent $recordOutboxEvent,
+        private readonly LocaleContext $localeContext,
     ) {}
 
     public function handle(Store $store, ExecuteSearchRequest $request): SearchResult
@@ -67,7 +69,7 @@ final class ExecuteSearch
         // SynonymExpander/SearchProviderQuery); with synonyms disabled
         // each word is simply its own single-element group.
         $tokenGroups = ($settings === null || $settings->synonyms_enabled)
-            ? $this->synonymExpander->expand($rawTokens)
+            ? $this->synonymExpander->expand($rawTokens, $this->localeContext->current())
             : array_map(fn (string $token) => [$token], $rawTokens);
 
         $providerResult = $provider->search(new SearchProviderQuery(

@@ -22,7 +22,7 @@ final class DirectiveEnforcer
     {
         return function (mixed $root, array $args, GraphQLContext $context, mixed $info) use ($role, $resolver) {
             if ($context->actor !== $role) {
-                throw GraphQLUserError::forbidden("This field requires the \"{$role->value}\" role.");
+                throw GraphQLUserError::forbidden(__('graphql.requires_role', ['role' => $role->value]));
             }
 
             return $resolver($root, $args, $context, $info);

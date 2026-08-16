@@ -10,7 +10,7 @@ final class UnknownPaymentProviderException extends RuntimeException
 {
     public static function forCode(string $code): self
     {
-        return new self("Unknown payment provider \"{$code}\".");
+        return new self(__('payments.unknown_provider', ['code' => $code]));
     }
 
     public function render(Request $request): JsonResponse

@@ -1,13 +1,13 @@
 <template>
   <div>
-    <PageHeader title="Stores" />
+    <PageHeader :title="t('stores.title')" />
 
     <table v-if="stores.length">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Slug</th>
-          <th>Status</th>
+          <th>{{ t('stores.name') }}</th>
+          <th>{{ t('stores.slug') }}</th>
+          <th>{{ t('stores.status') }}</th>
           <th/>
         </tr>
       </thead>
@@ -18,20 +18,20 @@
           <td>{{ store.status }}</td>
           <td>
             <button v-if="activeStore.storeId.value !== store.id" @click="handleActivate(store.id)">
-              Activate
+              {{ t('stores.activate') }}
             </button>
-            <strong v-else>Active</strong>
+            <strong v-else>{{ t('stores.active') }}</strong>
           </td>
         </tr>
       </tbody>
     </table>
-    <p v-else>No stores yet.</p>
+    <p v-else>{{ t('stores.no_stores_yet') }}</p>
 
-    <h2>Create a store</h2>
+    <h2>{{ t('stores.create_a_store') }}</h2>
     <form @submit.prevent="handleCreate">
-      <input v-model="name" type="text" placeholder="Store name" required >
+      <input v-model="name" type="text" :placeholder="t('stores.store_name_placeholder')" required >
       <input v-model="slug" type="text" placeholder="store-slug" required pattern="[a-z0-9\-_]+" >
-      <button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Create store' }}</button>
+      <button type="submit" :disabled="creating">{{ creating ? t('common.creating') : t('common.create') }}</button>
     </form>
     <p v-if="error" class="error">{{ error }}</p>
   </div>
@@ -41,6 +41,7 @@
 import type { Store } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+const { t } = useI18n()
 const stores = ref<Store[]>([])
 const name = ref('')
 const slug = ref('')
@@ -62,7 +63,7 @@ async function handleCreate() {
     slug.value = ''
     await loadStores()
   } catch (e) {
-    error.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+    error.value = e instanceof ApiClientError ? e.message : t('common.something_went_wrong')
   } finally {
     creating.value = false
   }
@@ -73,7 +74,7 @@ async function handleActivate(storeId: string) {
   try {
     await activeStore.activate(storeId)
   } catch (e) {
-    error.value = e instanceof ApiClientError ? e.message : 'Something went wrong.'
+    error.value = e instanceof ApiClientError ? e.message : t('common.something_went_wrong')
   }
 }
 

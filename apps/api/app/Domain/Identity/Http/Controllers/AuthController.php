@@ -4,6 +4,7 @@ namespace App\Domain\Identity\Http\Controllers;
 
 use App\Domain\Identity\Http\Requests\LoginRequest;
 use App\Domain\Identity\Http\Requests\RegisterRequest;
+use App\Domain\Identity\Http\Requests\UpdateMyLocaleRequest;
 use App\Domain\Identity\Http\Resources\UserResource;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -61,5 +62,19 @@ final class AuthController extends Controller
     public function me(Request $request): UserResource
     {
         return new UserResource($request->user());
+    }
+
+    /**
+     * Persists this admin user's own language preference (spec section
+     * 4: "Persist language preference") — read by
+     * LocaleResolver::resolveForStore() ahead of the store's own
+     * admin_locale default on every subsequent request.
+     */
+    public function updateLocale(UpdateMyLocaleRequest $request): UserResource
+    {
+        $user = $request->user();
+        $user->update(['locale' => $request->validated('locale')]);
+
+        return new UserResource($user);
     }
 }

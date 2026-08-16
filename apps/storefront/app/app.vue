@@ -2,37 +2,39 @@
   <div class="shell">
     <NuxtRouteAnnouncer />
     <header class="topbar">
-      <NuxtLink to="/" class="logo">{{ store?.name ?? 'Store' }}</NuxtLink>
+      <NuxtLink to="/" class="logo">{{ store?.name ?? t('chrome.store_fallback') }}</NuxtLink>
       <nav>
-        <NuxtLink to="/products">Products</NuxtLink>
+        <NuxtLink to="/products">{{ t('chrome.products_nav') }}</NuxtLink>
       </nav>
       <div class="spacer" />
+      <LanguageSwitcher />
       <NuxtLink to="/cart" class="cart-indicator">
-        Cart<span v-if="itemCount > 0">({{ itemCount }})</span>
+        {{ t('chrome.cart') }}<span v-if="itemCount > 0">({{ itemCount }})</span>
       </NuxtLink>
     </header>
     <main>
       <NuxtPage />
     </main>
     <footer class="footer">
-      <p>&copy; {{ new Date().getFullYear() }} {{ store?.name ?? 'Store' }}</p>
+      <p>&copy; {{ new Date().getFullYear() }} {{ store?.name ?? t('chrome.store_fallback') }}</p>
       <!--
         Russian Commerce Foundation (Milestone 24, spec section 18) —
         only what a customer needs to identify the seller (legal name,
         INN). Never legal/fiscal complexity (KPP, addresses, VAT
         breakdown, receipt status) — see StorefrontStoreResource.
       -->
-      <p v-if="store?.seller" class="seller">{{ store.seller.legal_name }}, ИНН {{ store.seller.inn }}</p>
+      <p v-if="store?.seller" class="seller">{{ store.seller.legal_name }}, {{ t('chrome.seller_inn_label') }} {{ store.seller.inn }}</p>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
+const { t } = useI18n()
 const store = await useStorefrontStore()
 const { itemCount } = useCart()
 
 useSeoMeta({
-  titleTemplate: title => title ? `${title} — ${store.value?.name ?? 'Store'}` : (store.value?.name ?? 'Store'),
+  titleTemplate: title => title ? `${title} — ${store.value?.name ?? t('chrome.store_fallback')}` : (store.value?.name ?? t('chrome.store_fallback')),
 })
 </script>
 

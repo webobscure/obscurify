@@ -1,9 +1,9 @@
 <template>
-  <nav class="sidebar-nav" aria-label="Primary">
+  <nav class="sidebar-nav" :aria-label="t('chrome.primary_navigation')">
     <SidebarSection
       v-for="(section, index) in sections"
       :key="index"
-      :label="section.label"
+      :label-key="section.labelKey"
       :items="section.items"
       @navigate="emit('navigate')"
     />
@@ -15,6 +15,7 @@ import type { NavigationSection } from '~/config/navigation'
 
 defineProps<{ sections: NavigationSection[] }>()
 const emit = defineEmits<{ navigate: [] }>()
+const { t } = useI18n()
 </script>
 
 <style scoped>

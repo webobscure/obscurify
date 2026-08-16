@@ -16,7 +16,7 @@ final class DiscountCodeInvalidException extends RuntimeException
 {
     public static function make(string $reason): self
     {
-        return new self("Invalid discount code: {$reason}");
+        return new self(__('orders.invalid_discount_code', ['reason' => $reason]));
     }
 
     public function render(Request $request): JsonResponse

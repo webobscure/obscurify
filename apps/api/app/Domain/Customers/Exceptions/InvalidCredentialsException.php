@@ -24,12 +24,12 @@ final class InvalidCredentialsException extends RuntimeException
 
     public static function invalidCredentials(): self
     {
-        return new self('These credentials do not match our records.');
+        return new self(__('auth.invalid_credentials'));
     }
 
     public static function accountLocked(): self
     {
-        return new self('This account is temporarily locked due to too many failed login attempts. Try again later.');
+        return new self(__('auth.account_locked'));
     }
 
     public function render(Request $request): JsonResponse

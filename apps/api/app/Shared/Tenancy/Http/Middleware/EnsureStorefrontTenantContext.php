@@ -2,7 +2,9 @@
 
 namespace App\Shared\Tenancy\Http\Middleware;
 
+use App\Domain\Localization\Support\LocaleResolver;
 use App\Domain\Stores\Models\Store;
+use App\Shared\Localization\LocaleContext;
 use App\Shared\Tenancy\Resolvers\DomainStoreCandidateResolver;
 use App\Shared\Tenancy\TenantContext;
 use Closure;
@@ -24,6 +26,8 @@ final class EnsureStorefrontTenantContext
     public function __construct(
         private readonly DomainStoreCandidateResolver $resolver,
         private readonly TenantContext $tenantContext,
+        private readonly LocaleResolver $localeResolver,
+        private readonly LocaleContext $localeContext,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -41,6 +45,14 @@ final class EnsureStorefrontTenantContext
         }
 
         $this->tenantContext->set($store);
+
+        // Refines ResolveRequestLocale's request-wide baseline now that
+        // the store is known. Anonymous visitors have no saved
+        // preference of their own — a `storefront_locale` cookie (set
+        // by the language switcher, see StorefrontLocaleController) is
+        // the explicit preference here, ahead of Accept-Language and
+        // the store's own storefront_locale default.
+        $this->localeContext->set($this->localeResolver->resolveForStore($request, $store, 'storefront', $request->cookie('storefront_locale')));
 
         try {
             return $next($request);

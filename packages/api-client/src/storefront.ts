@@ -114,6 +114,11 @@ export class StorefrontApiClient {
     get: () => this.request<ApiResource<StorefrontStore>>('/api/v1/storefront/store'),
   }
 
+  /** Milestone 26 — persists the storefront_locale cookie (see StorefrontLocaleController). */
+  readonly locale = {
+    update: (locale: string) => this.request<ApiResource<{ locale: string }>>('/api/v1/storefront/locale', { method: 'POST', body: JSON.stringify({ locale }) }),
+  }
+
   readonly products = {
     list: (params: { collection?: string; category?: string; sort?: 'newest' | 'price_asc' | 'price_desc'; page?: number } = {}) => {
       const query = new URLSearchParams()

@@ -10,6 +10,7 @@ use App\Domain\Customers\Models\Customer;
 use App\Domain\Customers\Models\CustomerIdentity;
 use App\Domain\Customers\Models\CustomerSession;
 use App\Shared\Commerce\Application\RecordOutboxEvent;
+use App\Shared\Localization\LocaleContext;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -36,6 +37,7 @@ final class RegisterCustomer
         private readonly RecordOutboxEvent $recordOutboxEvent,
         private readonly TenantContext $tenantContext,
         private readonly RecomputeCustomerMetrics $recomputeCustomerMetrics,
+        private readonly LocaleContext $localeContext,
     ) {}
 
     /**
@@ -106,7 +108,13 @@ final class RegisterCustomer
         });
 
         $verificationToken = $this->requestEmailVerification->handle($customer);
-        Mail::to($identifier)->queue(new CustomerVerificationMail($verificationToken, $this->tenantContext->store()->name));
+
+        // The request's own resolved locale (spec section 7) is the
+        // best signal for a brand-new customer — nothing has been
+        // saved to Customer.locale yet at registration time.
+        Mail::to($identifier)
+            ->locale($customer->locale ?? $this->localeContext->current())
+            ->queue(new CustomerVerificationMail($verificationToken, $this->tenantContext->store()->name));
 
         return [
             'customer' => $customer,

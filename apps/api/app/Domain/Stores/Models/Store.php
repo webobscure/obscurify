@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property StoreStatus $status
  * @property string $default_currency
  * @property string $default_locale
+ * @property string|null $admin_locale
+ * @property string|null $storefront_locale
  * @property string $timezone
  * @property array<string, mixed>|null $settings
  */
@@ -38,6 +40,8 @@ class Store extends Model
         'slug',
         'default_currency',
         'default_locale',
+        'admin_locale',
+        'storefront_locale',
         'timezone',
         'settings',
     ];

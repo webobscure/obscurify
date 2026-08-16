@@ -40,6 +40,7 @@ import type {
   InstalledApp,
   InventoryItem,
   InventoryLevel,
+  Language,
   Location,
   Media,
   Menu,
@@ -96,6 +97,7 @@ import type {
   ShippingZone,
   Store,
   StoreLegalProfile,
+  StoreLocaleSettings,
   Theme,
   ThemeAsset,
   ThemeAssetType,
@@ -200,6 +202,23 @@ export class ApiClient {
     logout: () => this.request<void>('/api/v1/auth/logout', { method: 'POST' }),
 
     me: () => this.request<ApiResource<User>>('/api/v1/me'),
+
+    /** Persists this admin user's own language preference (Milestone 26) — see docs/architecture/localization.md. */
+    updateLocale: (locale: string) =>
+      this.request<ApiResource<User>>('/api/v1/me/locale', { method: 'PATCH', body: JSON.stringify({ locale }) }),
+  }
+
+  /** Platform-wide language catalog (Milestone 26) — see docs/architecture/localization.md. */
+  readonly languages = {
+    list: () => this.request<ApiCollection<Language>>('/api/v1/languages'),
+  }
+
+  /** A store's own locale settings (Milestone 26, spec section 8) — see docs/architecture/localization.md. */
+  readonly storeLocaleSettings = {
+    get: () => this.request<ApiResource<StoreLocaleSettings>>('/api/v1/store-locale-settings'),
+
+    update: (data: Partial<{ default_locale: string; admin_locale: string | null; storefront_locale: string | null; supported_locales: string[] }>) =>
+      this.request<ApiResource<StoreLocaleSettings>>('/api/v1/store-locale-settings', { method: 'PATCH', body: JSON.stringify(data) }),
   }
 
   readonly stores = {

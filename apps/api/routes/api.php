@@ -63,6 +63,9 @@ use App\Domain\GraphQL\Http\Controllers\GraphQLController;
 use App\Domain\GraphQL\Http\Controllers\GraphQLPlaygroundController;
 use App\Domain\Identity\Http\Controllers\AuthController;
 use App\Domain\Inventory\Http\Controllers\InventoryController;
+use App\Domain\Localization\Http\Controllers\LanguageController;
+use App\Domain\Localization\Http\Controllers\StorefrontLocaleController;
+use App\Domain\Localization\Http\Controllers\StoreLocaleSettingsController;
 use App\Domain\Locations\Http\Controllers\LocationController;
 use App\Domain\Media\Http\Controllers\MediaController;
 use App\Domain\Media\Http\Controllers\ProductMediaController;
@@ -131,6 +134,12 @@ Route::prefix('v1')->group(function () {
         return response()->json(['status' => 'ok']);
     });
 
+    // Public — the platform-wide language catalog (spec section 2)
+    // powers the language switcher on Admin's own login page (before
+    // any auth exists) and the storefront's, so this can never require
+    // auth:sanctum.
+    Route::get('/languages', [LanguageController::class, 'index']);
+
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth');
@@ -139,6 +148,7 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
+        Route::patch('/me/locale', [AuthController::class, 'updateLocale']);
 
         Route::get('/stores', [StoreController::class, 'index']);
         Route::post('/stores', [StoreController::class, 'store']);
@@ -384,6 +394,11 @@ Route::prefix('v1')->group(function () {
 
             Route::get('russian-commerce/fiscal-receipts', [FiscalReceiptController::class, 'index']);
             Route::get('russian-commerce/fiscal-receipts/{fiscalReceipt}', [FiscalReceiptController::class, 'show']);
+
+            // Internationalization & Localization (Milestone 26) —
+            // spec section 8. See docs/architecture/localization.md.
+            Route::get('store-locale-settings', [StoreLocaleSettingsController::class, 'show']);
+            Route::patch('store-locale-settings', [StoreLocaleSettingsController::class, 'update']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -640,6 +655,10 @@ Route::prefix('v1')->group(function () {
     // anonymous; there is no customer auth yet.
     Route::prefix('storefront')->middleware('storefront.tenant')->group(function () {
         Route::get('/store', [StorefrontStoreController::class, 'show']);
+
+        // Internationalization & Localization (Milestone 26) — spec
+        // section 4/7. See docs/architecture/localization.md.
+        Route::post('/locale', [StorefrontLocaleController::class, 'update']);
 
         // Every themed page renders through this one endpoint (spec
         // section 10) — {template} is home/collection/product/cart/

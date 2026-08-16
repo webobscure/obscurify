@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property string $store_id
  * @property string|null $email
  * @property string|null $phone
+ * @property string|null $locale
  * @property Carbon|null $date_of_birth
  * @property string|null $first_name
  * @property string|null $last_name
@@ -53,6 +54,7 @@ class Customer extends Model
     protected $fillable = [
         'email',
         'phone',
+        'locale',
         'date_of_birth',
         'first_name',
         'last_name',

@@ -3,6 +3,7 @@
 use App\Domain\Apps\Http\Middleware\AuthenticateAppToken;
 use App\Domain\Apps\Http\Middleware\EnsureAppScope;
 use App\Domain\Customers\Http\Middleware\AuthenticateCustomerToken;
+use App\Shared\Localization\Http\Middleware\ResolveRequestLocale;
 use App\Shared\Tenancy\Http\Middleware\EnsureStorefrontTenantContext;
 use App\Shared\Tenancy\Http\Middleware\EnsureTenantContext;
 use Illuminate\Auth\Middleware\Authorize;
@@ -39,11 +40,28 @@ return Application::configure(basePath: dirname(__DIR__))
             'customer-token' => AuthenticateCustomerToken::class,
         ]);
 
+        // Runs before every route-specific middleware (auth, tenant) on
+        // every API request — see ResolveRequestLocale's own docblock
+        // for why this only ever establishes the request-wide baseline,
+        // refined later once a tenant is resolved.
+        $middleware->api(append: [
+            ResolveRequestLocale::class,
+        ]);
+
         // EnsureTenantContext/EnsureStorefrontTenantContext must run after
         // authentication but before route model binding, so tenant-scoped
         // models never resolve a binding query before TenantContext is
         // populated. Laravel only guarantees relative order for middleware
-        // listed here.
+        // listed here — a middleware absent from this list is NOT
+        // guaranteed to run before every listed one just because it was
+        // registered first (a real bug caught here: ResolveRequestLocale,
+        // registered via $middleware->api(append:...) above, was actually
+        // executing AFTER EnsureTenantContext despite the append/route
+        // registration order suggesting otherwise, silently clobbering
+        // EnsureTenantContext's own locale refinement back to the
+        // request-wide baseline on every tenant-scoped request). It must
+        // be listed here, ahead of both tenant-context middlewares, for
+        // its "runs first, refined later" docblock to actually hold.
         $middleware->priority([
             HandlePrecognitiveRequests::class,
             EncryptCookies::class,
@@ -54,6 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ThrottleRequests::class,
             ThrottleRequestsWithRedis::class,
             AuthenticatesSessions::class,
+            ResolveRequestLocale::class,
             EnsureTenantContext::class,
             EnsureStorefrontTenantContext::class,
             SubstituteBindings::class,
@@ -80,6 +99,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return response()->json(['message' => 'Not found.', 'error' => 'not_found'], 404);
+            return response()->json(['message' => __('exceptions.not_found'), 'error' => 'not_found'], 404);
         });
     })->create();

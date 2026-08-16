@@ -71,10 +71,14 @@ not a schema change.
 
 `NotificationTemplate` has `subject` (meaningful for Email), `body_text`
 (every channel's baseline content), and `body_html` (optional, Email
-only). `locale` defaults to `'en'` — one row per locale is the
-localization-ready structure spec section 4 asks for; no
-locale-resolution logic reads it yet (explicit scope boundary, see
-ADR-027).
+only). `locale` defaults to `'en'` — one row per locale, the
+localization-ready structure spec section 4 originally asked for.
+As of Milestone 26, this is now live: `ResolveLocalizedNotificationTemplate`
+looks up a sibling template with the same `key`+`channel`+`locale` for
+the recipient's locale, falling back to the store's default locale,
+then to the original template — see
+[localization.md](localization.md#5-notification-and-email-localization)
+and ADR-032.
 
 Variables are interpolated by `NotificationTemplateRenderer` —
 `{{path.to.value}}` placeholders resolved via `Arr::get()` against a

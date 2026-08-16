@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import de from '../i18n/locales/de.json'
+import en from '../i18n/locales/en.json'
+import ru from '../i18n/locales/ru.json'
 import { flattenNavigationItems, isNavItemActive, primaryNavigation, secondaryNavigation } from '../app/config/navigation'
 
 describe('isNavItemActive', () => {
-  const products = { label: 'Products', to: '/products', icon: 'products' }
-  const orders = { label: 'Orders', to: '/orders', icon: 'orders' }
-  const locations = { label: 'Locations', to: '/locations', icon: 'locations' }
+  const products = { labelKey: 'nav.products', to: '/products', icon: 'products' }
+  const orders = { labelKey: 'nav.orders', to: '/orders', icon: 'orders' }
+  const locations = { labelKey: 'nav.locations', to: '/locations', icon: 'locations' }
 
   it('matches the exact path', () => {
     expect(isNavItemActive('/products', products)).toBe(true)
@@ -31,6 +34,16 @@ describe('isNavItemActive', () => {
   })
 })
 
+/**
+ * Reads a dot-path key ('nav.orders') out of a locale JSON object —
+ * mirrors how Vue I18n itself resolves the same key at runtime.
+ */
+function resolveKey(bundle: Record<string, unknown>, key: string): unknown {
+  return key.split('.').reduce<unknown>((node, segment) => {
+    return node && typeof node === 'object' ? (node as Record<string, unknown>)[segment] : undefined
+  }, bundle)
+}
+
 describe('navigation source of truth', () => {
   const realRoutes = new Set([
     '/orders', '/customers', '/customer-groups', '/customer-segments', '/customer-tags', '/fulfillments', '/products', '/collections', '/inventory', '/locations', '/payments', '/stores',
@@ -55,60 +68,64 @@ describe('navigation source of truth', () => {
     }
   })
 
-  it('does not include Storefront, Categories, Settings, or a fake Overview/Dashboard page', () => {
-    const allLabels = flattenNavigationItems(primaryNavigation).concat(secondaryNavigation.items).map(i => i.label)
+  it('has a real, non-empty translation for every nav labelKey in all three locales (ru default, en, de)', () => {
+    const allItems = flattenNavigationItems(primaryNavigation).concat(secondaryNavigation.items)
 
-    for (const fake of ['Storefront', 'Categories', 'Settings', 'Dashboard', 'Overview']) {
-      expect(allLabels).not.toContain(fake)
+    for (const item of allItems) {
+      for (const [localeName, bundle] of [['ru', ru], ['en', en], ['de', de]] as const) {
+        const value = resolveKey(bundle, item.labelKey)
+        expect(value, `${item.labelKey} missing in ${localeName}.json`).toEqual(expect.any(String))
+        expect(value, `${item.labelKey} empty in ${localeName}.json`).not.toBe('')
+      }
     }
   })
 
   it('nests Locations under Inventory as a genuine information-architecture choice, not a flat top-level item', () => {
-    const inventory = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Inventory')
+    const inventory = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.inventory')
 
-    expect(inventory?.children).toEqual([{ label: 'Locations', to: '/locations', icon: 'locations' }])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Locations')).toBe(false)
+    expect(inventory?.children).toEqual([{ labelKey: 'nav.locations', to: '/locations', icon: 'locations' }])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.locations')).toBe(false)
   })
 
   it('nests Customer Groups/Segments/Tags under Customers, not as flat top-level items', () => {
-    const customers = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Customers')
+    const customers = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.customers')
 
-    expect(customers?.children?.map(c => c.label)).toEqual(['Customer Groups', 'Customer Segments', 'Customer Tags'])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Customer Groups')).toBe(false)
+    expect(customers?.children?.map(c => c.labelKey)).toEqual(['nav.customer_groups', 'nav.customer_segments', 'nav.customer_tags'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.customer_groups')).toBe(false)
   })
 
   it('nests Executions/Templates under Automation, not as flat top-level items', () => {
-    const automation = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Automation')
+    const automation = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.automation')
 
-    expect(automation?.children?.map(c => c.label)).toEqual(['Executions', 'Templates'])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Executions')).toBe(false)
+    expect(automation?.children?.map(c => c.labelKey)).toEqual(['nav.executions', 'nav.templates'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.executions')).toBe(false)
   })
 
   it('nests Reports/Saved Reports under Analytics, not as flat top-level items', () => {
-    const analytics = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Analytics')
+    const analytics = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.analytics')
 
-    expect(analytics?.children?.map(c => c.label)).toEqual(['Reports', 'Saved Reports'])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Reports')).toBe(false)
+    expect(analytics?.children?.map(c => c.labelKey)).toEqual(['nav.reports', 'nav.saved_reports'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.reports')).toBe(false)
   })
 
   it('nests Templates/Channels/Providers/Delivery Log under Notifications, not as flat top-level items', () => {
-    const notifications = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Notifications')
+    const notifications = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.notifications')
 
-    expect(notifications?.children?.map(c => c.label)).toEqual(['Templates', 'Channels', 'Providers', 'Delivery Log'])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Delivery Log')).toBe(false)
+    expect(notifications?.children?.map(c => c.labelKey)).toEqual(['nav.templates', 'nav.channels', 'nav.providers', 'nav.delivery_log'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.delivery_log')).toBe(false)
   })
 
   it('nests Synonyms/Rules & Ranking/Pinned Products/Settings/Analytics under Search, not as flat top-level items', () => {
-    const search = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Search')
+    const search = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.search')
 
-    expect(search?.children?.map(c => c.label)).toEqual(['Synonyms', 'Rules & Ranking', 'Pinned Products', 'Search Settings', 'Search Analytics'])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Synonyms')).toBe(false)
+    expect(search?.children?.map(c => c.labelKey)).toEqual(['nav.synonyms', 'nav.rules_ranking', 'nav.pinned_products', 'nav.search_settings', 'nav.search_analytics'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.synonyms')).toBe(false)
   })
 
   it('nests Legal Details/Tax-VAT/Fiscalization/Payment Methods/Fiscal Receipts under Russian Commerce, not as flat top-level items', () => {
-    const russianCommerce = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Russian Commerce')
+    const russianCommerce = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.russian_commerce')
 
-    expect(russianCommerce?.children?.map(c => c.label)).toEqual(['Legal Details', 'Tax / VAT Settings', 'Fiscalization Settings', 'Payment Methods', 'Fiscal Receipts'])
-    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Legal Details')).toBe(false)
+    expect(russianCommerce?.children?.map(c => c.labelKey)).toEqual(['nav.legal_details', 'nav.tax_vat_settings', 'nav.fiscalization_settings', 'nav.payment_methods', 'nav.fiscal_receipts'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.legal_details')).toBe(false)
   })
 })

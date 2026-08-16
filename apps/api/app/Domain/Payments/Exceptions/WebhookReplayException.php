@@ -16,7 +16,7 @@ final class WebhookReplayException extends RuntimeException
 {
     public static function make(): self
     {
-        return new self('Webhook timestamp is outside the allowed replay window.');
+        return new self(__('payments.webhook_replay_rejected'));
     }
 
     public function render(Request $request): JsonResponse

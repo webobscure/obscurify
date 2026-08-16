@@ -32,7 +32,7 @@ final class OrderQueries
                 if ($context->isCustomer()) {
                     $query->where('customer_id', $context->requireCustomer()->id);
                 } elseif (! $context->isMerchant()) {
-                    throw GraphQLUserError::forbidden('You must be logged in to view orders.');
+                    throw GraphQLUserError::forbidden(__('graphql.must_be_logged_in_to_view_orders'));
                 }
 
                 $orders = $query->orderByDesc('created_at')->paginate($args['perPage'] ?? 15, ['*'], 'page', $args['page'] ?? 1);
@@ -59,12 +59,12 @@ final class OrderQueries
                     $customer = $context->requireCustomer();
 
                     if ($order->customer_id !== $customer->id) {
-                        throw GraphQLUserError::forbidden('This order does not belong to you.');
+                        throw GraphQLUserError::forbidden(__('graphql.order_not_yours'));
                     }
 
                     app(RecordCustomerOrderView::class)->handle($customer, $order);
                 } elseif (! $context->isMerchant()) {
-                    throw GraphQLUserError::forbidden('You must be logged in to view this order.');
+                    throw GraphQLUserError::forbidden(__('graphql.must_be_logged_in_to_view_orders'));
                 }
 
                 return $order;

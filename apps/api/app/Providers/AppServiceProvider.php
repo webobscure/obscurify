@@ -6,6 +6,7 @@ use App\Domain\Apps\Support\CurrentAppContext;
 use App\Domain\Customers\Support\CurrentCustomerContext;
 use App\Domain\Stores\Models\Store;
 use App\Domain\Stores\Policies\StorePolicy;
+use App\Shared\Localization\LocaleContext;
 use App\Shared\Tenancy\Contracts\StoreCandidateResolver;
 use App\Shared\Tenancy\Resolvers\HeaderStoreCandidateResolver;
 use App\Shared\Tenancy\TenantContext;
@@ -23,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+        $this->app->singleton(LocaleContext::class);
         $this->app->singleton(CurrentAppContext::class);
         $this->app->singleton(CurrentCustomerContext::class);
 

@@ -118,7 +118,7 @@ final class CustomerProfileMutations
     private static function requireCustomer(GraphQLContext $context): Customer
     {
         if (! $context->isCustomer()) {
-            throw GraphQLUserError::forbidden('You must be logged in as a customer.');
+            throw GraphQLUserError::forbidden(__('graphql.must_be_logged_in_as_customer'));
         }
 
         return $context->requireCustomer();

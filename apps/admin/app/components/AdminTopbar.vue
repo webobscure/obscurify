@@ -1,6 +1,6 @@
 <template>
   <header class="topbar">
-    <button type="button" class="menu-toggle" aria-label="Toggle navigation" @click="sidebar.toggle()">
+    <button type="button" class="menu-toggle" :aria-label="t('chrome.toggle_navigation')" @click="sidebar.toggle()">
       <AppIcon name="menu" />
     </button>
 
@@ -8,11 +8,13 @@
 
     <div class="spacer" />
 
+    <LanguageSwitcher />
     <UserMenu />
   </header>
 </template>
 
 <script setup lang="ts">
+const { t } = useI18n()
 const sidebar = useAdminSidebar()
 </script>
 

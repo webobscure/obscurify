@@ -10,7 +10,7 @@ final class UnknownNotificationProviderException extends RuntimeException
 {
     public static function forCode(string $code): self
     {
-        return new self("Unknown notification provider \"{$code}\".");
+        return new self(__('notifications.unknown_provider', ['code' => $code]));
     }
 
     public function render(Request $request): JsonResponse

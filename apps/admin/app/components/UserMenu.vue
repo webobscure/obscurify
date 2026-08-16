@@ -5,7 +5,7 @@
       class="trigger"
       aria-haspopup="menu"
       :aria-expanded="open"
-      aria-label="User menu"
+      :aria-label="t('chrome.user_menu')"
       @click="open = !open"
     >
       <span class="avatar">{{ initial }}</span>
@@ -13,11 +13,11 @@
 
     <div v-if="open" class="menu" role="menu">
       <div class="who">
-        <strong>{{ auth.user.value?.name ?? 'Account' }}</strong>
+        <strong>{{ auth.user.value?.name ?? t('chrome.account') }}</strong>
         <small>{{ auth.user.value?.email }}</small>
       </div>
       <hr>
-      <button type="button" role="menuitem" class="danger" @click="handleLogout">Sign out</button>
+      <button type="button" role="menuitem" class="danger" @click="handleLogout">{{ t('chrome.sign_out') }}</button>
     </div>
   </div>
 </template>
@@ -26,6 +26,7 @@
 // Only Sign out is a real, implemented account action — no Profile/
 // Account/Settings entries invented for a page that doesn't exist yet
 // (spec: "Do not invent missing backend features").
+const { t } = useI18n()
 const auth = useAuth()
 const activeStore = useActiveStore()
 const router = useRouter()

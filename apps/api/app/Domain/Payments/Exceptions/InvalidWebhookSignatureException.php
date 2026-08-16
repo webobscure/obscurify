@@ -10,7 +10,7 @@ final class InvalidWebhookSignatureException extends RuntimeException
 {
     public static function make(): self
     {
-        return new self('Invalid webhook signature.');
+        return new self(__('payments.invalid_webhook_signature'));
     }
 
     public function render(Request $request): JsonResponse

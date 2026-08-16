@@ -10,7 +10,7 @@ final class UnknownSearchProviderException extends RuntimeException
 {
     public static function forCode(string $code): self
     {
-        return new self("Unknown search provider \"{$code}\".");
+        return new self(__('search.unknown_provider', ['code' => $code]));
     }
 
     public function render(Request $request): JsonResponse

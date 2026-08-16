@@ -1,6 +1,6 @@
 <template>
   <div class="section">
-    <p v-if="label" class="section-label">{{ label }}</p>
+    <p v-if="labelKey" class="section-label">{{ t(labelKey) }}</p>
     <ul>
       <li v-for="item in items" :key="item.to">
         <NuxtLink
@@ -11,7 +11,7 @@
           @click="emit('navigate')"
         >
           <AppIcon :name="item.icon" />
-          <span>{{ item.label }}</span>
+          <span>{{ t(item.labelKey) }}</span>
         </NuxtLink>
 
         <!-- Nested items are always expanded — an expand/collapse
@@ -27,7 +27,7 @@
               @click="emit('navigate')"
             >
               <AppIcon :name="child.icon" />
-              <span>{{ child.label }}</span>
+              <span>{{ t(child.labelKey) }}</span>
             </NuxtLink>
           </li>
         </ul>
@@ -41,12 +41,13 @@ import type { NavigationItem } from '~/config/navigation'
 import { isNavItemActive } from '~/config/navigation'
 
 defineProps<{
-  label?: string
+  labelKey?: string
   items: NavigationItem[]
 }>()
 
 const emit = defineEmits<{ navigate: [] }>()
 const route = useRoute()
+const { t } = useI18n()
 </script>
 
 <style scoped>

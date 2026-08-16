@@ -1,7 +1,7 @@
-Reset your password — {{ $storeName }}
+{{ __('emails.password_reset.subject', ['store' => $storeName]) }}
 
-Use this token to reset your password. It expires shortly and can only be used once.
+{{ __('emails.password_reset.body') }}
 
 {{ $resetToken }}
 
-If you didn't request this, you can safely ignore this email.
+{{ __('emails.password_reset.ignore') }}

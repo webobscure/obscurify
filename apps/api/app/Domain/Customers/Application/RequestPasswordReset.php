@@ -5,8 +5,10 @@ namespace App\Domain\Customers\Application;
 use App\Domain\Customers\Enums\CustomerActionTokenPurpose;
 use App\Domain\Customers\Enums\CustomerIdentityType;
 use App\Domain\Customers\Mail\CustomerPasswordResetMail;
+use App\Domain\Customers\Models\Customer;
 use App\Domain\Customers\Models\CustomerActionToken;
 use App\Domain\Customers\Models\CustomerIdentity;
+use App\Shared\Localization\LocaleContext;
 use App\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -20,7 +22,10 @@ use Illuminate\Support\Str;
  */
 final class RequestPasswordReset
 {
-    public function __construct(private readonly TenantContext $tenantContext) {}
+    public function __construct(
+        private readonly TenantContext $tenantContext,
+        private readonly LocaleContext $localeContext,
+    ) {}
 
     public function handle(string $email): void
     {
@@ -50,6 +55,10 @@ final class RequestPasswordReset
             'expires_at' => now()->addMinutes((int) config('customers.password_reset_ttl_minutes')),
         ]);
 
-        Mail::to($identifier)->queue(new CustomerPasswordResetMail($plainToken, $this->tenantContext->store()->name));
+        $customerLocale = Customer::query()->find($identity->customer_id)?->locale;
+
+        Mail::to($identifier)
+            ->locale($customerLocale ?? $this->localeContext->current())
+            ->queue(new CustomerPasswordResetMail($plainToken, $this->tenantContext->store()->name));
     }
 }

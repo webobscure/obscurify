@@ -1,0 +1,9 @@
+{
+  "chrome": {
+    "products_nav": "Товары",
+    "cart": "Корзина",
+    "store_fallback": "Магазин",
+    "seller_inn_label": "ИНН",
+    "language": "Язык"
+  }
+}

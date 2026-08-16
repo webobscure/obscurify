@@ -159,18 +159,28 @@ bounds every list.
 
 ## 9. Synonyms
 
-`SearchSynonym` (`term`, `synonyms[]`, `is_bidirectional`, `locale`
-reserved for future multilingual support) is expanded by
-`SynonymExpander::expand()` into **per-word OR-groups** — `["tv"]`
-becomes `[["tv", "television"]]`, one group per original query word,
-each holding that word's alternatives. Groups are OR-matched internally
-and AND-required against each other (`DatabaseSearchProvider::applyTextMatch()`),
-which is the only sound semantics: "tv" and "television" never both
-literally appear in the same document, so requiring both would make the
-synonym useless. `correctTokens()` (typo tolerance) corrects only the
-primary alternative of each group, replacing that group with a single
+`SearchSynonym` (`term`, `synonyms[]`, `is_bidirectional`, `locale`)
+is expanded by `SynonymExpander::expand()` into **per-word OR-groups** —
+`["tv"]` becomes `[["tv", "television"]]`, one group per original query
+word, each holding that word's alternatives. Groups are OR-matched
+internally and AND-required against each other
+(`DatabaseSearchProvider::applyTextMatch()`), which is the only sound
+semantics: "tv" and "television" never both literally appear in the
+same document, so requiring both would make the synonym useless.
+`correctTokens()` (typo tolerance) corrects only the primary
+alternative of each group, replacing that group with a single
 corrected alternative — a documented simplification that avoids
 re-running synonym expansion on an already-corrected word.
+
+As of Milestone 26, `locale` is live: `SynonymExpander::expand()`
+accepts the current request locale (via `LocaleContext`, injected into
+`ExecuteSearch`) and only matches synonym rows where `locale` is
+`null` (locale-agnostic) or equal to the current locale — see
+[localization.md](localization.md#6-search-locale-awareness) and
+ADR-032. Stemming and language-specific text analysis remain out of
+scope; `SearchTextNormalizer::stripAccents()` still silently discards
+non-Latin-transliterable characters (e.g. Cyrillic), a pre-existing
+(Milestone 22) gap tracked in `technical-debt.md`.
 
 ## 10. Merchandising
 

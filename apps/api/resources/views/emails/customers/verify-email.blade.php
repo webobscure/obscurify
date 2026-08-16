@@ -1,7 +1,7 @@
-Verify your email — {{ $storeName }}
+{{ __('emails.verify_email.subject', ['store' => $storeName]) }}
 
-Use this token to verify your email address.
+{{ __('emails.verify_email.body') }}
 
 {{ $verificationToken }}
 
-If you didn't create an account, you can safely ignore this email.
+{{ __('emails.verify_email.ignore') }}

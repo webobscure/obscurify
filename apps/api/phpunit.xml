@@ -22,6 +22,15 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Deliberately pinned to en regardless of production's APP_LOCALE
+             (ru — spec: "Russian must become the default language for the
+             entire platform") so the bulk of the existing suite keeps
+             asserting stable, deterministic message text. Localization
+             itself is verified by dedicated tests that explicitly switch
+             locale per-test — see docs/architecture/localization.md and
+             tests/Feature/Localization/. -->
+        <env name="APP_LOCALE" value="en"/>
+        <env name="APP_FALLBACK_LOCALE" value="en"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

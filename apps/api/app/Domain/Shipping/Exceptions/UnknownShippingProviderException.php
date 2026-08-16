@@ -19,13 +19,13 @@ final class UnknownShippingProviderException extends RuntimeException
 {
     public static function forCode(string $code): self
     {
-        return new self("Unknown shipping provider \"{$code}\".");
+        return new self(__('shipping.unknown_provider', ['code' => $code]));
     }
 
     public function render(Request $request): JsonResponse
     {
         return new JsonResponse([
-            'message' => 'Not found.',
+            'message' => __('exceptions.not_found'),
             'error' => 'not_found',
         ], 404);
     }

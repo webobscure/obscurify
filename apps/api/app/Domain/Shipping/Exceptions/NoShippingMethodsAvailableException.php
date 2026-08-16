@@ -10,7 +10,7 @@ final class NoShippingMethodsAvailableException extends RuntimeException
 {
     public static function make(): self
     {
-        return new self('No shipping methods are available for this destination.');
+        return new self(__('shipping.no_methods_available'));
     }
 
     public function render(Request $request): JsonResponse

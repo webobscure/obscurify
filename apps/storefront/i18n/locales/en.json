@@ -1,0 +1,9 @@
+{
+  "chrome": {
+    "products_nav": "Products",
+    "cart": "Cart",
+    "store_fallback": "Store",
+    "seller_inn_label": "INN",
+    "language": "Language"
+  }
+}

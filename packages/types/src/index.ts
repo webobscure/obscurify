@@ -40,6 +40,8 @@ export interface User {
   id: string
   name: string
   email: string
+  /** This admin user's own saved language preference (Milestone 26) — null until explicitly set. */
+  locale: string | null
   created_at: string
 }
 
@@ -2306,4 +2308,27 @@ export interface FiscalReceipt {
   items?: FiscalReceiptItem[]
   created_at: string
   updated_at: string
+}
+
+// --- Internationalization & Localization (Milestone 26) ---
+// See docs/architecture/localization.md. Russian is the platform
+// default; en/de are the secondary languages. Backend translations
+// (validation, exceptions, notifications, emails) are file-based
+// (`lang/{locale}/*.php`) — this type only covers the platform-wide
+// Language catalog and per-store locale settings, the parts a
+// frontend actually calls the API for.
+
+export interface Language {
+  code: string
+  name: string
+  native_name: string
+  is_active: boolean
+  sort_order: number
+}
+
+export interface StoreLocaleSettings {
+  default_locale: string
+  admin_locale: string | null
+  storefront_locale: string | null
+  supported_locales: string[]
 }

@@ -20,7 +20,7 @@ final class UpdateCustomerProfile
     ) {}
 
     /**
-     * @param  array{first_name?: string|null, last_name?: string|null, phone?: string|null, date_of_birth?: string|null}  $data
+     * @param  array{first_name?: string|null, last_name?: string|null, phone?: string|null, date_of_birth?: string|null, locale?: string|null}  $data
      */
     public function handle(Customer $customer, array $data): Customer
     {

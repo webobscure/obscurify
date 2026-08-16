@@ -25,12 +25,12 @@ final class GraphQLUserError extends RuntimeException implements ClientAware
 
     public static function notFound(string $subject): self
     {
-        return new self("{$subject} not found.", 'not_found');
+        return new self(__('graphql.not_found', ['subject' => $subject]), 'not_found');
     }
 
-    public static function forbidden(string $message = 'You are not allowed to perform this action.'): self
+    public static function forbidden(?string $message = null): self
     {
-        return new self($message, 'forbidden');
+        return new self($message ?? __('graphql.forbidden'), 'forbidden');
     }
 
     public function isClientSafe(): bool

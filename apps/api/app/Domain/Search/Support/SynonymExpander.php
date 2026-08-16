@@ -20,6 +20,16 @@ use App\Domain\Search\Models\SearchSynonym;
  * the same document's text, so requiring both would make the synonym
  * useless. See DatabaseSearchProvider::applyTextMatch() for how a group
  * becomes one OR-clause, with groups still AND-ed against each other.
+ *
+ * Locale-aware (spec section 13: "Prepare synonym dictionaries per
+ * language" — `SearchSynonym.locale` has existed since Milestone 22,
+ * structurally ready but never filtered on until now, same story as
+ * NotificationTemplate.locale). A synonym with `locale = null` applies
+ * to every language (a brand name is a brand name regardless of query
+ * language); a synonym with a specific locale only expands a query
+ * resolved to that same locale. No stemming or language-specific
+ * analyzers are implemented — locale here only narrows which
+ * hand-authored synonym rows apply, per spec's explicit scope limit.
  */
 final class SynonymExpander
 {
@@ -29,13 +39,22 @@ final class SynonymExpander
      * @param  list<string>  $tokens
      * @return list<list<string>>
      */
-    public function expand(array $tokens): array
+    public function expand(array $tokens, ?string $locale = null): array
     {
         if ($tokens === []) {
             return [];
         }
 
-        $synonyms = SearchSynonym::query()->where('is_active', true)->get();
+        $synonyms = SearchSynonym::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($locale) {
+                $query->whereNull('locale');
+
+                if ($locale !== null) {
+                    $query->orWhere('locale', $locale);
+                }
+            })
+            ->get();
 
         return array_map(function (string $token) use ($synonyms) {
             $group = [$token];

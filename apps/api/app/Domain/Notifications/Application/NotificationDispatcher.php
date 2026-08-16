@@ -16,6 +16,7 @@ use App\Domain\Notifications\Support\NotificationDispatchRequest;
 use App\Domain\Notifications\Support\NotificationRecipientInput;
 use App\Domain\Notifications\Support\NotificationTemplateRenderer;
 use App\Domain\Notifications\Support\RecalculateNotificationStatus;
+use App\Domain\Notifications\Support\ResolveLocalizedNotificationTemplate;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Tenancy\TenantContext;
 
@@ -39,17 +40,23 @@ final class NotificationDispatcher
         private readonly NotificationTemplateRenderer $renderer,
         private readonly RecalculateNotificationStatus $recalculateStatus,
         private readonly TenantContext $tenantContext,
+        private readonly ResolveLocalizedNotificationTemplate $resolveLocalizedTemplate,
     ) {}
 
     public function dispatch(Store $store, NotificationDispatchRequest $request): Notification
     {
-        return $this->tenantContext->scope($store, function () use ($request) {
-            $subjectTemplate = $request->template->subject ?? $request->subject;
-            $bodyTextTemplate = $request->template->body_text ?? $request->bodyText ?? '';
-            $bodyHtmlTemplate = $request->template->body_html ?? $request->bodyHtml;
+        return $this->tenantContext->scope($store, function () use ($store, $request) {
+            $baseTemplate = $request->template;
+            $template = $baseTemplate !== null
+                ? $this->resolveLocalizedTemplate->handle($baseTemplate, $this->primaryRecipientLocale($request), $store)
+                : null;
+
+            $subjectTemplate = ($template !== null ? $template->subject : null) ?? $request->subject;
+            $bodyTextTemplate = ($template !== null ? $template->body_text : null) ?? $request->bodyText ?? '';
+            $bodyHtmlTemplate = ($template !== null ? $template->body_html : null) ?? $request->bodyHtml;
 
             $notification = Notification::query()->create([
-                'template_id' => $request->template?->id,
+                'template_id' => $template !== null ? $template->id : null,
                 'channel' => $request->channel->value,
                 'event_type' => $request->eventType,
                 'subject' => $subjectTemplate !== null ? $this->renderer->render($subjectTemplate, $request->context) : null,
@@ -131,6 +138,35 @@ final class NotificationDispatcher
         ]);
 
         SendNotificationDeliveryJob::dispatch($delivery->id);
+    }
+
+    /**
+     * A Notification renders its subject/body ONCE and shares that
+     * rendering across every one of its recipients' NotificationDelivery
+     * rows (a deliberate architectural constraint predating this
+     * milestone) — locale resolution follows the same shape and picks
+     * the FIRST customer recipient's saved locale, not a genuinely
+     * per-recipient one. The realistic case this matters for
+     * (Platform Events, spec section 7 of docs/architecture/notifications.md)
+     * always dispatches with exactly one recipient anyway; a future
+     * true bulk-compose-to-many-locales send is out of scope here — see
+     * docs/architecture/localization.md "Consequences".
+     */
+    private function primaryRecipientLocale(NotificationDispatchRequest $request): ?string
+    {
+        foreach ($request->recipients as $recipientInput) {
+            if ($recipientInput->customerId === null) {
+                continue;
+            }
+
+            $customer = Customer::query()->find($recipientInput->customerId);
+
+            if ($customer?->locale !== null) {
+                return $customer->locale;
+            }
+        }
+
+        return null;
     }
 
     private function resolveDefaultAddress(NotificationChannelType $channel, ?Customer $customer): ?string

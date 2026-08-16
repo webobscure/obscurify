@@ -12,6 +12,11 @@ use Illuminate\Queue\SerializesModels;
  * proving inbox possession). No transactional mail provider is wired up
  * yet; MAIL_MAILER defaults to 'log' (see config/mail.php), so this
  * writes to storage/logs in dev/test rather than failing.
+ *
+ * The caller sets the recipient's locale via
+ * `Mail::to($x)->locale($localeCode)->queue(new self(...))` — see
+ * CustomerVerificationMail's own docblock for why setting it from
+ * inside build() would be too late to take effect.
  */
 final class CustomerPasswordResetMail extends Mailable
 {
@@ -21,7 +26,7 @@ final class CustomerPasswordResetMail extends Mailable
 
     public function build(): self
     {
-        return $this->subject("Reset your password — {$this->storeName}")
+        return $this->subject(__('emails.password_reset.subject', ['store' => $this->storeName]))
             ->text('emails.customers.password-reset', [
                 'resetToken' => $this->resetToken,
                 'storeName' => $this->storeName,

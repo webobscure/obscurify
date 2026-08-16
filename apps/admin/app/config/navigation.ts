@@ -20,9 +20,15 @@
  * SidebarSection.vue). Customer Groups/Segments/Tags (Milestone 18)
  * nest under Customers for the identical reason — they exist only to
  * segment customers, the same relationship Locations has to Inventory.
+ *
+ * `labelKey` (Milestone 26) is a Vue I18n key (`i18n/locales/*.json`),
+ * not display text — every consumer must render it through `$t()`.
+ * Renamed from the pre-i18n `label` field specifically so a component
+ * that forgets to translate renders an obviously-wrong raw key like
+ * "nav.orders" instead of silently showing English to a Russian user.
  */
 export interface NavigationItem {
-  label: string
+  labelKey: string
   to: string
   icon: string
   /** Defaults to an exact match for '/', a prefix match otherwise. */
@@ -31,84 +37,84 @@ export interface NavigationItem {
 }
 
 export interface NavigationSection {
-  label?: string
+  labelKey?: string
   items: NavigationItem[]
 }
 
 export const primaryNavigation: NavigationSection[] = [
   {
-    label: 'Commerce',
+    labelKey: 'nav.commerce',
     items: [
-      { label: 'Orders', to: '/orders', icon: 'orders' },
+      { labelKey: 'nav.orders', to: '/orders', icon: 'orders' },
       {
-        label: 'Customers',
+        labelKey: 'nav.customers',
         to: '/customers',
         icon: 'customers',
         children: [
-          { label: 'Customer Groups', to: '/customer-groups', icon: 'customers' },
-          { label: 'Customer Segments', to: '/customer-segments', icon: 'customers' },
-          { label: 'Customer Tags', to: '/customer-tags', icon: 'customers' },
+          { labelKey: 'nav.customer_groups', to: '/customer-groups', icon: 'customers' },
+          { labelKey: 'nav.customer_segments', to: '/customer-segments', icon: 'customers' },
+          { labelKey: 'nav.customer_tags', to: '/customer-tags', icon: 'customers' },
         ],
       },
-      { label: 'Fulfillments', to: '/fulfillments', icon: 'fulfillment' },
-      { label: 'Products', to: '/products', icon: 'products' },
-      { label: 'Collections', to: '/collections', icon: 'collections' },
+      { labelKey: 'nav.fulfillments', to: '/fulfillments', icon: 'fulfillment' },
+      { labelKey: 'nav.products', to: '/products', icon: 'products' },
+      { labelKey: 'nav.collections', to: '/collections', icon: 'collections' },
       {
-        label: 'Inventory',
+        labelKey: 'nav.inventory',
         to: '/inventory',
         icon: 'inventory',
         children: [
-          { label: 'Locations', to: '/locations', icon: 'locations' },
+          { labelKey: 'nav.locations', to: '/locations', icon: 'locations' },
         ],
       },
     ],
   },
   {
-    label: 'Content',
+    labelKey: 'nav.content',
     items: [
       {
-        label: 'Pages',
+        labelKey: 'nav.pages',
         to: '/pages',
         icon: 'pages',
         children: [
           // Page Templates are a preset library that exists only to seed a
           // new page's sections — nested for the same reason Locations is
           // nested under Inventory, not as an arbitrary grouping.
-          { label: 'Page Templates', to: '/page-templates', icon: 'pages' },
+          { labelKey: 'nav.page_templates', to: '/page-templates', icon: 'pages' },
         ],
       },
       {
-        label: 'Blogs',
+        labelKey: 'nav.blogs',
         to: '/blogs',
         icon: 'blogs',
         children: [
           // Authors exist only to attribute blog posts; they have no
           // meaning outside a blog, so they hang off it.
-          { label: 'Authors', to: '/authors', icon: 'authors' },
+          { labelKey: 'nav.authors', to: '/authors', icon: 'authors' },
         ],
       },
-      { label: 'Menus', to: '/menus', icon: 'menus' },
-      { label: 'Redirects', to: '/redirects', icon: 'redirects' },
+      { labelKey: 'nav.menus', to: '/menus', icon: 'menus' },
+      { labelKey: 'nav.redirects', to: '/redirects', icon: 'redirects' },
     ],
   },
   {
     items: [
-      { label: 'Payments', to: '/payments', icon: 'payments' },
-      { label: 'Promotions', to: '/promotions', icon: 'promotions' },
+      { labelKey: 'nav.payments', to: '/payments', icon: 'payments' },
+      { labelKey: 'nav.promotions', to: '/promotions', icon: 'promotions' },
       {
-        label: 'Analytics',
+        labelKey: 'nav.analytics',
         to: '/analytics',
         icon: 'analytics',
         children: [
           // Reports/Saved Reports are both views onto the analytics
           // pipeline's report builder — the same "hangs off its parent
           // feature" relationship Executions/Templates has to Automation.
-          { label: 'Reports', to: '/analytics/reports', icon: 'analytics' },
-          { label: 'Saved Reports', to: '/analytics/saved-reports', icon: 'analytics' },
+          { labelKey: 'nav.reports', to: '/analytics/reports', icon: 'analytics' },
+          { labelKey: 'nav.saved_reports', to: '/analytics/saved-reports', icon: 'analytics' },
         ],
       },
       {
-        label: 'Notifications',
+        labelKey: 'nav.notifications',
         to: '/notifications',
         icon: 'notifications',
         children: [
@@ -116,14 +122,14 @@ export const primaryNavigation: NavigationSection[] = [
           // configuration or read surfaces of the Notification Center
           // itself — the same "hangs off its parent feature"
           // relationship Reports/Saved Reports has to Analytics.
-          { label: 'Templates', to: '/notifications/templates', icon: 'notifications' },
-          { label: 'Channels', to: '/notifications/channels', icon: 'notifications' },
-          { label: 'Providers', to: '/notifications/providers', icon: 'notifications' },
-          { label: 'Delivery Log', to: '/notifications/deliveries', icon: 'notifications' },
+          { labelKey: 'nav.templates', to: '/notifications/templates', icon: 'notifications' },
+          { labelKey: 'nav.channels', to: '/notifications/channels', icon: 'notifications' },
+          { labelKey: 'nav.providers', to: '/notifications/providers', icon: 'notifications' },
+          { labelKey: 'nav.delivery_log', to: '/notifications/deliveries', icon: 'notifications' },
         ],
       },
       {
-        label: 'Search',
+        labelKey: 'nav.search',
         to: '/search',
         icon: 'search',
         children: [
@@ -134,50 +140,50 @@ export const primaryNavigation: NavigationSection[] = [
           // Notifications. Ranking has no distinct page: it's the same
           // Rules resource sorted by position (see Rules.vue), and
           // Reindex lives on the Dashboard itself.
-          { label: 'Synonyms', to: '/search/synonyms', icon: 'search' },
-          { label: 'Rules & Ranking', to: '/search/rules', icon: 'search' },
-          { label: 'Pinned Products', to: '/search/pinned', icon: 'search' },
-          { label: 'Search Settings', to: '/search/settings', icon: 'search' },
-          { label: 'Search Analytics', to: '/search/analytics', icon: 'search' },
+          { labelKey: 'nav.synonyms', to: '/search/synonyms', icon: 'search' },
+          { labelKey: 'nav.rules_ranking', to: '/search/rules', icon: 'search' },
+          { labelKey: 'nav.pinned_products', to: '/search/pinned', icon: 'search' },
+          { labelKey: 'nav.search_settings', to: '/search/settings', icon: 'search' },
+          { labelKey: 'nav.search_analytics', to: '/search/analytics', icon: 'search' },
         ],
       },
       {
-        label: 'Automation',
+        labelKey: 'nav.automation',
         to: '/automation',
         icon: 'automation',
         children: [
           // Executions/Templates are both views onto workflows — the
           // same "hangs off its parent feature" relationship Locations
           // has to Inventory.
-          { label: 'Executions', to: '/automation/executions', icon: 'automation' },
-          { label: 'Templates', to: '/automation/templates', icon: 'automation' },
+          { labelKey: 'nav.executions', to: '/automation/executions', icon: 'automation' },
+          { labelKey: 'nav.templates', to: '/automation/templates', icon: 'automation' },
         ],
       },
-      { label: 'Apps', to: '/apps', icon: 'apps' },
+      { labelKey: 'nav.apps', to: '/apps', icon: 'apps' },
       {
-        label: 'Themes',
+        labelKey: 'nav.themes',
         to: '/themes',
         icon: 'themes',
         children: [
           // Theme Customizer/Section Library/Block Library are all
           // design-time concerns of the active theme, the same reason
           // Page Templates hangs off Pages rather than sitting flat.
-          { label: 'Theme Customizer', to: '/theme-customizer', icon: 'themes' },
-          { label: 'Section Library', to: '/section-library', icon: 'themes' },
-          { label: 'Block Library', to: '/block-library', icon: 'themes' },
+          { labelKey: 'nav.theme_customizer', to: '/theme-customizer', icon: 'themes' },
+          { labelKey: 'nav.section_library', to: '/section-library', icon: 'themes' },
+          { labelKey: 'nav.block_library', to: '/block-library', icon: 'themes' },
         ],
       },
       {
-        label: 'Shipping',
+        labelKey: 'nav.shipping',
         to: '/shipments',
         icon: 'shipping',
         children: [
-          { label: 'Shipping Methods', to: '/shipping-methods', icon: 'shipping' },
-          { label: 'Shipping Zones', to: '/shipping-zones', icon: 'shipping' },
+          { labelKey: 'nav.shipping_methods', to: '/shipping-methods', icon: 'shipping' },
+          { labelKey: 'nav.shipping_zones', to: '/shipping-zones', icon: 'shipping' },
         ],
       },
       {
-        label: 'Russian Commerce',
+        labelKey: 'nav.russian_commerce',
         to: '/russian-commerce/legal-profile',
         icon: 'russian-commerce',
         children: [
@@ -187,11 +193,11 @@ export const primaryNavigation: NavigationSection[] = [
           // requirement Order/Payment detail pages also surface inline —
           // same "hangs off its parent feature" relationship
           // Templates/Channels/Providers has to Notifications.
-          { label: 'Legal Details', to: '/russian-commerce/legal-profile', icon: 'russian-commerce' },
-          { label: 'Tax / VAT Settings', to: '/russian-commerce/tax-settings', icon: 'russian-commerce' },
-          { label: 'Fiscalization Settings', to: '/russian-commerce/fiscalization-settings', icon: 'russian-commerce' },
-          { label: 'Payment Methods', to: '/russian-commerce/payment-methods', icon: 'russian-commerce' },
-          { label: 'Fiscal Receipts', to: '/russian-commerce/fiscal-receipts', icon: 'russian-commerce' },
+          { labelKey: 'nav.legal_details', to: '/russian-commerce/legal-profile', icon: 'russian-commerce' },
+          { labelKey: 'nav.tax_vat_settings', to: '/russian-commerce/tax-settings', icon: 'russian-commerce' },
+          { labelKey: 'nav.fiscalization_settings', to: '/russian-commerce/fiscalization-settings', icon: 'russian-commerce' },
+          { labelKey: 'nav.payment_methods', to: '/russian-commerce/payment-methods', icon: 'russian-commerce' },
+          { labelKey: 'nav.fiscal_receipts', to: '/russian-commerce/fiscal-receipts', icon: 'russian-commerce' },
         ],
       },
     ],
@@ -206,7 +212,7 @@ export const primaryNavigation: NavigationSection[] = [
  */
 export const secondaryNavigation: NavigationSection = {
   items: [
-    { label: 'Stores', to: '/stores', icon: 'stores' },
+    { labelKey: 'nav.stores', to: '/stores', icon: 'stores' },
   ],
 }
 

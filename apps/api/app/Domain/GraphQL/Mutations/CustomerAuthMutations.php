@@ -90,7 +90,7 @@ final class CustomerAuthMutations
             'type' => Type::boolean(),
             'resolve' => function (mixed $root, array $args, GraphQLContext $context) {
                 if ($context->actor !== GraphQLActorType::Customer || $context->customerSession === null) {
-                    throw GraphQLUserError::forbidden('You must be logged in to log out.');
+                    throw GraphQLUserError::forbidden(__('graphql.must_be_logged_in_to_log_out'));
                 }
 
                 app(LogoutCustomer::class)->handle($context->customerSession);
