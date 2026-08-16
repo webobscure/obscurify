@@ -9,6 +9,25 @@ export default defineNuxtConfig({
   // ARCHITECTURE.md section 9) — this app never selects a store itself,
   // it just calls the API on whatever host the visitor is already using
   // (see app/composables/useStorefrontApiBaseUrl.ts).
+  //
+  // /account/** is the one carve-out: its pages gate on a client-only
+  // auth middleware (customer token lives in localStorage, never seen by
+  // SSR — see app/middleware/auth.ts), which can only decide to redirect
+  // once JS runs. Under `ssr: true`, the server unconditionally renders
+  // the protected page's real markup (it has no way to know the visitor
+  // is unauthenticated), and if the client then redirects before Vue
+  // finishes hydrating that markup, Vue hydrates the *new* target route
+  // against the *old* route's server-rendered DOM — a real hydration
+  // mismatch, not cosmetic (Vue warns and the DOM gets patched
+  // node-by-node instead of cleanly mounted). These pages have no SEO
+  // value (`noindex`, private account data) and no benefit from SSR, so
+  // they render fully client-side instead — no server DOM exists to
+  // mismatch against, and the auth redirect (or real content) is the
+  // only thing ever mounted.
+  routeRules: {
+    '/account/**': { ssr: false },
+  },
+
   runtimeConfig: {
     public: {
       // The API is conventionally reachable on the same hostname as the

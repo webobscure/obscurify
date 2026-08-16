@@ -129,3 +129,42 @@ describe('navigation source of truth', () => {
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.legal_details')).toBe(false)
   })
 })
+
+/**
+ * Regression guard for the i18n navigation investigation: this app uses
+ * `strategy: 'no_prefix'` (see nuxt.config.ts) — Russian, English, and
+ * German all resolve at the *same* plain path (`/products`, never
+ * `/ru/products` or `/en/products`). Routes are language-independent;
+ * only labels are translated. `isNavItemActive` and every `to`/
+ * `activePattern` must stay locale-agnostic strings so a future change
+ * can't silently reintroduce a locale segment into route matching.
+ */
+describe('locale-agnostic routing (no_prefix strategy)', () => {
+  const localePrefixPattern = /^\/(ru|en|de)(\/|$)/
+
+  it('no navigation item path carries a locale segment', () => {
+    const allItems = flattenNavigationItems(primaryNavigation).concat(secondaryNavigation.items)
+
+    for (const item of allItems) {
+      expect(item.to, `${item.to} looks locale-prefixed`).not.toMatch(localePrefixPattern)
+      if (item.activePattern) {
+        expect(item.activePattern, `${item.activePattern} looks locale-prefixed`).not.toMatch(localePrefixPattern)
+      }
+    }
+  })
+
+  it('active-route matching is identical regardless of which locale is currently selected', () => {
+    // isNavItemActive takes no locale argument by design — the same
+    // route.path drives active-state matching under every locale. This
+    // test documents that invariant so a future change can't couple
+    // active-state matching to the current locale without this test
+    // failing loudly.
+    const products = { labelKey: 'nav.products', to: '/products', icon: 'products' }
+
+    for (const currentPath of ['/products', '/products/abc123']) {
+      const results = [ru, en, de].map(() => isNavItemActive(currentPath, products))
+      expect(new Set(results).size).toBe(1)
+      expect(results[0]).toBe(true)
+    }
+  })
+})
