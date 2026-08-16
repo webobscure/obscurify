@@ -16,6 +16,13 @@
     </main>
     <footer class="footer">
       <p>&copy; {{ new Date().getFullYear() }} {{ store?.name ?? 'Store' }}</p>
+      <!--
+        Russian Commerce Foundation (Milestone 24, spec section 18) —
+        only what a customer needs to identify the seller (legal name,
+        INN). Never legal/fiscal complexity (KPP, addresses, VAT
+        breakdown, receipt status) — see StorefrontStoreResource.
+      -->
+      <p v-if="store?.seller" class="seller">{{ store.seller.legal_name }}, ИНН {{ store.seller.inn }}</p>
     </footer>
   </div>
 </template>
@@ -85,6 +92,11 @@ main {
   text-align: center;
   color: #777;
   border-top: 1px solid #e0e0e0;
+}
+
+.footer .seller {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
 }
 
 .error {

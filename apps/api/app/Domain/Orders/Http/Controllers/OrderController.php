@@ -43,6 +43,7 @@ final class OrderController extends Controller
             'payments.attempts', 'payments.transactions',
             'refunds.items', 'ledgerTransactions.entries', 'financialEvents',
             'discountApplications',
+            'fiscalSnapshot', 'fiscalReceipts',
         ]);
 
         return new OrderResource($order);

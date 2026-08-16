@@ -133,6 +133,14 @@ final class PlatformEventCatalog
             // §8 and AnalyticsProjector.
             'SearchPerformed',
             'SearchResultClicked',
+            // Milestone 24 (Russian Commerce Foundation) — spec section
+            // 14. All fired with aggregate_type=FiscalReceipt,
+            // aggregate_id=the receipt's own id (never Order/Payment —
+            // fiscalization is a separate domain from both, see
+            // docs/architecture/fiscalization.md §7).
+            'FiscalReceiptCreated',
+            'FiscalReceiptFiscalized',
+            'FiscalReceiptFailed',
         ];
     }
 }

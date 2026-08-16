@@ -83,6 +83,13 @@ use App\Domain\Payments\Http\Controllers\PaymentWebhookController;
 use App\Domain\Promotions\Http\Controllers\DiscountCodeController;
 use App\Domain\Promotions\Http\Controllers\PromotionController;
 use App\Domain\Returns\Http\Controllers\ReturnController;
+use App\Domain\RussianCommerce\Http\Controllers\FiscalizationCallbackController;
+use App\Domain\RussianCommerce\Http\Controllers\FiscalizationProviderController;
+use App\Domain\RussianCommerce\Http\Controllers\FiscalizationSettingsController;
+use App\Domain\RussianCommerce\Http\Controllers\FiscalReceiptController;
+use App\Domain\RussianCommerce\Http\Controllers\PaymentMethodSettingsController;
+use App\Domain\RussianCommerce\Http\Controllers\ProductFiscalProfileController;
+use App\Domain\RussianCommerce\Http\Controllers\StoreLegalProfileController;
 use App\Domain\Search\Http\Controllers\PinnedSearchResultController;
 use App\Domain\Search\Http\Controllers\SearchAnalyticsController;
 use App\Domain\Search\Http\Controllers\SearchIndexController;
@@ -158,6 +165,17 @@ Route::prefix('v1')->group(function () {
 
                 Route::post('media', [ProductMediaController::class, 'store']);
                 Route::post('variants/{variant}/media', [ProductVariantMediaController::class, 'store']);
+
+                // Russian Commerce Foundation (Milestone 24) — spec
+                // section 12. One optional ProductFiscalProfile per
+                // Product or ProductVariant.
+                Route::get('fiscal-profile', [ProductFiscalProfileController::class, 'showForProduct']);
+                Route::put('fiscal-profile', [ProductFiscalProfileController::class, 'updateForProduct']);
+                Route::delete('fiscal-profile', [ProductFiscalProfileController::class, 'destroyForProduct']);
+
+                Route::get('variants/{variant}/fiscal-profile', [ProductFiscalProfileController::class, 'showForVariant']);
+                Route::put('variants/{variant}/fiscal-profile', [ProductFiscalProfileController::class, 'updateForVariant']);
+                Route::delete('variants/{variant}/fiscal-profile', [ProductFiscalProfileController::class, 'destroyForVariant']);
             });
 
             Route::patch('media/{media}', [MediaController::class, 'update']);
@@ -346,6 +364,26 @@ Route::prefix('v1')->group(function () {
             Route::get('search-analytics', [SearchAnalyticsController::class, 'show']);
 
             Route::get('search-preview', [SearchPreviewController::class, 'show']);
+
+            // Russian Commerce Foundation (Milestone 24) — spec sections
+            // 1-9, 17. See docs/architecture/russian-commerce.md and
+            // docs/architecture/fiscalization.md.
+            Route::get('russian-commerce/legal-profile', [StoreLegalProfileController::class, 'show']);
+            Route::put('russian-commerce/legal-profile', [StoreLegalProfileController::class, 'update']);
+
+            Route::get('russian-commerce/fiscalization-settings', [FiscalizationSettingsController::class, 'show']);
+            Route::patch('russian-commerce/fiscalization-settings', [FiscalizationSettingsController::class, 'update']);
+
+            Route::get('russian-commerce/fiscalization-providers', [FiscalizationProviderController::class, 'index']);
+            Route::post('russian-commerce/fiscalization-providers', [FiscalizationProviderController::class, 'store']);
+            Route::patch('russian-commerce/fiscalization-providers/{fiscalizationProvider}', [FiscalizationProviderController::class, 'update']);
+            Route::delete('russian-commerce/fiscalization-providers/{fiscalizationProvider}', [FiscalizationProviderController::class, 'destroy']);
+
+            Route::get('russian-commerce/payment-method-settings', [PaymentMethodSettingsController::class, 'show']);
+            Route::patch('russian-commerce/payment-method-settings', [PaymentMethodSettingsController::class, 'update']);
+
+            Route::get('russian-commerce/fiscal-receipts', [FiscalReceiptController::class, 'index']);
+            Route::get('russian-commerce/fiscal-receipts/{fiscalReceipt}', [FiscalReceiptController::class, 'show']);
 
             Route::get('payments', [PaymentController::class, 'index']);
             Route::get('payments/{payment}', [PaymentController::class, 'show']);
@@ -555,6 +593,10 @@ Route::prefix('v1')->group(function () {
     // and ProcessPaymentWebhook for how tenant/authorization is resolved
     // safely from the payload instead.
     Route::post('payments/webhooks/{provider}', [PaymentWebhookController::class, 'handle']);
+
+    // Same reasoning as the payments webhook above — see
+    // FiscalizationCallbackController / ProcessFiscalizationCallback.
+    Route::post('russian-commerce/fiscalization/callbacks/{provider}', [FiscalizationCallbackController::class, 'handle']);
 
     // Same reasoning as the payments webhook above — see
     // ShippingWebhookController / ProcessShippingWebhook.

@@ -41,6 +41,7 @@ describe('navigation source of truth', () => {
     '/analytics', '/analytics/reports', '/analytics/saved-reports',
     '/notifications', '/notifications/templates', '/notifications/channels', '/notifications/providers', '/notifications/deliveries',
     '/search', '/search/synonyms', '/search/rules', '/search/pinned', '/search/settings', '/search/analytics',
+    '/russian-commerce/legal-profile', '/russian-commerce/tax-settings', '/russian-commerce/fiscalization-settings', '/russian-commerce/payment-methods', '/russian-commerce/fiscal-receipts',
   ])
 
   it('only references routes that exist as real pages in this app, including nested items', () => {
@@ -102,5 +103,12 @@ describe('navigation source of truth', () => {
 
     expect(search?.children?.map(c => c.label)).toEqual(['Synonyms', 'Rules & Ranking', 'Pinned Products', 'Search Settings', 'Search Analytics'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Synonyms')).toBe(false)
+  })
+
+  it('nests Legal Details/Tax-VAT/Fiscalization/Payment Methods/Fiscal Receipts under Russian Commerce, not as flat top-level items', () => {
+    const russianCommerce = primaryNavigation.flatMap(s => s.items).find(i => i.label === 'Russian Commerce')
+
+    expect(russianCommerce?.children?.map(c => c.label)).toEqual(['Legal Details', 'Tax / VAT Settings', 'Fiscalization Settings', 'Payment Methods', 'Fiscal Receipts'])
+    expect(primaryNavigation.flatMap(s => s.items).some(i => i.label === 'Legal Details')).toBe(false)
   })
 })

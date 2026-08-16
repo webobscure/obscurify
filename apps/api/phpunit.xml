@@ -39,6 +39,7 @@
         <env name="FILESYSTEM_DISK" value="local"/>
         <env name="PAYMENTS_FAKE_SECRET" value="testing-fake-payment-secret"/>
         <env name="SHIPPING_FAKE_SECRET" value="testing-fake-shipping-secret"/>
+        <env name="RUSSIAN_COMMERCE_FAKE_FISCALIZATION_SECRET" value="testing-fake-fiscalization-secret"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

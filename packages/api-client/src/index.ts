@@ -33,6 +33,9 @@ import type {
   DiscountCode,
   ExportFormat,
   ExportRecurrence,
+  FiscalizationProvider,
+  FiscalizationSettings,
+  FiscalReceipt,
   Fulfillment,
   InstalledApp,
   InventoryItem,
@@ -60,7 +63,9 @@ import type {
   PageTemplate,
   PageVersion,
   Payment,
+  PaymentMethodSettings,
   Product,
+  ProductFiscalProfile,
   ProductOption,
   ProductOptionValue,
   ProductVariant,
@@ -90,6 +95,7 @@ import type {
   ShippingMethod,
   ShippingZone,
   Store,
+  StoreLegalProfile,
   Theme,
   ThemeAsset,
   ThemeAssetType,
@@ -807,6 +813,79 @@ export class ApiClient {
       const suffix = query.toString() ? `?${query.toString()}` : ''
 
       return this.request<ApiResource<SearchAnalyticsSummary>>(`/api/v1/search-analytics${suffix}`)
+    },
+  }
+
+  /**
+   * Russian Commerce Foundation (Milestone 24) — see
+   * docs/architecture/russian-commerce.md and
+   * docs/architecture/fiscalization.md. No real provider (YooKassa,
+   * CDEK, OFD) is integrated; `fake` is the only registered
+   * FiscalizationProvider code.
+   */
+  readonly russianCommerce = {
+    legalProfile: {
+      get: () => this.request<ApiResource<StoreLegalProfile | null>>('/api/v1/russian-commerce/legal-profile'),
+
+      update: (data: Omit<StoreLegalProfile, 'id' | 'created_at' | 'updated_at'>) =>
+        this.request<ApiResource<StoreLegalProfile>>('/api/v1/russian-commerce/legal-profile', { method: 'PUT', body: JSON.stringify(data) }),
+    },
+
+    fiscalizationSettings: {
+      get: () => this.request<ApiResource<FiscalizationSettings>>('/api/v1/russian-commerce/fiscalization-settings'),
+
+      update: (data: Partial<{ active_provider_id: string | null; default_vat_rate: string; receipts_required: boolean }>) =>
+        this.request<ApiResource<FiscalizationSettings>>('/api/v1/russian-commerce/fiscalization-settings', { method: 'PATCH', body: JSON.stringify(data) }),
+    },
+
+    fiscalizationProviders: {
+      list: () => this.request<ApiCollection<FiscalizationProvider>>('/api/v1/russian-commerce/fiscalization-providers'),
+
+      create: (data: { code: string; name: string; is_enabled?: boolean; config?: Record<string, unknown>; credentials?: string | null }) =>
+        this.request<ApiResource<FiscalizationProvider>>('/api/v1/russian-commerce/fiscalization-providers', { method: 'POST', body: JSON.stringify(data) }),
+
+      update: (providerId: string, data: Partial<{ name: string; is_enabled: boolean; config: Record<string, unknown>; credentials: string | null }>) =>
+        this.request<ApiResource<FiscalizationProvider>>(`/api/v1/russian-commerce/fiscalization-providers/${providerId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+      remove: (providerId: string) => this.request<void>(`/api/v1/russian-commerce/fiscalization-providers/${providerId}`, { method: 'DELETE' }),
+    },
+
+    paymentMethodSettings: {
+      get: () => this.request<ApiResource<PaymentMethodSettings>>('/api/v1/russian-commerce/payment-method-settings'),
+
+      update: (enabledMethods: string[]) =>
+        this.request<ApiResource<PaymentMethodSettings>>('/api/v1/russian-commerce/payment-method-settings', { method: 'PATCH', body: JSON.stringify({ enabled_methods: enabledMethods }) }),
+    },
+
+    fiscalReceipts: {
+      list: (params: { order_id?: string; page?: number } = {}) => {
+        const query = new URLSearchParams()
+        if (params.order_id) query.set('order_id', params.order_id)
+        if (params.page) query.set('page', String(params.page))
+        const suffix = query.toString() ? `?${query.toString()}` : ''
+
+        return this.request<ApiCollection<FiscalReceipt>>(`/api/v1/russian-commerce/fiscal-receipts${suffix}`)
+      },
+
+      get: (receiptId: string) => this.request<ApiResource<FiscalReceipt>>(`/api/v1/russian-commerce/fiscal-receipts/${receiptId}`),
+    },
+
+    productFiscalProfile: {
+      get: (productId: string) => this.request<ApiResource<ProductFiscalProfile | null>>(`/api/v1/products/${productId}/fiscal-profile`),
+
+      update: (productId: string, data: { vat_rate: string; payment_subject: string; unit_of_measure?: string | null }) =>
+        this.request<ApiResource<ProductFiscalProfile>>(`/api/v1/products/${productId}/fiscal-profile`, { method: 'PUT', body: JSON.stringify(data) }),
+
+      remove: (productId: string) => this.request<void>(`/api/v1/products/${productId}/fiscal-profile`, { method: 'DELETE' }),
+    },
+
+    variantFiscalProfile: {
+      get: (productId: string, variantId: string) => this.request<ApiResource<ProductFiscalProfile | null>>(`/api/v1/products/${productId}/variants/${variantId}/fiscal-profile`),
+
+      update: (productId: string, variantId: string, data: { vat_rate: string; payment_subject: string; unit_of_measure?: string | null }) =>
+        this.request<ApiResource<ProductFiscalProfile>>(`/api/v1/products/${productId}/variants/${variantId}/fiscal-profile`, { method: 'PUT', body: JSON.stringify(data) }),
+
+      remove: (productId: string, variantId: string) => this.request<void>(`/api/v1/products/${productId}/variants/${variantId}/fiscal-profile`, { method: 'DELETE' }),
     },
   }
 

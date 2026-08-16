@@ -32,7 +32,7 @@ final class PaymentController extends Controller
      */
     public function show(Payment $payment): PaymentResource
     {
-        $payment->load(['order', 'attempts', 'transactions']);
+        $payment->load(['order', 'attempts', 'transactions', 'fiscalReceipt']);
 
         return new PaymentResource($payment);
     }

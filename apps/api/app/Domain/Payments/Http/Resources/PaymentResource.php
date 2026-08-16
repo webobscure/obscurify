@@ -3,6 +3,7 @@
 namespace App\Domain\Payments\Http\Resources;
 
 use App\Domain\Payments\Models\Payment;
+use App\Domain\RussianCommerce\Http\Resources\FiscalReceiptResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,8 +33,11 @@ final class PaymentResource extends JsonResource
             'captured_amount' => $this->captured_amount,
             'refunded_amount' => $this->refunded_amount,
             'external_payment_id' => $this->external_payment_id,
+            'payment_method' => $this->payment_method?->value,
+            'method_metadata' => $this->method_metadata,
             'attempts' => PaymentAttemptResource::collection($this->whenLoaded('attempts')),
             'transactions' => PaymentTransactionResource::collection($this->whenLoaded('transactions')),
+            'fiscal_receipt' => $this->whenLoaded('fiscalReceipt', fn () => $this->fiscalReceipt ? new FiscalReceiptResource($this->fiscalReceipt) : null),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

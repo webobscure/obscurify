@@ -23,6 +23,7 @@ use App\Domain\Promotions\Models\DiscountCode;
 use App\Domain\Promotions\Models\PromotionUsage;
 use App\Domain\Promotions\Support\AppliedDiscount;
 use App\Domain\Promotions\Support\PromotionEngine;
+use App\Domain\RussianCommerce\Application\BuildOrderFiscalSnapshot;
 use App\Domain\Shipping\Application\RevalidateShippingQuote;
 use App\Shared\Commerce\Application\RecordOutboxEvent;
 use App\Shared\Commerce\Enums\AddressType;
@@ -47,6 +48,8 @@ use Illuminate\Validation\ValidationException;
  *  6. find/create Customer
  *  7. allocate order number + create Order
  *  8. create OrderItem snapshots
+ *  8a. write an OrderFiscalSnapshot (Russian Commerce Foundation, spec
+ *      section 11 — a no-op when the store has no StoreLegalProfile)
  *  9. create OrderAddress snapshots
  *  10. link reservations to the Order
  *  11. mark Checkout completed
@@ -66,6 +69,7 @@ final class CompleteCheckout
         private readonly BuildPromotionContext $buildPromotionContext,
         private readonly PromotionEngine $promotionEngine,
         private readonly RecomputeCustomerMetrics $recomputeCustomerMetrics,
+        private readonly BuildOrderFiscalSnapshot $buildOrderFiscalSnapshot,
     ) {}
 
     public function handle(Checkout $checkout): Order
@@ -212,6 +216,11 @@ final class CompleteCheckout
 
                 $orderItemIdsByVariantId[$line['variant']->id] = $orderItem->id;
             }
+
+            // Russian Commerce Foundation (spec section 11) — a no-op for
+            // stores that never configured a StoreLegalProfile; see
+            // BuildOrderFiscalSnapshot's own docblock.
+            $this->buildOrderFiscalSnapshot->handle($order, $lines);
 
             OrderAddress::query()->create([
                 'order_id' => $order->id,

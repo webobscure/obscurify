@@ -15,6 +15,8 @@ use App\Domain\Orders\Enums\OrderStatus;
 use App\Domain\Payments\Models\Payment;
 use App\Domain\Promotions\Models\DiscountApplication;
 use App\Domain\Returns\Models\ReturnRequest;
+use App\Domain\RussianCommerce\Models\FiscalReceipt;
+use App\Domain\RussianCommerce\Models\OrderFiscalSnapshot;
 use App\Domain\Shipping\Models\Shipment;
 use App\Domain\Stores\Models\Store;
 use App\Shared\Commerce\Enums\AddressType;
@@ -219,6 +221,26 @@ class Order extends Model
     public function financialEvents(): HasMany
     {
         return $this->hasMany(FinancialEvent::class);
+    }
+
+    /**
+     * Russian Commerce Foundation (spec section 11) — null for orders
+     * placed before/without a StoreLegalProfile; see
+     * BuildOrderFiscalSnapshot.
+     *
+     * @return HasOne<OrderFiscalSnapshot, $this>
+     */
+    public function fiscalSnapshot(): HasOne
+    {
+        return $this->hasOne(OrderFiscalSnapshot::class);
+    }
+
+    /**
+     * @return HasMany<FiscalReceipt, $this>
+     */
+    public function fiscalReceipts(): HasMany
+    {
+        return $this->hasMany(FiscalReceipt::class);
     }
 
     /**

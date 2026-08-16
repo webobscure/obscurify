@@ -176,6 +176,24 @@ export const primaryNavigation: NavigationSection[] = [
           { label: 'Shipping Zones', to: '/shipping-zones', icon: 'shipping' },
         ],
       },
+      {
+        label: 'Russian Commerce',
+        to: '/russian-commerce/legal-profile',
+        icon: 'russian-commerce',
+        children: [
+          // Legal Details/Tax-VAT/Fiscalization/Payment Methods are the
+          // 4 settings pages spec section 17 asks for; Fiscal Receipts is
+          // the read-only list backing the same "fiscalization status"
+          // requirement Order/Payment detail pages also surface inline —
+          // same "hangs off its parent feature" relationship
+          // Templates/Channels/Providers has to Notifications.
+          { label: 'Legal Details', to: '/russian-commerce/legal-profile', icon: 'russian-commerce' },
+          { label: 'Tax / VAT Settings', to: '/russian-commerce/tax-settings', icon: 'russian-commerce' },
+          { label: 'Fiscalization Settings', to: '/russian-commerce/fiscalization-settings', icon: 'russian-commerce' },
+          { label: 'Payment Methods', to: '/russian-commerce/payment-methods', icon: 'russian-commerce' },
+          { label: 'Fiscal Receipts', to: '/russian-commerce/fiscal-receipts', icon: 'russian-commerce' },
+        ],
+      },
     ],
   },
 ]

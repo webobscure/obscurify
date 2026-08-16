@@ -11,6 +11,8 @@ use App\Domain\Orders\Models\Order;
 use App\Domain\Payments\Http\Resources\PaymentResource;
 use App\Domain\Promotions\Http\Resources\DiscountApplicationResource;
 use App\Domain\Returns\Http\Resources\ReturnResource;
+use App\Domain\RussianCommerce\Http\Resources\FiscalReceiptResource;
+use App\Domain\RussianCommerce\Http\Resources\OrderFiscalSnapshotResource;
 use App\Domain\Shipping\Http\Resources\ShipmentResource;
 use App\Domain\Shipping\Http\Resources\ShippingLineResource;
 use Illuminate\Http\Request;
@@ -64,6 +66,8 @@ final class OrderResource extends JsonResource
             'refunds' => RefundResource::collection($this->whenLoaded('refunds')),
             'ledger_transactions' => LedgerTransactionResource::collection($this->whenLoaded('ledgerTransactions')),
             'financial_events' => FinancialEventResource::collection($this->whenLoaded('financialEvents')),
+            'fiscal_snapshot' => $this->whenLoaded('fiscalSnapshot', fn () => $this->fiscalSnapshot ? new OrderFiscalSnapshotResource($this->fiscalSnapshot) : null),
+            'fiscal_receipts' => FiscalReceiptResource::collection($this->whenLoaded('fiscalReceipts')),
             'cancelled_at' => $this->cancelled_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -425,6 +425,14 @@ export interface StorefrontStore {
   default_currency: string
   default_locale: string
   timezone: string
+  /**
+   * Russian Commerce Foundation (Milestone 24) — null when the store
+   * has no StoreLegalProfile configured. Deliberately minimal: only
+   * legal_name/inn, never the full legal profile (see
+   * docs/architecture/russian-commerce.md §18).
+   */
+  seller: { legal_name: string, inn: string } | null
+  payment_methods: RussianPaymentMethod[]
 }
 
 export interface StorefrontAvailability {
@@ -670,6 +678,9 @@ export interface Order {
   refunds?: Refund[]
   ledger_transactions?: LedgerTransaction[]
   financial_events?: FinancialEvent[]
+  /** Russian Commerce Foundation (Milestone 24) — null for orders placed before/without a StoreLegalProfile. */
+  fiscal_snapshot?: OrderFiscalSnapshot | null
+  fiscal_receipts?: FiscalReceipt[]
   cancelled_at: string | null
   created_at: string
   updated_at: string
@@ -754,8 +765,12 @@ export interface Payment {
   captured_amount: number
   refunded_amount: number
   external_payment_id: string | null
+  /** Russian Commerce Foundation (Milestone 24) — the payment channel, distinct from `provider` (which gateway). */
+  payment_method?: RussianPaymentMethod | null
+  method_metadata?: Record<string, unknown> | null
   attempts?: PaymentAttempt[]
   transactions?: PaymentTransaction[]
+  fiscal_receipt?: FiscalReceipt | null
   created_at: string
   updated_at: string
 }
@@ -2165,4 +2180,130 @@ export interface SearchAnalyticsSummary {
   conversion_rate: number
   popular_searches: Array<{ query: string; count: number }>
   zero_result_searches: Array<{ query: string; count: number }>
+}
+
+// --- Russian Commerce Foundation (Milestone 24) ---
+// See docs/architecture/russian-commerce.md and
+// docs/architecture/fiscalization.md. No real provider (YooKassa, CDEK,
+// OFD) is integrated this milestone — `fake` is the only registered
+// FiscalizationProvider code.
+
+export type LegalEntityType = 'legal_entity' | 'individual_entrepreneur' | 'self_employed'
+export type VatRate = 'none' | 'vat_0' | 'vat_5' | 'vat_7' | 'vat_10' | 'vat_20'
+export type FiscalReceiptStatus = 'pending' | 'processing' | 'fiscalized' | 'failed' | 'cancelled'
+export type FiscalReceiptOperation = 'sale' | 'refund'
+export type FiscalReceiptItemPaymentMethod = 'full_payment' | 'prepayment' | 'advance' | 'credit'
+export type FiscalReceiptItemPaymentSubject = 'commodity' | 'service' | 'work' | 'payment' | 'agent_commission'
+export type RussianPaymentMethod = 'bank_card' | 'sbp' | 'bank_transfer' | 'cash' | 'credit'
+export type FiscalizableType = 'product' | 'product_variant'
+
+export interface RussianAddress {
+  country_code: string
+  postal_code: string | null
+  region: string | null
+  district: string | null
+  city: string | null
+  settlement: string | null
+  street: string | null
+  house: string | null
+  building: string | null
+  apartment: string | null
+  raw_address: string | null
+}
+
+export interface StoreLegalProfile {
+  id: string
+  legal_entity_type: LegalEntityType
+  legal_name: string
+  short_name: string | null
+  inn: string
+  kpp: string | null
+  ogrn: string | null
+  ogrnip: string | null
+  legal_address: RussianAddress | null
+  actual_address: RussianAddress | null
+  email: string | null
+  phone: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FiscalizationProvider {
+  id: string
+  code: string
+  name: string
+  is_enabled: boolean
+  config: Record<string, unknown> | null
+  has_credentials: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FiscalizationSettings {
+  id: string
+  active_provider_id: string | null
+  active_provider: FiscalizationProvider | null
+  default_vat_rate: VatRate
+  receipts_required: boolean
+}
+
+export interface PaymentMethodSettings {
+  id: string
+  enabled_methods: RussianPaymentMethod[]
+}
+
+export interface ProductFiscalProfile {
+  id: string
+  fiscalizable_type: FiscalizableType
+  fiscalizable_id: string
+  vat_rate: VatRate
+  payment_subject: FiscalReceiptItemPaymentSubject
+  unit_of_measure: string | null
+}
+
+export interface OrderFiscalSnapshot {
+  seller_legal_entity_type: LegalEntityType
+  seller_legal_name: string
+  seller_inn: string
+  seller_kpp: string | null
+  vat_rate: VatRate
+  vat_amount: number
+  receipt_required: boolean
+}
+
+export interface FiscalReceiptItem {
+  id: string
+  product_id: string | null
+  product_variant_id: string | null
+  name: string
+  quantity: number
+  price_amount: number
+  amount: number
+  vat_rate: VatRate
+  payment_method: FiscalReceiptItemPaymentMethod
+  payment_subject: FiscalReceiptItemPaymentSubject
+  unit_of_measure: string | null
+}
+
+export interface FiscalReceipt {
+  id: string
+  order_id: string
+  payment_id: string | null
+  correction_of_id: string | null
+  operation: FiscalReceiptOperation
+  status: FiscalReceiptStatus
+  provider: string
+  external_receipt_id: string | null
+  seller_inn: string
+  seller_kpp: string | null
+  customer_email: string | null
+  customer_phone: string | null
+  currency: string
+  total_amount: number
+  fiscalized_at: string | null
+  error_message: string | null
+  attempt_count: number
+  items?: FiscalReceiptItem[]
+  created_at: string
+  updated_at: string
 }

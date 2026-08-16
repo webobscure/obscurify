@@ -69,11 +69,29 @@ export class StorefrontGraphQLClient {
 
   readonly store = {
     get: async (): Promise<ApiResource<StorefrontStore>> => {
-      const { store } = await this.request<{ store: { name: string, defaultCurrency: string, defaultLocale: string, timezone: string } }>(
-        'query { store { name defaultCurrency defaultLocale timezone } }',
+      const { store } = await this.request<{
+        store: {
+          name: string
+          defaultCurrency: string
+          defaultLocale: string
+          timezone: string
+          seller: { legalName: string, inn: string } | null
+          paymentMethods: string[]
+        }
+      }>(
+        'query { store { name defaultCurrency defaultLocale timezone seller { legalName inn } paymentMethods } }',
       )
 
-      return { data: { name: store.name, default_currency: store.defaultCurrency, default_locale: store.defaultLocale, timezone: store.timezone } }
+      return {
+        data: {
+          name: store.name,
+          default_currency: store.defaultCurrency,
+          default_locale: store.defaultLocale,
+          timezone: store.timezone,
+          seller: store.seller ? { legal_name: store.seller.legalName, inn: store.seller.inn } : null,
+          payment_methods: store.paymentMethods as StorefrontStore['payment_methods'],
+        },
+      }
     },
   }
 

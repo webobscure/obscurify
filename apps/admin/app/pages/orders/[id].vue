@@ -307,6 +307,35 @@
       <p v-else>No payments yet.</p>
     </section>
 
+    <!-- Russian Commerce Foundation (Milestone 24) — null for stores
+         with no StoreLegalProfile configured (see BuildOrderFiscalSnapshot). -->
+    <section v-if="order.fiscal_snapshot">
+      <h2>Fiscalization</h2>
+      <table class="kv">
+        <tbody>
+          <tr><th>Seller</th><td>{{ order.fiscal_snapshot.seller_legal_name }} (INN {{ order.fiscal_snapshot.seller_inn }}<template v-if="order.fiscal_snapshot.seller_kpp">, KPP {{ order.fiscal_snapshot.seller_kpp }}</template>)</td></tr>
+          <tr><th>VAT</th><td>{{ order.fiscal_snapshot.vat_rate }} ({{ formatMoney({ amount: order.fiscal_snapshot.vat_amount, currency: order.currency }) }})</td></tr>
+          <tr><th>Receipt required</th><td>{{ order.fiscal_snapshot.receipt_required ? 'Yes' : 'No' }}</td></tr>
+        </tbody>
+      </table>
+
+      <table v-if="order.fiscal_receipts?.length">
+        <thead>
+          <tr><th>Status</th><th>Provider</th><th>Total</th><th>Fiscalized at</th><th/></tr>
+        </thead>
+        <tbody>
+          <tr v-for="receipt in order.fiscal_receipts" :key="receipt.id">
+            <td>{{ receipt.status }}</td>
+            <td>{{ receipt.provider }}</td>
+            <td>{{ formatMoney({ amount: receipt.total_amount, currency: receipt.currency }) }}</td>
+            <td>{{ receipt.fiscalized_at ?? '—' }}</td>
+            <td><NuxtLink :to="`/russian-commerce/fiscal-receipts/${receipt.id}`">View</NuxtLink></td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else-if="order.fiscal_snapshot.receipt_required">No fiscal receipt requested yet.</p>
+    </section>
+
     <section>
       <h2>Refunds</h2>
       <table v-if="order.refunds?.length">
