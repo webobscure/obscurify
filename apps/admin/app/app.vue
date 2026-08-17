@@ -21,11 +21,22 @@ h1,
 h2,
 h3 {
   font-weight: var(--font-weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+h1 {
+  font-size: var(--text-xl);
+  margin: 0;
 }
 
 h2 {
   font-size: var(--text-lg);
   margin: 0 0 var(--space-3);
+}
+
+h3 {
+  font-size: var(--text-base);
+  margin: 0 0 var(--space-2);
 }
 
 form {
@@ -47,23 +58,26 @@ textarea {
   background: var(--color-surface);
 }
 
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible,
-a:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+:is(input, select, textarea, button, a, [tabindex]):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 button {
   font-family: inherit;
 }
 
+/*
+ * Legacy default for any bare <button type="submit"> that hasn't been
+ * migrated to the new Button component yet (docs/design/
+ * ADMIN_DESIGN_SYSTEM.md) — kept as-is, unchanged, for pages still
+ * depending on it. New/migrated pages should use <Button> instead of
+ * relying on this bare-element reset.
+ */
 button[type='submit'] {
   padding: var(--space-2) var(--space-4);
   background: var(--color-text);
-  color: white;
+  color: var(--color-surface);
   border: none;
   border-radius: var(--radius-sm);
   font-size: var(--text-base);
@@ -78,6 +92,13 @@ button[type='submit']:hover {
 button[type='submit']:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+[disabled],
+[aria-disabled='true'] {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .error {

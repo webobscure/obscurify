@@ -45,6 +45,8 @@
 import type { Location } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const locations = ref<Location[]>([])
 const form = reactive({ name: '', country: '', region: '', city: '', address: '' })
 const creating = ref(false)

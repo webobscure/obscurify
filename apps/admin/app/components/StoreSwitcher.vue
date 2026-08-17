@@ -143,13 +143,13 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 }
 
 .status.is-active {
-  color: #7fd99a;
-  background: rgba(30, 126, 52, 0.18);
+  color: var(--color-sidebar-badge-success);
+  background: var(--color-sidebar-badge-success-bg);
 }
 
 .status.is-suspended {
-  color: #e0a94c;
-  background: rgba(146, 96, 10, 0.18);
+  color: var(--color-sidebar-badge-warning);
+  background: var(--color-sidebar-badge-warning-bg);
 }
 
 .chev {
@@ -167,13 +167,15 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
   top: calc(100% + var(--space-2));
   left: 0;
   right: 0;
-  background: #1f1f26;
+  background: var(--color-sidebar-menu-bg);
   border: 1px solid var(--color-sidebar-border);
   border-radius: var(--radius-md);
   list-style: none;
   margin: 0;
   padding: var(--space-1);
-  box-shadow: var(--shadow-lg);
+  /* Dropdown pattern — elevation 1 per docs/design/DESIGN_SYSTEM.md
+     section 7, same level as UserMenu's dropdown. */
+  box-shadow: var(--shadow-sm);
 }
 
 .menu button {

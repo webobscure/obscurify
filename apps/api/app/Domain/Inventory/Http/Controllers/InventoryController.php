@@ -4,6 +4,7 @@ namespace App\Domain\Inventory\Http\Controllers;
 
 use App\Domain\Inventory\Application\AdjustInventory;
 use App\Domain\Inventory\Http\Requests\AdjustInventoryRequest;
+use App\Domain\Inventory\Http\Requests\IndexInventoryRequest;
 use App\Domain\Inventory\Http\Resources\InventoryItemResource;
 use App\Domain\Inventory\Http\Resources\InventoryLevelResource;
 use App\Domain\Inventory\Models\InventoryItem;
@@ -17,13 +18,24 @@ final class InventoryController extends Controller
     /**
      * Scoped to the active tenant by InventoryItem's BelongsToTenant global
      * scope — this can never return another store's inventory.
+     *
+     * `?product_variant_id[]=` (docs/design/DESIGN_SYSTEM.md Products
+     * redesign) scopes the result to exactly the requested variants and
+     * skips pagination — the caller already knows which (small, bounded)
+     * set of variants it needs, unlike the unfiltered store-wide list
+     * below which stays paginated as before.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(IndexInventoryRequest $request): AnonymousResourceCollection
     {
-        $items = InventoryItem::query()
-            ->with(['levels', 'variant'])
-            ->orderByDesc('created_at')
-            ->paginate();
+        $query = InventoryItem::query()->with(['levels', 'variant']);
+
+        if ($variantIds = $request->validated('product_variant_id')) {
+            $items = $query->whereIn('product_variant_id', $variantIds)->get();
+
+            return InventoryItemResource::collection($items);
+        }
+
+        $items = $query->orderByDesc('created_at')->paginate();
 
         return InventoryItemResource::collection($items);
     }

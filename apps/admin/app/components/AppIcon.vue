@@ -1,5 +1,15 @@
 <template>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" v-html="paths[name]" />
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    :class="size ? `size-${size}` : ''"
+    v-html="paths[name]"
+  />
 </template>
 
 <script setup lang="ts">
@@ -8,8 +18,13 @@
  * icon library dependency, kept intentionally minimal. `v-html` here is
  * safe: `paths` is a fixed, hardcoded lookup with no user/API-derived
  * content ever passed through it.
+ *
+ * `size` is optional and unset by default so every pre-existing call site
+ * (none of which pass it) keeps its current em-based sizing from the
+ * parent's own scoped CSS — only new consumers that opt in get the
+ * token-driven --icon-size-*.
  */
-defineProps<{ name: string }>()
+defineProps<{ name: string; size?: 'sm' | 'md' | 'lg' }>()
 
 const paths: Record<string, string> = {
   orders: '<path d="M4 7h16l-1.5 12h-13z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/>',
@@ -36,8 +51,13 @@ const paths: Record<string, string> = {
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   'russian-commerce': '<path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h3"/><circle cx="17" cy="17" r="3.2"/><path d="M17 15.3v3.4M15.7 17h2.6"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  upload: '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/>',
   menu: '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H4a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V4a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H20a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  'arrow-left': '<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>',
 }
 </script>
 
@@ -47,4 +67,8 @@ svg {
   height: 1.1em;
   flex-shrink: 0;
 }
+
+svg.size-sm { width: var(--icon-size-sm); height: var(--icon-size-sm); }
+svg.size-md { width: var(--icon-size-md); height: var(--icon-size-md); }
+svg.size-lg { width: var(--icon-size-lg); height: var(--icon-size-lg); }
 </style>

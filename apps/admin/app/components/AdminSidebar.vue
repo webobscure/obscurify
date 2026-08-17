@@ -8,7 +8,7 @@
   <aside class="sidebar" :class="{ 'mobile-open': sidebar.mobileOpen.value }">
     <StoreSwitcher />
 
-    <SidebarNavigation :sections="primaryNavigation" @navigate="sidebar.close()" />
+    <AdminNavigation :sections="primaryNavigation" @navigate="sidebar.close()" />
 
     <div class="bottom">
       <SidebarSection :items="secondaryNavigation.items" @navigate="sidebar.close()" />
@@ -63,7 +63,7 @@ const sidebar = useAdminSidebar()
     position: fixed;
     inset: 0;
     z-index: 40;
-    background: rgba(15, 15, 20, 0.4);
+    background: var(--color-overlay);
   }
 }
 </style>

@@ -40,6 +40,8 @@
 import type { FiscalizationSettings, VatRate } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const activeStore = useActiveStore()
 
 const settings = ref<FiscalizationSettings | null>(null)

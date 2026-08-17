@@ -133,3 +133,39 @@ it('does not let Store A adjust or list a Store B inventory item', function () {
 
     expect(InventoryLevel::withoutGlobalScopes()->where('inventory_item_id', $itemB->id)->count())->toBe(0);
 });
+
+it('filters inventory items by product_variant_id and skips pagination for that filter', function () {
+    // A second product, not a second variant on productA: productA has no
+    // options defined (see beforeEach), so a second option-less variant on
+    // the same product would collide on the same empty option_signature.
+    $secondProduct = app(TenantContext::class)->scope($this->storeA, fn () => Product::factory()->create());
+
+    $secondVariantResponse = $this->actingAs($this->userA, 'sanctum')
+        ->postJson("/api/v1/products/{$secondProduct->id}/variants", ['price_amount' => 500, 'sku' => 'SECOND'], tenantHeader($this->storeA))
+        ->assertCreated();
+
+    $secondItem = app(TenantContext::class)->scope(
+        $this->storeA,
+        fn () => InventoryItem::query()->where('product_variant_id', $secondVariantResponse->json('data.id'))->firstOrFail(),
+    );
+
+    $response = $this->actingAs($this->userA, 'sanctum')
+        ->getJson('/api/v1/inventory?'.http_build_query(['product_variant_id' => [$this->itemA->product_variant_id]]), tenantHeader($this->storeA))
+        ->assertOk();
+
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids)->toContain($this->itemA->id)
+        ->and($ids)->not->toContain($secondItem->id);
+});
+
+it('never returns a Store B inventory item via product_variant_id filter even if the id is guessed', function () {
+    $variantResponse = $this->actingAs($this->userB, 'sanctum')
+        ->postJson("/api/v1/products/{$this->productB->id}/variants", ['price_amount' => 500], tenantHeader($this->storeB))
+        ->assertCreated();
+
+    $response = $this->actingAs($this->userA, 'sanctum')
+        ->getJson('/api/v1/inventory?'.http_build_query(['product_variant_id' => [$variantResponse->json('data.id')]]), tenantHeader($this->storeA))
+        ->assertOk();
+
+    expect($response->json('data'))->toBe([]);
+});

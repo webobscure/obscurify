@@ -97,6 +97,8 @@
 import type { NotificationChannelType, NotificationStatus, NotificationSummary } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const activeStore = useActiveStore()
 
 const notifications = ref<NotificationSummary[]>([])

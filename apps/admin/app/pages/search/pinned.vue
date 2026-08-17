@@ -64,6 +64,8 @@
 import type { PinnedSearchResult } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const activeStore = useActiveStore()
 
 const pinnedResults = ref<PinnedSearchResult[]>([])

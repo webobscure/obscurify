@@ -11,4 +11,6 @@ return [
 
     'not_found' => 'Not found.',
 
+    'upload_too_large' => 'The uploaded file is too large. Maximum allowed size is :max.',
+
 ];

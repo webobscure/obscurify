@@ -55,6 +55,8 @@
 import type { ShippingZone } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const zones = ref<ShippingZone[]>([])
 const form = reactive<{ name: string, regions: { country_code: string, region: string, postal_code_pattern: string }[] }>({
   name: '',

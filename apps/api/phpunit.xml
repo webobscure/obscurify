@@ -21,6 +21,17 @@
         </include>
     </source>
     <php>
+        <!-- `php artisan test` spawns the actual test run as a child
+             process that does not inherit CLI `-d` flags passed to the
+             outer `artisan` invocation — setting it here (applied via
+             ini_set() from inside the test process itself) is what
+             actually reaches the run, regardless of how it was
+             launched. Without it, `php artisan test` exhausts PHP's
+             default 128M loading routes/api.php (a genuinely large
+             route file) before a single test executes; `vendor/bin/pest`
+             run directly with `-d memory_limit=1G` was unaffected since
+             there's no artisan subprocess boundary in that path. -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <!-- Deliberately pinned to en regardless of production's APP_LOCALE
              (ru — spec: "Russian must become the default language for the

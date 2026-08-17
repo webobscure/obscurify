@@ -59,6 +59,8 @@
 import type { Redirect } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const redirects = ref<Redirect[]>([])
 /** Rebuilt wholesale on every load so a deleted redirect leaves no stale draft. */
 const drafts = ref<Record<string, { from_path: string, to_path: string, status_code: number }>>({})

@@ -234,14 +234,27 @@ export class ApiClient {
   }
 
   readonly products = {
-    list: () => this.request<ApiCollection<Product>>('/api/v1/products'),
+    list: (params: { page?: number; perPage?: number; search?: string; status?: string; vendor?: string; productType?: string; collectionId?: string; sort?: string } = {}) => {
+      const query = new URLSearchParams()
+      if (params.page) query.set('page', String(params.page))
+      if (params.perPage) query.set('per_page', String(params.perPage))
+      if (params.search) query.set('search', params.search)
+      if (params.status) query.set('status', params.status)
+      if (params.vendor) query.set('vendor', params.vendor)
+      if (params.productType) query.set('product_type', params.productType)
+      if (params.collectionId) query.set('collection_id', params.collectionId)
+      if (params.sort) query.set('sort', params.sort)
 
-    create: (data: { title: string; slug?: string; description?: string; vendor?: string; product_type?: string; status?: string; seo_title?: string; seo_description?: string }) =>
+      const qs = query.toString()
+      return this.request<ApiCollection<Product>>(`/api/v1/products${qs ? `?${qs}` : ''}`)
+    },
+
+    create: (data: { title: string; slug?: string; description?: string; vendor?: string; product_type?: string; tags?: string[]; status?: string; seo_title?: string; seo_description?: string }) =>
       this.request<ApiResource<Product>>('/api/v1/products', { method: 'POST', body: JSON.stringify(data) }),
 
     get: (productId: string) => this.request<ApiResource<Product>>(`/api/v1/products/${productId}`),
 
-    update: (productId: string, data: Partial<{ title: string; slug: string; description: string; vendor: string; product_type: string; status: string; seo_title: string; seo_description: string }>) =>
+    update: (productId: string, data: Partial<{ title: string; slug: string; description: string; vendor: string; product_type: string; tags: string[]; status: string; seo_title: string; seo_description: string }>) =>
       this.request<ApiResource<Product>>(`/api/v1/products/${productId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
     remove: (productId: string) =>
@@ -383,7 +396,13 @@ export class ApiClient {
   }
 
   readonly inventory = {
-    list: () => this.request<ApiCollection<InventoryItem>>('/api/v1/inventory'),
+    list: (params: { productVariantId?: string[] } = {}) => {
+      const query = new URLSearchParams()
+      for (const id of params.productVariantId ?? []) query.append('product_variant_id[]', id)
+
+      const qs = query.toString()
+      return this.request<ApiCollection<InventoryItem>>(`/api/v1/inventory${qs ? `?${qs}` : ''}`)
+    },
 
     adjust: (itemId: string, data: { location_id: string; quantity_delta: number; reason: string; reference_type?: string; reference_id?: string }) =>
       this.request<ApiResource<InventoryLevel>>(`/api/v1/inventory/${itemId}/adjust`, { method: 'POST', body: JSON.stringify(data) }),

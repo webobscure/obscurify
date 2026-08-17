@@ -31,16 +31,19 @@
 
 <script setup lang="ts">
 import type { NavigationItem } from '~/config/navigation'
-import { flattenNavigationItems, primaryNavigation, secondaryNavigation } from '~/config/navigation'
+import { flattenNavigationItems, primaryNavigation, secondaryNavigation, settingsNavigation } from '~/config/navigation'
 
 /**
  * There is no global search backend yet (out of scope for this shell
  * refactor) — this is a scoped navigation palette over the app's own
  * real routes (spec section 5: "build only the UI component" / "do not
- * invent fake search results").
+ * invent fake search results"). Includes settingsNavigation (Milestone
+ * 27) so ⌘K can still jump straight to a Settings page without the user
+ * needing to know it moved out of the daily sidebar first.
  */
 const allItems: NavigationItem[] = [
   ...flattenNavigationItems(primaryNavigation),
+  ...flattenNavigationItems(settingsNavigation),
   ...secondaryNavigation.items,
 ]
 
@@ -127,7 +130,7 @@ kbd {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 15, 20, 0.4);
+  background: var(--color-overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;

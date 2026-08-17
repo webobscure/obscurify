@@ -7,6 +7,8 @@ use App\Domain\Catalog\Models\ProductVariant;
 use App\Domain\Inventory\Models\InventoryItem;
 use App\Models\User;
 use App\Shared\Tenancy\TenantContext;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -159,4 +161,28 @@ it('allows multiple variants with no SKU on the same product', function () {
     app(TenantContext::class)->scope($this->store, function () {
         expect(ProductVariant::query()->whereNull('sku')->count())->toBe(2);
     });
+});
+
+it('attaches an image to a variant and surfaces it on the product show endpoint', function () {
+    Storage::fake(config('filesystems.default'));
+
+    $variant = $this->actingAs($this->user, 'sanctum')
+        ->postJson("/api/v1/products/{$this->product->id}/variants", [
+            'price_amount' => 1000,
+            'option_value_ids' => [$this->black->id],
+        ], tenantHeader($this->store))
+        ->assertCreated()
+        ->json('data');
+
+    $file = UploadedFile::fake()->image('variant.jpg');
+
+    $this->actingAs($this->user, 'sanctum')
+        ->postJson("/api/v1/products/{$this->product->id}/variants/{$variant['id']}/media", ['file' => $file], tenantHeader($this->store))
+        ->assertCreated();
+
+    $this->actingAs($this->user, 'sanctum')
+        ->getJson("/api/v1/products/{$this->product->id}", tenantHeader($this->store))
+        ->assertOk()
+        ->assertJsonCount(1, 'data.variants.0.media')
+        ->assertJsonPath('data.variants.0.media.0.entity_type', 'product_variant');
 });

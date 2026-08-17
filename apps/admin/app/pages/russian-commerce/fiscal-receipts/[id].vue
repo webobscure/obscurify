@@ -61,6 +61,8 @@
 import type { FiscalReceipt } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const route = useRoute()
 const receiptId = route.params.id as string
 

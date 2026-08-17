@@ -33,6 +33,8 @@
 import type { PaymentMethodSettings, RussianPaymentMethod } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const activeStore = useActiveStore()
 
 const settings = ref<PaymentMethodSettings | null>(null)

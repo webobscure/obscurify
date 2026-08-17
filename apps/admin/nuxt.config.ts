@@ -4,6 +4,19 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/eslint', '@nuxtjs/i18n'],
 
+  // Nuxt's default scanner prefixes components in a subdirectory with
+  // the directory name (app/components/ui/SaveStateIndicator.vue would
+  // auto-register as <UiSaveStateIndicator>, not <SaveStateIndicator>).
+  // Every Products-redesign shared component under components/ui/ is
+  // referenced by its bare name throughout the app — explicit
+  // `pathPrefix: false` here is required, not cosmetic; without it Vue
+  // silently renders an unresolved-component no-op (no error, no
+  // output) for every one of them.
+  components: [
+    { path: '~/components/ui', pathPrefix: false },
+    '~/components',
+  ],
+
   css: ['~/assets/css/tokens.css'],
 
   // Merchant admin is an authenticated dashboard, not a public/SEO

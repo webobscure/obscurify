@@ -3,6 +3,7 @@
 namespace App\Domain\Catalog\Http\Resources;
 
 use App\Domain\Catalog\Models\ProductVariant;
+use App\Domain\Media\Http\Resources\MediaResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,6 +34,7 @@ final class ProductVariantResource extends JsonResource
             'height' => $this->height,
             'status' => $this->status->value,
             'option_values' => ProductOptionValueResource::collection($this->whenLoaded('optionValues')),
+            'media' => MediaResource::collection($this->whenLoaded('media')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -71,6 +71,39 @@ it('does not let Store A update or delete Store B media', function () {
     expect(Media::withoutGlobalScopes()->find($mediaId))->not->toBeNull();
 });
 
+it('accepts an image well under the size limit', function () {
+    $file = UploadedFile::fake()->image('small.jpg')->size(500); // 500 KB
+
+    $this->actingAs($this->userA, 'sanctum')
+        ->postJson("/api/v1/products/{$this->productA->id}/media", ['file' => $file], tenantHeader($this->storeA))
+        ->assertCreated();
+});
+
+it('accepts an 18 MB image (regression: used to be rejected by a 10 MB app-level cap)', function () {
+    $file = UploadedFile::fake()->image('eighteen-mb.jpg')->size(18 * 1024);
+
+    $this->actingAs($this->userA, 'sanctum')
+        ->postJson("/api/v1/products/{$this->productA->id}/media", ['file' => $file], tenantHeader($this->storeA))
+        ->assertCreated();
+});
+
+it('accepts an image right at the 25 MB limit', function () {
+    $file = UploadedFile::fake()->image('at-limit.jpg')->size(App\Domain\Media\Http\Requests\StoreMediaRequest::MAX_FILE_KB);
+
+    $this->actingAs($this->userA, 'sanctum')
+        ->postJson("/api/v1/products/{$this->productA->id}/media", ['file' => $file], tenantHeader($this->storeA))
+        ->assertCreated();
+});
+
+it('rejects an image over the 25 MB limit with a clear message', function () {
+    $file = UploadedFile::fake()->image('too-big.jpg')->size(App\Domain\Media\Http\Requests\StoreMediaRequest::MAX_FILE_KB + 1);
+
+    $this->actingAs($this->userA, 'sanctum')
+        ->postJson("/api/v1/products/{$this->productA->id}/media", ['file' => $file], tenantHeader($this->storeA))
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('file');
+});
+
 it('deletes the stored file when media is removed', function () {
     $file = UploadedFile::fake()->image('front.jpg');
 

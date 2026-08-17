@@ -17,6 +17,23 @@
         <small>{{ auth.user.value?.email }}</small>
       </div>
       <hr>
+      <div class="theme-row">
+        <span :id="themeLabelId" class="theme-label">{{ t('chrome.theme') }}</span>
+        <div class="theme-options" role="group" :aria-labelledby="themeLabelId">
+          <button
+            v-for="option in themeOptions"
+            :key="option.value"
+            type="button"
+            role="menuitemradio"
+            :aria-checked="colorMode.preference.value === option.value"
+            :class="{ active: colorMode.preference.value === option.value }"
+            @click="colorMode.preference.value = option.value"
+          >
+            {{ t(option.labelKey) }}
+          </button>
+        </div>
+      </div>
+      <hr>
       <button type="button" role="menuitem" class="danger" @click="handleLogout">{{ t('chrome.sign_out') }}</button>
     </div>
   </div>
@@ -25,13 +42,24 @@
 <script setup lang="ts">
 // Only Sign out is a real, implemented account action — no Profile/
 // Account/Settings entries invented for a page that doesn't exist yet
-// (spec: "Do not invent missing backend features").
+// (spec: "Do not invent missing backend features"). Theme (docs/design/
+// THEMING.md) is the one addition: Light/Dark/System, same dropdown.
+import type { ColorModePreference } from '~/composables/useColorMode'
+
 const { t } = useI18n()
 const auth = useAuth()
 const activeStore = useActiveStore()
+const colorMode = useColorMode()
 const router = useRouter()
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
+const themeLabelId = useId()
+
+const themeOptions: Array<{ value: ColorModePreference; labelKey: string }> = [
+  { value: 'light', labelKey: 'chrome.theme_light' },
+  { value: 'dark', labelKey: 'chrome.theme_dark' },
+  { value: 'system', labelKey: 'chrome.theme_system' },
+]
 
 const initial = computed(() => (auth.user.value?.name?.trim()?.[0] ?? '?').toUpperCase())
 
@@ -66,7 +94,7 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
   border-radius: var(--radius-full);
   border: none;
   background: var(--color-text);
-  color: white;
+  color: var(--color-surface);
   cursor: pointer;
   font-weight: var(--font-weight-semibold);
 }
@@ -85,7 +113,9 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  /* Dropdown pattern — elevation 1 per docs/design/DESIGN_SYSTEM.md
+     section 7, same level as StoreSwitcher's dropdown. */
+  box-shadow: var(--shadow-sm);
   padding: var(--space-2);
 }
 
@@ -132,5 +162,40 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 .menu button.danger:hover,
 .menu button.danger:focus-visible {
   background: var(--color-danger-bg);
+}
+
+.theme-row {
+  padding: var(--space-2) var(--space-3);
+}
+
+.theme-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.theme-options {
+  display: flex;
+  gap: 2px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.theme-options button {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.theme-options button.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-sm);
 }
 </style>

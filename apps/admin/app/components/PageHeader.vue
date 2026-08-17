@@ -1,8 +1,11 @@
 <template>
   <header class="page-header">
-    <AppBreadcrumb v-if="breadcrumbs?.length" :items="breadcrumbs" />
+    <AdminBreadcrumbs v-if="breadcrumbs?.length" :items="breadcrumbs" />
     <div class="row">
-      <h1>{{ title }}</h1>
+      <div class="title-group">
+        <h1>{{ title }}</h1>
+        <slot name="status" />
+      </div>
       <div v-if="$slots.actions" class="actions">
         <slot name="actions" />
       </div>
@@ -12,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BreadcrumbItem } from './AppBreadcrumb.vue'
+import type { BreadcrumbItem } from './AdminBreadcrumbs.vue'
 
 /**
  * The one place every admin page declares its own identity (title,
@@ -37,6 +40,13 @@ defineProps<{
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+}
+
+.title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 h1 {

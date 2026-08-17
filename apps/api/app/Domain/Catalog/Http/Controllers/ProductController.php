@@ -5,6 +5,7 @@ namespace App\Domain\Catalog\Http\Controllers;
 use App\Domain\Catalog\Application\CreateProduct;
 use App\Domain\Catalog\Application\DeleteProduct;
 use App\Domain\Catalog\Application\UpdateProduct;
+use App\Domain\Catalog\Http\Requests\SearchProductsRequest;
 use App\Domain\Catalog\Http\Requests\StoreProductRequest;
 use App\Domain\Catalog\Http\Requests\UpdateProductRequest;
 use App\Domain\Catalog\Http\Resources\ProductResource;
@@ -17,11 +18,50 @@ final class ProductController extends Controller
 {
     /**
      * Scoped to the active tenant by Product's BelongsToTenant global
-     * scope — this can never return another store's products.
+     * scope — this can never return another store's products. Every
+     * filter is optional and ANDed together, same convention as
+     * AdminCustomerController::index() (docs/design/DESIGN_SYSTEM.md
+     * Products redesign — the list previously had no search/filter/sort/
+     * per_page at all, silently truncating past the first page).
      */
-    public function index(): AnonymousResourceCollection
+    public function index(SearchProductsRequest $request): AnonymousResourceCollection
     {
-        $products = Product::query()->orderByDesc('created_at')->paginate();
+        $query = Product::query();
+
+        if ($search = $request->validated('search')) {
+            $query->where(fn ($q) => $q
+                ->where('title', 'ilike', "%{$search}%")
+                ->orWhereHas('variants', fn ($v) => $v->where('sku', 'ilike', "%{$search}%")));
+        }
+
+        if ($status = $request->validated('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($vendor = $request->validated('vendor')) {
+            $query->where('vendor', 'ilike', "%{$vendor}%");
+        }
+
+        if ($productType = $request->validated('product_type')) {
+            $query->where('product_type', 'ilike', "%{$productType}%");
+        }
+
+        if ($collectionId = $request->validated('collection_id')) {
+            $query->whereHas('collections', fn ($q) => $q->where('collections.id', $collectionId));
+        }
+
+        [$sortColumn, $sortDirection] = match ($request->validated('sort')) {
+            '-created_at' => ['created_at', 'asc'],
+            'updated_at' => ['updated_at', 'desc'],
+            '-updated_at' => ['updated_at', 'asc'],
+            'title' => ['title', 'asc'],
+            '-title' => ['title', 'desc'],
+            default => ['created_at', 'desc'],
+        };
+
+        $products = $query->with(['media', 'variants'])
+            ->orderBy($sortColumn, $sortDirection)
+            ->paginate($request->validated('per_page') ?? 50);
 
         return ProductResource::collection($products);
     }
@@ -39,7 +79,7 @@ final class ProductController extends Controller
      */
     public function show(Product $product): ProductResource
     {
-        return new ProductResource($product->load(['options.values', 'variants.optionValues', 'media', 'collections']));
+        return new ProductResource($product->load(['options.values', 'variants.optionValues', 'variants.media', 'media', 'collections']));
     }
 
     public function update(UpdateProductRequest $request, Product $product, UpdateProduct $action): ProductResource

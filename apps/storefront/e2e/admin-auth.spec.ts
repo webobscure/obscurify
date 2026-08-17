@@ -33,10 +33,14 @@ test('login survives navigation and reload, an authenticated action succeeds, an
   // Authenticated action: create a product. This round-trips through
   // auth:sanctum + tenant middleware on the backend — a stale/rejected
   // token fails here, not just on the initial page load.
+  // Products redesign (docs/design/DESIGN_SYSTEM.md) replaced the old
+  // inline "title input directly on the list page" form with a Modal —
+  // "Create product" now opens it rather than being a direct submit.
   await page.goto(`${ADMIN_BASE}/products`)
   const productTitle = `E2E Auth Product ${Date.now()}`
-  await page.getByPlaceholder('Product title').fill(productTitle)
-  await page.getByRole('button', { name: 'Create product' }).click()
+  await page.getByTestId('create-product-button').click()
+  await page.getByTestId('new-product-title-input').fill(productTitle)
+  await page.getByTestId('submit-create-product').click()
   await expect(page).toHaveURL(/\/products\/[^/]+$/)
 
   // Navigate to another protected page, then reload — session must

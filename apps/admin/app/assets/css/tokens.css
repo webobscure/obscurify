@@ -1,53 +1,132 @@
 /**
- * Design tokens for the Merchant Admin shell.
+ * Design tokens for the Merchant Admin — light + dark theme (see
+ * docs/design/THEMING.md for the full architecture).
  *
- * No Figma export/file was actually shared into this workspace — per the
- * task's own fallback rule ("if something is missing from Figma, derive
- * it consistently"), these values are derived once, here, and every
- * shell/page component consumes them by variable rather than hardcoding
- * its own color/spacing/radius/shadow. Changing the look later means
- * editing this file, not hunting through components.
+ * Two layers: primitives (raw color ramps, never consumed directly by
+ * components) and semantic tokens (--color-*, the only names components
+ * reference). Light values live on the bare `:root` — every existing
+ * page in the app already renders against exactly these hex values, so
+ * nothing here changes what an unmodified page looks like today.
+ *
+ * Theme resolution is 3-state, not 2-state: an explicit user choice
+ * stamps `data-theme="light"` / `data-theme="dark"` on <html> (see
+ * composables/useColorMode.ts); the default "system" choice stamps
+ * nothing, so only `prefers-color-scheme` decides — that's why the dark
+ * block below is guarded as `:not([data-theme="light"])` rather than
+ * just relying on the media query alone, and why `[data-theme="dark"]`
+ * repeats the same values outside any media query (an explicit choice
+ * must win over the OS on both directions).
  */
 :root {
-  /* Surface & text */
-  --color-bg: #f6f6f8;
-  --color-surface: #ffffff;
-  --color-border: #e4e4e9;
-  --color-border-strong: #d3d3da;
-  --color-text: #17171a;
-  --color-text-muted: #6b6b76;
-  --color-text-subtle: #96969f;
+  /* ---- Primitives — internal building blocks only ---- */
+  --gray-0: #ffffff;
+  --gray-50: #f6f6f8;
+  --gray-100: #eeeef1;
+  --gray-200: #e4e4e9;
+  --gray-300: #d3d3da;
+  --gray-400: #b3b3bd;
+  --gray-500: #8f8f9c;
+  --gray-600: #6b6b76;
+  --gray-700: #4a4a54;
+  --gray-800: #2c2c33;
+  --gray-900: #17171a;
+  --gray-950: #0d0d0f;
 
-  /* Accent (single accent, used sparingly for active/primary states) */
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
-  --color-accent-bg: #eef0ff;
+  --indigo-50: #eef0ff;
+  --indigo-100: #dde0ff;
+  --indigo-500: #4f46e5;
+  --indigo-600: #4338ca;
+  --indigo-700: #3730a3;
 
-  /* Semantic */
-  --color-danger: #b3261e;
-  --color-danger-bg: #fbeaea;
-  --color-success: #1e7e34;
-  --color-success-bg: #e6f4ea;
-  --color-warning: #92600a;
-  --color-warning-bg: #fdf3e0;
+  --green-50: #e6f4ea;
+  --green-100: #cceada;
+  --green-600: #1e7e34;
+  --green-700: #186428;
 
-  /* Sidebar is a deliberately distinct dark surface (common SaaS-shell
-     convention — Linear, Vercel) so it reads as chrome, not content. */
+  --amber-50: #fdf3e0;
+  --amber-100: #fbe6bd;
+  --amber-600: #92600a;
+  --amber-700: #744c08;
+
+  --red-50: #fbeaea;
+  --red-100: #f6d2d1;
+  --red-600: #b3261e;
+  --red-700: #8f1e18;
+
+  --blue-50: #e8f1ff;
+  --blue-100: #d0e2ff;
+  --blue-600: #1a56db;
+  --blue-700: #1544ad;
+
+  /* ---- Semantic — light theme (default) ---- */
+  --color-bg: var(--gray-50);
+  --color-surface: var(--gray-0);
+  --color-surface-muted: var(--gray-100);
+  --color-surface-raised: var(--gray-0);
+  --color-border: var(--gray-200);
+  --color-border-strong: var(--gray-300);
+  --color-text: var(--gray-900);
+  --color-text-muted: var(--gray-600);
+  --color-text-subtle: var(--gray-500);
+  --color-text-on-accent: var(--gray-0);
+
+  --color-accent: var(--indigo-500);
+  --color-accent-hover: var(--indigo-600);
+  --color-accent-active: var(--indigo-700);
+  --color-accent-bg: var(--indigo-50);
+
+  --color-danger: var(--red-600);
+  --color-danger-hover: var(--red-700);
+  --color-danger-bg: var(--red-50);
+  --color-danger-border: var(--red-100);
+
+  --color-success: var(--green-600);
+  --color-success-hover: var(--green-700);
+  --color-success-bg: var(--green-50);
+  --color-success-border: var(--green-100);
+
+  --color-warning: var(--amber-600);
+  --color-warning-hover: var(--amber-700);
+  --color-warning-bg: var(--amber-50);
+  --color-warning-border: var(--amber-100);
+  --color-warning-muted: var(--amber-50);
+
+  --color-info: var(--blue-600);
+  --color-info-hover: var(--blue-700);
+  --color-info-bg: var(--blue-50);
+  --color-info-border: var(--blue-100);
+  --color-info-muted: var(--blue-50);
+
+  --color-overlay: rgba(13, 13, 15, 0.48);
+
+  /* Sidebar is a deliberately distinct dark surface in BOTH themes
+     (common SaaS-shell convention — Linear, Vercel) so it reads as
+     chrome, not content — it just gets a touch darker in the dark
+     theme below so it doesn't sit at the same value as the page. */
   --color-sidebar-bg: #15151a;
   --color-sidebar-text: #c7c7cf;
   --color-sidebar-text-muted: #7d7d87;
   --color-sidebar-border: #26262e;
   --color-sidebar-hover-bg: #1e1e25;
   --color-sidebar-active-bg: #262630;
+  --color-sidebar-menu-bg: #1f1f26;
+  --color-sidebar-badge-success: #7fd99a;
+  --color-sidebar-badge-success-bg: rgba(30, 126, 52, 0.18);
+  --color-sidebar-badge-warning: #e0a94c;
+  --color-sidebar-badge-warning-bg: rgba(146, 96, 10, 0.18);
 
   /* Spacing scale — 4px base unit */
+  --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-7: 28px;
   --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
 
   /* Radius */
   --radius-sm: 6px;
@@ -55,7 +134,13 @@
   --radius-lg: 12px;
   --radius-full: 999px;
 
-  /* Elevation */
+  /* Borders — plain -border for passive dividers, -border-strong reads as
+     "clickable" (inputs/buttons); -width-thick is the DataTable
+     selected-row accent and the forced-colors-mode focus-ring fallback. */
+  --border-width: 1px;
+  --border-width-thick: 2px;
+
+  /* Elevation — light theme */
   --shadow-sm: 0 1px 2px rgba(15, 15, 20, 0.06);
   --shadow-md: 0 8px 24px rgba(15, 15, 20, 0.12);
   --shadow-lg: 0 20px 48px rgba(15, 15, 20, 0.22);
@@ -68,13 +153,180 @@
   --text-lg: 1rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
+  --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+
+  /* Line-height — --leading-normal is generous enough for Cyrillic
+     ascenders/descenders (ru is the default locale); previously relied on
+     browser default line-height everywhere. */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Icon sizing — AppIcon's `size` prop maps to these instead of each
+     call site picking an ad hoc pixel value. */
+  --icon-size-sm: 14px;
+  --icon-size-md: 18px;
+  --icon-size-lg: 24px;
+
+  /* Motion — an admin tool, not a marketing site: fast and utilitarian.
+     --transition-fast is kept as the alias every existing component
+     already consumes. */
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-slow: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --transition-fast: var(--duration-base) ease;
+
+  /* Focus / disabled — generalizes the button[type=submit]-only disabled
+     rule in app.vue to every interactive element. */
+  --focus-ring-color: var(--color-accent);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 1px;
+  --disabled-opacity: 0.5;
+
+  /* Content-area breakpoints — for page content below the shell chrome
+     (previously zero @media rules existed at this level). */
+  --bp-sm: 640px;
+  --bp-md: 900px;
+  --bp-lg: 1200px;
+  --bp-xl: 1440px;
+  --content-max-width: 1440px;
+  --content-padding-x: var(--space-8);
+  --content-padding-x-sm: var(--space-4);
 
   /* Shell dimensions */
   --sidebar-width: 250px;
   --sidebar-width-collapsed: 68px;
   --topbar-height: 60px;
+}
 
-  --transition-fast: 150ms ease;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Semantic — dark theme, system preference (no explicit choice) ---- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: var(--gray-950);
+    --color-surface: var(--gray-900);
+    --color-surface-muted: var(--gray-800);
+    --color-surface-raised: var(--gray-800);
+    --color-border: var(--gray-800);
+    --color-border-strong: #3f3f49;
+    --color-text: var(--gray-50);
+    --color-text-muted: #a6a6b3;
+    --color-text-subtle: #78788a;
+    --color-text-on-accent: var(--gray-0);
+
+    --color-accent: #8079ef;
+    --color-accent-hover: #9a94f2;
+    --color-accent-active: #6d64ea;
+    --color-accent-bg: rgba(79, 70, 229, 0.2);
+
+    --color-danger: #e5867f;
+    --color-danger-hover: #ef9d97;
+    --color-danger-bg: rgba(179, 38, 30, 0.2);
+    --color-danger-border: rgba(179, 38, 30, 0.36);
+
+    --color-success: #5fbf7a;
+    --color-success-hover: #7bcf94;
+    --color-success-bg: rgba(30, 126, 52, 0.2);
+    --color-success-border: rgba(30, 126, 52, 0.36);
+
+    --color-warning: #e0a940;
+    --color-warning-hover: #ecbd63;
+    --color-warning-bg: rgba(146, 96, 10, 0.22);
+    --color-warning-border: rgba(146, 96, 10, 0.38);
+    --color-warning-muted: var(--color-warning-bg);
+
+    --color-info: #6ea3f2;
+    --color-info-hover: #8fb8f5;
+    --color-info-bg: rgba(26, 86, 219, 0.22);
+    --color-info-border: rgba(26, 86, 219, 0.38);
+    --color-info-muted: var(--color-info-bg);
+
+    --color-overlay: rgba(0, 0, 0, 0.6);
+
+    --color-sidebar-bg: #0a0a0c;
+    --color-sidebar-text: #c7c7cf;
+    --color-sidebar-text-muted: #6f6f7a;
+    --color-sidebar-border: #202024;
+    --color-sidebar-hover-bg: #17171a;
+    --color-sidebar-active-bg: #1e1e22;
+    --color-sidebar-menu-bg: #19191d;
+    --color-sidebar-badge-success: #7fd99a;
+    --color-sidebar-badge-success-bg: rgba(30, 126, 52, 0.22);
+    --color-sidebar-badge-warning: #e0a94c;
+    --color-sidebar-badge-warning-bg: rgba(146, 96, 10, 0.22);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ---- Semantic — dark theme, explicit choice (wins over the OS) ---- */
+:root[data-theme='dark'] {
+  --color-bg: var(--gray-950);
+  --color-surface: var(--gray-900);
+  --color-surface-muted: var(--gray-800);
+  --color-surface-raised: var(--gray-800);
+  --color-border: var(--gray-800);
+  --color-border-strong: #3f3f49;
+  --color-text: var(--gray-50);
+  --color-text-muted: #a6a6b3;
+  --color-text-subtle: #78788a;
+  --color-text-on-accent: var(--gray-0);
+
+  --color-accent: #8079ef;
+  --color-accent-hover: #9a94f2;
+  --color-accent-active: #6d64ea;
+  --color-accent-bg: rgba(79, 70, 229, 0.2);
+
+  --color-danger: #e5867f;
+  --color-danger-hover: #ef9d97;
+  --color-danger-bg: rgba(179, 38, 30, 0.2);
+  --color-danger-border: rgba(179, 38, 30, 0.36);
+
+  --color-success: #5fbf7a;
+  --color-success-hover: #7bcf94;
+  --color-success-bg: rgba(30, 126, 52, 0.2);
+  --color-success-border: rgba(30, 126, 52, 0.36);
+
+  --color-warning: #e0a940;
+  --color-warning-hover: #ecbd63;
+  --color-warning-bg: rgba(146, 96, 10, 0.22);
+  --color-warning-border: rgba(146, 96, 10, 0.38);
+  --color-warning-muted: var(--color-warning-bg);
+
+  --color-info: #6ea3f2;
+  --color-info-hover: #8fb8f5;
+  --color-info-bg: rgba(26, 86, 219, 0.22);
+  --color-info-border: rgba(26, 86, 219, 0.38);
+  --color-info-muted: var(--color-info-bg);
+
+  --color-overlay: rgba(0, 0, 0, 0.6);
+
+  --color-sidebar-bg: #0a0a0c;
+  --color-sidebar-text: #c7c7cf;
+  --color-sidebar-text-muted: #6f6f7a;
+  --color-sidebar-border: #202024;
+  --color-sidebar-hover-bg: #17171a;
+  --color-sidebar-active-bg: #1e1e22;
+  --color-sidebar-menu-bg: #19191d;
+  --color-sidebar-badge-success: #7fd99a;
+  --color-sidebar-badge-success-bg: rgba(30, 126, 52, 0.22);
+  --color-sidebar-badge-warning: #e0a94c;
+  --color-sidebar-badge-warning-bg: rgba(146, 96, 10, 0.22);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
 }

@@ -74,6 +74,8 @@
 import type { ShippingMethod, ShippingZone } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const methods = ref<ShippingMethod[]>([])
 const zones = ref<ShippingZone[]>([])
 const form = reactive({

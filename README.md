@@ -54,7 +54,17 @@ cd apps/api
 composer install
 php artisan key:generate
 php artisan migrate
-php artisan serve            # http://localhost:8000
+# not `php artisan serve`: its dev server ignores -d ini flags on the
+# outer command, so it always runs with your PHP's default
+# upload_max_filesize/post_max_size (2M/2M on a stock install) — any
+# media upload above that fails. -d here applies directly to the process
+# that actually serves requests. Run from public/, not apps/api, since
+# the router script resolves the app root from the working directory.
+# See scripts/dev.sh for details.
+cd public
+php -d upload_max_filesize=25M -d post_max_size=26M -S 127.0.0.1:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
+# http://localhost:8000
+cd ..
 
 # 4. admin, in a second terminal
 cd apps/admin
@@ -135,7 +145,9 @@ for fast HMR. Only the backend and its infrastructure run in Docker.
 cd apps/api
 composer install
 php artisan migrate
-php artisan serve          # http://localhost:8000
+# See the note above the quickstart's step 3 on why not `php artisan serve`.
+(cd public && php -d upload_max_filesize=25M -d post_max_size=26M -S 127.0.0.1:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php)
+# http://localhost:8000
 php artisan horizon        # queue dashboard at /horizon
 ```
 

@@ -57,6 +57,8 @@
 import type { SearchAnalyticsSummary } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const activeStore = useActiveStore()
 
 const summary = ref<SearchAnalyticsSummary | null>(null)

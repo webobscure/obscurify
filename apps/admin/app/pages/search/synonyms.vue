@@ -65,6 +65,8 @@
 import type { SearchSynonym } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const activeStore = useActiveStore()
 
 const synonyms = ref<SearchSynonym[]>([])

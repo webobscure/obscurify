@@ -97,6 +97,7 @@ export interface ProductVariant {
   height: string | null
   status: ProductStatus
   option_values?: ProductOptionValue[]
+  media?: Media[]
   created_at: string
   updated_at: string
 }
@@ -109,6 +110,7 @@ export interface Product {
   description: string | null
   vendor: string | null
   product_type: string | null
+  tags: string[]
   status: ProductStatus
   seo_title: string | null
   seo_description: string | null

@@ -54,6 +54,8 @@
 import type { Notification } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const route = useRoute()
 const notificationId = route.params.id as string
 

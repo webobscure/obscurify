@@ -41,6 +41,8 @@
 import type { Store } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
 
+definePageMeta({ layout: 'settings' })
+
 const { t } = useI18n()
 const stores = ref<Store[]>([])
 const name = ref('')

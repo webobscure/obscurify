@@ -16,6 +16,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -100,5 +101,22 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->json(['message' => __('exceptions.not_found'), 'error' => 'not_found'], 404);
+        });
+
+        // Thrown by Illuminate\Http\Middleware\ValidatePostSize before the
+        // request ever reaches routing/validation, whenever Content-Length
+        // exceeds php.ini's post_max_size (see infra/docker/api/uploads.ini).
+        // Laravel's own message ("The POST data is too large.") doesn't say
+        // what the actual limit is or that it's a file upload problem —
+        // surface something a merchant can act on instead.
+        $exceptions->render(function (PostTooLargeException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => __('exceptions.upload_too_large', ['max' => '25 MB']),
+                'error' => 'upload_too_large',
+            ], 413);
         });
     })->create();
