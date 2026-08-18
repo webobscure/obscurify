@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader :title="notification?.subject ?? notification?.event_type ?? 'Notification'" :breadcrumbs="[{ label: 'Notification Center', to: '/notifications' }, { label: 'Detail' }]" />
+    <PageHeader :title="notification?.subject ?? notification?.event_type ?? 'Notification'" />
 
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="pending" class="hint">Loading…</p>

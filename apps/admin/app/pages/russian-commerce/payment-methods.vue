@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Payment Methods" :breadcrumbs="[{ label: 'Russian Commerce', to: '/russian-commerce/legal-profile' }, { label: 'Payment Methods' }]" />
+    <PageHeader title="Payment Methods" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

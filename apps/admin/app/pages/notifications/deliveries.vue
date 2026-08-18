@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Delivery Log" description="Also serves as Failed Deliveries / Retry Queue — filter by status below." :breadcrumbs="[{ label: 'Notification Center', to: '/notifications' }, { label: 'Delivery Log' }]" />
+    <PageHeader title="Delivery Log" description="Also serves as Failed Deliveries / Retry Queue — filter by status below." />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

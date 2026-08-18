@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import de from '../i18n/locales/de.json'
 import en from '../i18n/locales/en.json'
 import ru from '../i18n/locales/ru.json'
-import { findActiveBranch, flattenNavigationItems, isBranchActive, isNavItemActive, primaryNavigation, secondaryNavigation, settingsNavigation } from '../app/config/navigation'
+import { findActiveBranch, findSettingsSection, flattenNavigationItems, isBranchActive, isNavItemActive, isRouteInSection, primaryNavigation, secondaryNavigation, settingsNavigation } from '../app/config/navigation'
 
 describe('isNavItemActive', () => {
   const products = { labelKey: 'nav.products', to: '/products', icon: 'products' }
@@ -138,11 +138,27 @@ describe('navigation source of truth', () => {
     expect(topLevelCount).toBeLessThanOrEqual(10)
   })
 
-  it('nests Fulfillments/Shipments/Returns/Refunds/Payments under Orders, not as flat top-level items', () => {
+  it('nests Fulfillments/Shipments/Returns/Refunds/Payments/Fiscal Receipts under Orders, not as flat top-level items', () => {
     const orders = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.orders')
 
-    expect(orders?.children?.map(c => c.labelKey)).toEqual(['nav.fulfillments', 'nav.shipments', 'nav.returns', 'nav.refunds', 'nav.payments'])
+    expect(orders?.children?.map(c => c.labelKey)).toEqual(['nav.fulfillments', 'nav.shipments', 'nav.returns', 'nav.refunds', 'nav.payments', 'nav.fiscal_receipts'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.fulfillments')).toBe(false)
+  })
+
+  it('operations vs configuration: Fiscal Receipts (a record) stays daily under Orders, while Legal/Tax/Fiscalization/Payment Methods (configuration) stay in Settings', () => {
+    const orders = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.orders')
+    expect(orders?.children?.some(c => c.labelKey === 'nav.fiscal_receipts')).toBe(true)
+
+    const rcSection = settingsNavigation.find(s => s.labelKey === 'nav.settings_russian_commerce')
+    expect(rcSection?.items.some(i => i.labelKey === 'nav.fiscal_receipts')).toBe(false)
+  })
+
+  it('operations vs configuration: Search Analytics (a report) moves to daily Analytics, while Synonyms/Rules/Pinned/Settings (configuration) stay in Settings', () => {
+    const analytics = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.analytics')
+    expect(analytics?.children?.some(c => c.labelKey === 'nav.search_analytics')).toBe(true)
+
+    const searchSection = settingsNavigation.find(s => s.labelKey === 'nav.settings_search')
+    expect(searchSection?.items.some(i => i.labelKey === 'nav.search_analytics')).toBe(false)
   })
 
   it('nests Inventory under Products, not as a flat top-level item', () => {
@@ -173,10 +189,10 @@ describe('navigation source of truth', () => {
     expect(themes?.children?.map(c => c.labelKey)).toEqual(['nav.theme_customizer', 'nav.section_library', 'nav.block_library'])
   })
 
-  it('nests Reports/Saved Reports under Analytics, not as flat top-level items', () => {
+  it('nests Reports/Saved Reports/Search Analytics under Analytics, not as flat top-level items', () => {
     const analytics = primaryNavigation.flatMap(s => s.items).find(i => i.labelKey === 'nav.analytics')
 
-    expect(analytics?.children?.map(c => c.labelKey)).toEqual(['nav.reports', 'nav.saved_reports'])
+    expect(analytics?.children?.map(c => c.labelKey)).toEqual(['nav.reports', 'nav.saved_reports', 'nav.search_analytics'])
     expect(primaryNavigation.flatMap(s => s.items).some(i => i.labelKey === 'nav.reports')).toBe(false)
   })
 
@@ -213,10 +229,10 @@ describe('navigation source of truth', () => {
     expect(notifSection?.items.map(i => i.labelKey)).toEqual(['nav.notifications', 'nav.templates', 'nav.channels', 'nav.providers', 'nav.delivery_log'])
 
     const searchSection = settingsNavigation.find(s => s.labelKey === 'nav.settings_search')
-    expect(searchSection?.items.map(i => i.labelKey)).toEqual(['nav.search', 'nav.synonyms', 'nav.rules_ranking', 'nav.pinned_products', 'nav.search_settings', 'nav.search_analytics'])
+    expect(searchSection?.items.map(i => i.labelKey)).toEqual(['nav.search', 'nav.synonyms', 'nav.rules_ranking', 'nav.pinned_products', 'nav.search_settings'])
 
     const rcSection = settingsNavigation.find(s => s.labelKey === 'nav.settings_russian_commerce')
-    expect(rcSection?.items.map(i => i.labelKey)).toEqual(['nav.legal_details', 'nav.tax_vat_settings', 'nav.fiscalization_settings', 'nav.payment_methods', 'nav.fiscal_receipts'])
+    expect(rcSection?.items.map(i => i.labelKey)).toEqual(['nav.legal_details', 'nav.tax_vat_settings', 'nav.fiscalization_settings', 'nav.payment_methods'])
   })
 
   it('the daily sidebar and Settings tree never reference the same route twice', () => {
@@ -228,6 +244,51 @@ describe('navigation source of truth', () => {
 
   it('Settings is the sole secondary-nav entry point, pointing at the real /settings redirect page', () => {
     expect(secondaryNavigation.items).toEqual([{ labelKey: 'nav.settings', to: '/settings', icon: 'settings', activePattern: '/settings' }])
+  })
+})
+
+describe('isRouteInSection (Settings stays active in the main sidebar)', () => {
+  it('is false for the bare /settings redirect page — it is not itself a settingsNavigation item, it is the landing page that immediately forwards into one', () => {
+    // AdminSidebar.vue handles this case with the *static* activePattern
+    // ('/settings') already on the secondaryNavigation item, matched via
+    // plain isNavItemActive — isRouteInSection only needs to cover every
+    // route *past* that redirect, which is what the rest of this
+    // describe block asserts.
+    expect(isRouteInSection('/settings', settingsNavigation)).toBe(false)
+    const settingsItem = secondaryNavigation.items.find(i => i.to === '/settings')!
+    expect(isNavItemActive('/settings', settingsItem)).toBe(true)
+  })
+
+  it('is true for any real Settings destination, not just the literal /settings path', () => {
+    for (const path of ['/stores', '/locations', '/notifications', '/notifications/templates', '/search/synonyms', '/russian-commerce/tax-settings', '/shipping-methods']) {
+      expect(isRouteInSection(path, settingsNavigation), `${path} should be recognized as inside Settings`).toBe(true)
+    }
+  })
+
+  it('is true on a nested detail route under a Settings item', () => {
+    expect(isRouteInSection('/notifications/deliveries/abc123', settingsNavigation)).toBe(true)
+  })
+
+  it('is false for daily-sidebar routes', () => {
+    for (const path of ['/orders', '/products', '/fulfillments', '/analytics']) {
+      expect(isRouteInSection(path, settingsNavigation), `${path} should not be inside Settings`).toBe(false)
+    }
+  })
+})
+
+describe('findSettingsSection (Settings / {Section} breadcrumb source)', () => {
+  it('resolves the owning section for a Settings route', () => {
+    expect(findSettingsSection('/stores')?.labelKey).toBe('nav.settings_store')
+    expect(findSettingsSection('/notifications/templates')?.labelKey).toBe('nav.settings_notifications')
+    expect(findSettingsSection('/russian-commerce/tax-settings')?.labelKey).toBe('nav.settings_russian_commerce')
+  })
+
+  it('resolves the section on a nested detail route under a Settings item', () => {
+    expect(findSettingsSection('/notifications/deliveries/abc123')?.labelKey).toBe('nav.settings_notifications')
+  })
+
+  it('is undefined for a route outside Settings entirely', () => {
+    expect(findSettingsSection('/orders')).toBeUndefined()
   })
 })
 

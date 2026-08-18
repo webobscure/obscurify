@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Notification Templates" :breadcrumbs="[{ label: 'Notification Center', to: '/notifications' }, { label: 'Templates' }]" />
+    <PageHeader title="Notification Templates" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

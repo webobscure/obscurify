@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Fiscal Receipts" :breadcrumbs="[{ label: 'Russian Commerce', to: '/russian-commerce/legal-profile' }, { label: 'Fiscal Receipts' }]" />
+    <PageHeader title="Fiscal Receipts" :breadcrumbs="[{ label: 'Orders', to: '/orders' }, { label: 'Fiscal Receipts' }]" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.
@@ -40,8 +40,6 @@
 <script setup lang="ts">
 import type { FiscalReceipt } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
-
-definePageMeta({ layout: 'settings' })
 
 const activeStore = useActiveStore()
 

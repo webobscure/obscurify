@@ -72,6 +72,14 @@ export const primaryNavigation: NavigationSection[] = [
           { labelKey: 'nav.returns', to: '/returns', icon: 'redirects' },
           { labelKey: 'nav.refunds', to: '/refunds', icon: 'payments' },
           { labelKey: 'nav.payments', to: '/payments', icon: 'payments' },
+          // Fiscal Receipts is the *operation* (records of receipts already
+          // issued) — distinct from Legal/Tax/Fiscalization/Payment Methods
+          // in settingsNavigation below, which are the compliance
+          // *configuration* those receipts get generated from. Same
+          // operations-vs-configuration split Milestone 27b's brief asked
+          // for explicitly (§15): don't move a whole domain just because
+          // its name matches a Settings module.
+          { labelKey: 'nav.fiscal_receipts', to: '/russian-commerce/fiscal-receipts', icon: 'russian-commerce' },
         ],
       },
       {
@@ -151,6 +159,10 @@ export const primaryNavigation: NavigationSection[] = [
         children: [
           { labelKey: 'nav.reports', to: '/analytics/reports', icon: 'analytics' },
           { labelKey: 'nav.saved_reports', to: '/analytics/saved-reports', icon: 'analytics' },
+          // Search Analytics is a report (operational — "how did search
+          // perform"), not search configuration; the config surfaces
+          // (Synonyms/Rules/Pinned/Settings) stay in settingsNavigation.
+          { labelKey: 'nav.search_analytics', to: '/search/analytics', icon: 'search' },
         ],
       },
       {
@@ -206,7 +218,6 @@ export const settingsNavigation: NavigationSection[] = [
       { labelKey: 'nav.rules_ranking', to: '/search/rules', icon: 'search' },
       { labelKey: 'nav.pinned_products', to: '/search/pinned', icon: 'search' },
       { labelKey: 'nav.search_settings', to: '/search/settings', icon: 'search' },
-      { labelKey: 'nav.search_analytics', to: '/search/analytics', icon: 'search' },
     ],
   },
   {
@@ -222,7 +233,9 @@ export const settingsNavigation: NavigationSection[] = [
       { labelKey: 'nav.tax_vat_settings', to: '/russian-commerce/tax-settings', icon: 'russian-commerce' },
       { labelKey: 'nav.fiscalization_settings', to: '/russian-commerce/fiscalization-settings', icon: 'russian-commerce' },
       { labelKey: 'nav.payment_methods', to: '/russian-commerce/payment-methods', icon: 'russian-commerce' },
-      { labelKey: 'nav.fiscal_receipts', to: '/russian-commerce/fiscal-receipts', icon: 'russian-commerce' },
+      // Fiscal Receipts itself moved to primaryNavigation (Orders) — it's
+      // the operational record, not compliance configuration. See the
+      // comment at its new location.
     ],
   },
 ]
@@ -276,4 +289,26 @@ export function flattenNavigationItems(sections: NavigationSection[]): Navigatio
   return sections.flatMap(section =>
     section.items.flatMap(item => [item, ...(item.children ?? [])]),
   )
+}
+
+/**
+ * True when `currentPath` matches any route (own or nested) inside
+ * `sections` — used by AdminSidebar to keep the bottom "Settings" entry
+ * visually active for every route in `settingsNavigation`, not just the
+ * literal `/settings` redirect page itself (spec §7: "Settings remains
+ * active in the main sidebar" for the whole time the user is inside the
+ * workspace, e.g. on `/notifications` or `/russian-commerce/tax-settings`).
+ */
+export function isRouteInSection(currentPath: string, sections: NavigationSection[]): boolean {
+  return flattenNavigationItems(sections).some(item => isNavItemActive(currentPath, item))
+}
+
+/**
+ * The settingsNavigation section (group) that owns `currentPath`, if any —
+ * the single source SettingsShell's "Settings / {Section}" breadcrumb
+ * reads from (spec §6/§13: breadcrumbs must be derived from the same
+ * navigation metadata as the sidebar, never a second hardcoded copy).
+ */
+export function findSettingsSection(currentPath: string): NavigationSection | undefined {
+  return settingsNavigation.find(section => section.items.some(item => isNavItemActive(currentPath, item)))
 }

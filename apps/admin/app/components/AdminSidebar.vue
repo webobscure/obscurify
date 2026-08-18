@@ -11,15 +11,33 @@
     <AdminNavigation :sections="primaryNavigation" @navigate="sidebar.close()" />
 
     <div class="bottom">
-      <SidebarSection :items="secondaryNavigation.items" @navigate="sidebar.close()" />
+      <SidebarSection :items="bottomItems" @navigate="sidebar.close()" />
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { primaryNavigation, secondaryNavigation } from '~/config/navigation'
+import { isRouteInSection, primaryNavigation, secondaryNavigation, settingsNavigation } from '~/config/navigation'
 
 const sidebar = useAdminSidebar()
+const route = useRoute()
+
+/**
+ * Settings' own `to`/`activePattern` ('/settings') only literally matches
+ * the redirect landing page — every real Settings destination
+ * (/notifications, /russian-commerce/tax-settings, ...) has a different
+ * URL. Swap in the *current* path as the active-match target whenever
+ * we're actually inside settingsNavigation, so the Settings entry stays
+ * visibly active for the whole time the user is in the workspace, not
+ * just on the redirect flash (spec §7).
+ */
+const bottomItems = computed(() => {
+  if (!isRouteInSection(route.path, settingsNavigation)) return secondaryNavigation.items
+
+  return secondaryNavigation.items.map(item =>
+    item.to === '/settings' ? { ...item, activePattern: route.path } : item,
+  )
+})
 </script>
 
 <style scoped>

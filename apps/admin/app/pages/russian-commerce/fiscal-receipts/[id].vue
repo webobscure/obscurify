@@ -2,7 +2,7 @@
   <div v-if="receipt">
     <PageHeader
       title="Fiscal Receipt"
-      :breadcrumbs="[{ label: 'Russian Commerce', to: '/russian-commerce/legal-profile' }, { label: 'Fiscal Receipts', to: '/russian-commerce/fiscal-receipts' }, { label: 'Receipt' }]"
+      :breadcrumbs="[{ label: 'Orders', to: '/orders' }, { label: 'Fiscal Receipts', to: '/russian-commerce/fiscal-receipts' }, { label: 'Receipt' }]"
     />
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -60,8 +60,6 @@
 <script setup lang="ts">
 import type { FiscalReceipt } from '@obscurify/types'
 import { ApiClientError } from '@obscurify/api-client'
-
-definePageMeta({ layout: 'settings' })
 
 const route = useRoute()
 const receiptId = route.params.id as string

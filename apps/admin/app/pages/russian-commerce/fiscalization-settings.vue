@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Fiscalization Settings" :breadcrumbs="[{ label: 'Russian Commerce', to: '/russian-commerce/legal-profile' }, { label: 'Fiscalization Settings' }]" />
+    <PageHeader title="Fiscalization Settings" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

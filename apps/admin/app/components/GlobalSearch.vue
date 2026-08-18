@@ -15,11 +15,14 @@
             type="text"
             :placeholder="t('chrome.search_placeholder')"
             @keydown.esc="close"
-            @keydown.enter="filtered.length && go(filtered[0]!)"
+            @keydown.enter="filtered.length && go(filtered[0]!.item)"
           >
           <ul>
-            <li v-for="item in filtered" :key="item.to">
-              <button type="button" @click="go(item)">{{ t(item.labelKey) }}</button>
+            <li v-for="result in filtered" :key="result.item.to">
+              <button type="button" @click="go(result.item)">
+                <span>{{ t(result.item.labelKey) }}</span>
+                <span v-if="result.isSettings" class="settings-tag">{{ t('nav.settings') }}</span>
+              </button>
             </li>
             <li v-if="!filtered.length" class="empty">{{ t('common.no_matching_pages') }}</li>
           </ul>
@@ -39,12 +42,21 @@ import { flattenNavigationItems, primaryNavigation, secondaryNavigation, setting
  * real routes (spec section 5: "build only the UI component" / "do not
  * invent fake search results"). Includes settingsNavigation (Milestone
  * 27) so ⌘K can still jump straight to a Settings page without the user
- * needing to know it moved out of the daily sidebar first.
+ * needing to know it moved out of the daily sidebar first — flagged with
+ * a small "Settings" tag (§12: "register Settings destinations", not a
+ * second copy of the config, just a render-time distinction over the
+ * same flattened items) so a result like "Payment Methods" reads clearly
+ * as a Settings destination rather than a daily one.
  */
-const allItems: NavigationItem[] = [
-  ...flattenNavigationItems(primaryNavigation),
-  ...flattenNavigationItems(settingsNavigation),
-  ...secondaryNavigation.items,
+interface SearchResult {
+  item: NavigationItem
+  isSettings: boolean
+}
+
+const allItems: SearchResult[] = [
+  ...flattenNavigationItems(primaryNavigation).map(item => ({ item, isSettings: false })),
+  ...flattenNavigationItems(settingsNavigation).map(item => ({ item, isSettings: true })),
+  ...secondaryNavigation.items.map(item => ({ item, isSettings: false })),
 ]
 
 const { t } = useI18n()
@@ -59,7 +71,7 @@ const shortcutLabel = computed(() => (import.meta.client && /Mac|iPhone|iPad/.te
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return allItems
-  return allItems.filter(item => t(item.labelKey).toLowerCase().includes(q))
+  return allItems.filter(result => t(result.item.labelKey).toLowerCase().includes(q))
 })
 
 async function openPalette() {
@@ -166,7 +178,10 @@ kbd {
 }
 
 .palette button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   width: 100%;
   text-align: left;
   padding: var(--space-2) var(--space-3);
@@ -180,6 +195,16 @@ kbd {
 .palette button:hover,
 .palette button:focus-visible {
   background: var(--color-bg);
+}
+
+.settings-tag {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
 }
 
 .palette .empty {

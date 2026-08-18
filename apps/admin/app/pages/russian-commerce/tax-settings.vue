@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Tax / VAT Settings" :breadcrumbs="[{ label: 'Russian Commerce', to: '/russian-commerce/legal-profile' }, { label: 'Tax / VAT Settings' }]" />
+    <PageHeader title="Tax / VAT Settings" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

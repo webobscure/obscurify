@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Pinned Search Results" :breadcrumbs="[{ label: 'Search Dashboard', to: '/search' }, { label: 'Pinned Products' }]" description="A pinned product always shows first for its exact keyword, regardless of relevance score or any boost/hide rule." />
+    <PageHeader title="Pinned Search Results" description="A pinned product always shows first for its exact keyword, regardless of relevance score or any boost/hide rule." />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Search Rules &amp; Ranking" :breadcrumbs="[{ label: 'Search Dashboard', to: '/search' }, { label: 'Rules & Ranking' }]" description="Boost or hide a product for a specific search keyword (or every keyword, if left blank). Rows are shown in position order — the same order applied when two rules affect the same search." />
+    <PageHeader title="Search Rules &amp; Ranking" description="Boost or hide a product for a specific search keyword (or every keyword, if left blank). Rows are shown in position order — the same order applied when two rules affect the same search." />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

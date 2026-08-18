@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Search Settings" :breadcrumbs="[{ label: 'Search Dashboard', to: '/search' }, { label: 'Search Settings' }]" />
+    <PageHeader title="Search Settings" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.

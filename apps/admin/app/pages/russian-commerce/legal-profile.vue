@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="Russian Legal Details" :breadcrumbs="[{ label: 'Russian Commerce', to: '/russian-commerce/legal-profile' }, { label: 'Legal Details' }]" />
+    <PageHeader title="Russian Legal Details" />
 
     <p v-if="!activeStore.storeId.value" class="error">
       Select an active store first — see <NuxtLink to="/stores">Stores</NuxtLink>.
